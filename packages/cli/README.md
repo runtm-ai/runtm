@@ -21,6 +21,14 @@ pipx install runtm
 pip install runtm
 ```
 
+### With Sandbox Support
+
+To use local sandboxes with AI agents:
+
+```bash
+pip install runtm[sandbox]
+```
+
 ### Upgrading
 
 ```bash
@@ -43,8 +51,9 @@ pip install --upgrade runtm
 # 1. Authenticate with Runtm
 runtm login
 
-# 2. Spin up a sandbox and start building
-runtm init backend-service
+# 2. Start a sandbox and build with AI
+runtm start
+runtm prompt "Build a REST API with SQLite"
 
 # 3. Deploy to a live URL
 runtm deploy
@@ -54,25 +63,90 @@ You get a live HTTPS endpoint. Machines auto-stop when idle and wake on traffic.
 
 ## Commands
 
+### Sandbox Commands
+
+| Command | Description |
+|---------|-------------|
+| `runtm start` | Start a sandbox session (interactive menu) |
+| `runtm prompt "..."` | Send a prompt to the agent (autopilot mode) |
+| `runtm attach [id]` | Attach to a sandbox (defaults to active) |
+| `runtm session list` | List all sandbox sessions |
+| `runtm session stop <id>` | Stop a session (preserves workspace) |
+| `runtm session destroy <id>` | Destroy a session and delete workspace |
+| `runtm session deploy` | Deploy from sandbox to live URL |
+
+### Project Commands
+
+| Command | Description |
+|---------|-------------|
+| `runtm init [template]` | Initialize from template (backend-service, web-app, static-site) |
+| `runtm run` | Run project locally (auto-detects runtime) |
+| `runtm validate` | Validate project before deployment |
+| `runtm fix` | Auto-fix common issues (lockfiles) |
+| `runtm deploy [path]` | Deploy project to a live URL |
+
+### Deployment Commands
+
+| Command | Description |
+|---------|-------------|
+| `runtm status <id>` | Show deployment status |
+| `runtm logs <id>` | Show logs (build, deploy, runtime) |
+| `runtm list` | List all deployments |
+| `runtm search <query>` | Search deployments by description/tags |
+| `runtm destroy <id>` | Destroy a deployment |
+
+### Configuration Commands
+
+| Command | Description |
+|---------|-------------|
+| `runtm config set/get/list` | Manage CLI configuration |
+| `runtm secrets set/get/list/unset` | Manage environment secrets |
+| `runtm domain add/status/remove` | Manage custom domains |
+| `runtm approve` | Apply agent-proposed changes |
+
+### Authentication Commands
+
 | Command | Description |
 |---------|-------------|
 | `runtm login` | Authenticate with Runtm API |
 | `runtm logout` | Remove saved credentials |
 | `runtm doctor` | Check CLI setup and diagnose issues |
-| `runtm start` | Start a sandbox session (interactive menu) |
-| `runtm attach [id]` | Attach to a sandbox (defaults to active) |
-| `runtm prompt "..."` | Send a prompt to the agent |
-| `runtm init` | Initialize a new project from template |
-| `runtm run` | Run project locally (auto-detects runtime) |
-| `runtm validate` | Validate project before deployment |
-| `runtm deploy [path]` | Deploy project to a live URL |
-| `runtm status <id>` | Show deployment status |
-| `runtm logs <id>` | Show logs (build, deploy, runtime) |
-| `runtm list` | List all deployments |
-| `runtm destroy <id>` | Destroy a deployment |
-| `runtm config set/get/list` | Manage CLI configuration |
+| `runtm version` | Show CLI version |
 
-### Authentication
+## Sandbox Sessions
+
+Start isolated environments where AI agents can build software:
+
+```bash
+# Start with interactive menu
+runtm start
+
+# Or go directly to autopilot mode
+runtm start --autopilot
+
+# Send prompts to the agent
+runtm prompt "Build a todo API with SQLite"
+runtm prompt --continue "Add authentication"
+
+# Attach to see what's happening
+runtm attach
+
+# List all sessions
+runtm session list
+```
+
+### Modes
+
+- **Autopilot**: Agent runs autonomously, control via `runtm prompt`
+- **Interactive**: Drop into sandbox shell, control agent manually
+
+### Available Agents
+
+- `claude-code` - Anthropic's Claude Code (recommended)
+- `codex` - OpenAI's Codex CLI
+- `gemini` - Google's Gemini CLI
+
+## Authentication
 
 Get your free API key at **[app.runtm.com](https://app.runtm.com)**. The CLI will prompt you to authenticate on first use.
 
@@ -99,7 +173,7 @@ runtm logout
 export RUNTM_API_KEY=runtm_sk_xxx  # Overrides stored token
 ```
 
-### Configuration
+## Configuration
 
 ```bash
 # Set API URL (for self-hosting)
@@ -120,8 +194,30 @@ runtm config reset
 **Environment variables:**
 - `RUNTM_API_URL` - API endpoint (overrides config)
 - `RUNTM_API_KEY` - API key (overrides stored token)
+- `RUNTM_DEBUG` - Enable debug logging
 
-### Troubleshooting
+## Secrets Management
+
+Manage environment variables for deployments:
+
+```bash
+# Set secrets
+runtm secrets set DATABASE_URL=postgres://...
+runtm secrets set API_KEY=sk-xxx
+
+# List secrets
+runtm secrets list
+
+# Get a secret value
+runtm secrets get DATABASE_URL
+
+# Remove a secret
+runtm secrets unset OLD_KEY
+```
+
+Secrets are stored in `.env.local` (gitignored) and injected at deploy time.
+
+## Troubleshooting
 
 ```bash
 # Check CLI setup and diagnose issues
@@ -130,7 +226,7 @@ runtm doctor
 
 Example output:
 ```
-runtm v0.2.6
+runtm v0.2.7
   API URL:      https://app.runtm.com/api
   Auth storage: keychain (api_token@app.runtm.com)
   Auth status:  ✓ Authenticated as user@example.com
@@ -139,7 +235,7 @@ runtm v0.2.6
   Ready to deploy! Run: runtm init
 ```
 
-### Machine Tiers
+## Machine Tiers
 
 All deployments use **auto-stop** for cost savings (machines stop when idle and start automatically on traffic).
 
@@ -151,18 +247,9 @@ All deployments use **auto-stop** for cost savings (machines stop when idle and 
 
 *Costs are estimates for 24/7 operation. With auto-stop, costs are much lower for low-traffic services.
 
-## Usage
+## Deployment
 
 ```bash
-# Spin up a sandbox
-runtm init
-
-# Run locally (auto-detects runtime and port)
-runtm run
-
-# Validate before deploying
-runtm validate
-
 # Deploy to a live URL (uses starter tier by default)
 runtm deploy
 
@@ -177,31 +264,9 @@ runtm status dep_abc123
 runtm logs dep_abc123
 ```
 
-### Setting Machine Tier
+### Redeployment (CI/CD)
 
-You can specify the machine tier in two ways:
-
-1. **Via CLI flag** (overrides manifest):
-   ```bash
-   runtm deploy --tier standard
-   runtm deploy --tier performance
-   ```
-
-2. **In `runtm.yaml`** (persistent setting):
-   ```yaml
-   name: my-service
-   template: backend-service
-   runtime: python
-   tier: standard  # Options: starter, standard, performance
-   ```
-
-## Redeployment (CI/CD)
-
-Runtm supports automatic redeployment based on the project name in `runtm.yaml`. When you deploy a project with the same name as an existing deployment:
-
-- The **existing infrastructure is updated** (same URL)
-- A new **version** is created
-- The **previous version** is marked as not latest
+Runtm supports automatic redeployment based on the project name in `runtm.yaml`:
 
 ```bash
 # First deploy - creates new deployment
@@ -214,15 +279,7 @@ runtm deploy                   # → v2, same URL, updated code
 runtm deploy --new             # → v1, new deployment, new URL
 ```
 
-This enables workflows where an agent can:
-1. Build code
-2. Deploy with `runtm deploy`
-3. Find and fix bugs using logs
-4. Redeploy with `runtm deploy` (same command, updates in place)
-
 ## Logs
-
-The `logs` command provides comprehensive access to build, deploy, and runtime logs.
 
 ```bash
 # All logs (build + deploy + recent runtime)
@@ -246,16 +303,6 @@ runtm logs dep_abc123 --raw | grep "error"
 runtm logs dep_abc123 --json
 ```
 
-### Log Options
-
-| Option | Short | Description |
-|--------|-------|-------------|
-| `--type TYPE` | `-t` | Filter: `build`, `deploy`, `runtime` |
-| `--lines N` | `-n` | Runtime log lines (default: 20) |
-| `--search TEXT` | `-s` | Filter by text, comma-separated, or regex |
-| `--json` | | JSON output for programmatic access |
-| `--raw` | | Raw output for piping to grep/awk |
-
 ## Development
 
 ```bash
@@ -267,7 +314,7 @@ pip install -e ../agents
 # Use the development CLI (avoids conflicts with PyPI version)
 runtm-dev start                    # Start sandbox session
 runtm-dev prompt "Build an API"    # Send prompt to agent
-runtm-dev list                     # List sessions
+runtm-dev session list             # List sessions
 
 # Configure CLI to use local API (add to ~/.zshrc or ~/.bashrc)
 export RUNTM_API_URL=http://localhost:8000

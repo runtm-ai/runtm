@@ -1,0 +1,58 @@
+# Runtm artifact exclusions
+# Files matching these patterns are excluded from deployment artifacts
+
+# Version control
+.git/
+.gitignore
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Environment files (secrets!)
+.env
+.env.*
+!.env.example
+
+# Build artifacts (rebuilt in container)
+target/
+dist/
+build/
+_build/
+*.o
+*.a
+
+# Language-specific caches
+# Go
+vendor/
+
+# Rust
+Cargo.lock
+
+# Elixir
+deps/
+_build/
+
+# Node (if using)
+node_modules/
+
+# Python (if using)
+__pycache__/
+.venv/
+venv/
+*.pyc
+
+# Test files
+tests/
+test/
+*_test.go
+*_test.rs
+test_*.py
+
+# Documentation
+docs/
+*.md
+!README.md

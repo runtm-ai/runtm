@@ -567,3 +567,101 @@ policy:
         yaml_output = manifest.to_yaml()
         assert "connections:" in yaml_output
         assert "supabase" in yaml_output
+
+
+class TestDockerTemplate:
+    """Tests for docker template support (bring your own Dockerfile)."""
+
+    def test_docker_template_no_runtime(self) -> None:
+        """Docker template doesn't require runtime."""
+        yaml_content = """
+name: my-go-api
+template: docker
+port: 8080
+"""
+        manifest = Manifest.from_yaml(yaml_content)
+        assert manifest.name == "my-go-api"
+        assert manifest.template == "docker"
+        assert manifest.runtime is None
+        assert manifest.port == 8080
+
+    def test_docker_template_with_runtime_ignored(self) -> None:
+        """Docker template can have runtime specified (but it's ignored)."""
+        yaml_content = """
+name: my-rust-api
+template: docker
+runtime: python
+port: 8080
+"""
+        # Runtime is accepted but semantically ignored for docker template
+        manifest = Manifest.from_yaml(yaml_content)
+        assert manifest.template == "docker"
+        assert manifest.runtime == "python"  # Set but not enforced
+
+    def test_docker_template_with_all_options(self) -> None:
+        """Docker template with all common options."""
+        yaml_content = """
+name: my-custom-service
+template: docker
+port: 9000
+health_path: /healthz
+tier: standard
+"""
+        manifest = Manifest.from_yaml(yaml_content)
+        assert manifest.name == "my-custom-service"
+        assert manifest.template == "docker"
+        assert manifest.runtime is None
+        assert manifest.port == 9000
+        assert manifest.health_path == "/healthz"
+        assert manifest.tier == "standard"
+
+    def test_non_docker_requires_runtime(self) -> None:
+        """Non-docker templates require runtime."""
+        yaml_content = """
+name: my-service
+template: backend-service
+"""
+        with pytest.raises(ValueError, match="runtime is required"):
+            Manifest.from_yaml(yaml_content)
+
+    def test_static_site_requires_runtime(self) -> None:
+        """Static-site template requires runtime."""
+        yaml_content = """
+name: my-site
+template: static-site
+"""
+        with pytest.raises(ValueError, match="runtime is required"):
+            Manifest.from_yaml(yaml_content)
+
+    def test_web_app_requires_runtime(self) -> None:
+        """Web-app template requires runtime."""
+        yaml_content = """
+name: my-app
+template: web-app
+tier: standard
+"""
+        with pytest.raises(ValueError, match="runtime is required"):
+            Manifest.from_yaml(yaml_content)
+
+    def test_docker_template_to_dict_no_runtime(self) -> None:
+        """Docker template to_dict should not include runtime if None."""
+        manifest = Manifest(
+            name="my-docker-app",
+            template="docker",
+            port=8080,
+        )
+        data = manifest.to_dict()
+        assert data["name"] == "my-docker-app"
+        assert data["template"] == "docker"
+        assert "runtime" not in data
+
+    def test_docker_template_to_yaml(self) -> None:
+        """Docker template should serialize to YAML without runtime."""
+        manifest = Manifest(
+            name="my-docker-app",
+            template="docker",
+            port=8080,
+        )
+        yaml_output = manifest.to_yaml()
+        assert "template: docker" in yaml_output
+        assert "runtime:" not in yaml_output

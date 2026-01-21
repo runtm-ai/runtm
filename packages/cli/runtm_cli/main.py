@@ -243,6 +243,7 @@ def deploy(
     force_validation: bool = typer.Option(
         False, "--force-validation", help="Force re-validation even if cached"
     ),
+    json_output: bool = typer.Option(False, "--json", help="Output as NDJSON for AI agents"),
 ) -> None:
     """Deploy a project to a live URL.
 
@@ -254,11 +255,12 @@ def deploy(
 
     Use --skip-validation to skip Python import validation (faster but riskier).
     Use --force-validation to ignore validation cache and re-run checks.
+    Use --json for NDJSON output for AI agents.
     """
     from pathlib import Path
 
-    # SAFETY: Require explicit confirmation for --new flag
-    if new:
+    # SAFETY: Require explicit confirmation for --new flag (skip in JSON mode)
+    if new and not json_output:
         console.print()
         console.print("[red bold]⚠ WARNING: --new creates a NEW Fly app![/red bold]")
         console.print()
@@ -285,17 +287,19 @@ def deploy(
         config_only=config_only,
         skip_validation=skip_validation,
         force_validation=force_validation,
+        json_output=json_output,
     )
 
 
 @app.command("validate")
 def validate(
     path: str = typer.Argument(".", help="Path to project"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON for AI agents"),
 ) -> None:
     """Validate project before deployment."""
     from pathlib import Path
 
-    validate_command(path=Path(path))
+    validate_command(path=Path(path), json_output=json_output)
 
 
 @app.command("approve")

@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Docker Template**: Bring your own Dockerfile for Go, Rust, Elixir, or any language
+  - `runtm init docker` scaffolds minimal `runtm.yaml` and `Dockerfile`
+  - No runtime required - deploy any containerized application
+  - Full template documentation with AI assistant instructions
+- **JSON Output for AI Agents**: Machine-readable output for CLI commands
+  - `runtm validate --json` returns structured validation results
+  - `runtm deploy --json` streams NDJSON events for each deployment phase
+  - Enables programmatic integration with AI coding agents
+
 - **Local Sandboxes**: Isolated environments where AI coding agents can build software
   - `runtm start` - Start a sandbox with interactive mode/agent selection
   - `runtm attach [id]` - Attach to a sandbox (defaults to last active in terminal)
@@ -38,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Manifest Schema**: `runtime` field is now optional for `docker` template
 - `runtm list` now also available as `runtm deployments list`
 - Verbose logging now opt-in (`--verbose` flag or `RUNTM_DEBUG=1`)
 - Keyring dependency now optional (falls back to file-based credential storage)

@@ -29,6 +29,11 @@ TEMPLATES_LIST = [
         "title": "Web App",
         "description": "Great for dashboards, customer portals, and AI app demos",
     },
+    {
+        "name": "docker",
+        "title": "Docker (BYOD)",
+        "description": "Bring your own Dockerfile - for Go, Rust, Elixir, or any language",
+    },
 ]
 
 # Dict for quick lookup
@@ -83,7 +88,7 @@ def prompt_template_selection() -> str:
     ]
 
     console.print()
-    console.print("[dim]Select a template (arrow keys + Enter, or press 1/2/3):[/dim]")
+    console.print("[dim]Select a template (arrow keys + Enter, or press 1/2/3/4):[/dim]")
     console.print()
 
     result = questionary.select(
@@ -200,6 +205,10 @@ def _cleanup_old_template(dest_path: Path, old_template: str) -> None:
             "CLAUDE.md",
             ".cursor",
         ],
+        "docker": [
+            # Docker template only creates runtm.yaml - user provides everything else
+            "runtm.yaml",
+        ],
     }
 
     paths_to_remove = template_paths.get(old_template, [])
@@ -210,6 +219,67 @@ def _cleanup_old_template(dest_path: Path, old_template: str) -> None:
                 shutil.rmtree(path_to_remove)
             else:
                 path_to_remove.unlink()
+
+
+def _generate_docker_template(dest_path: Path, name: str) -> None:
+    """Generate minimal files for docker template.
+
+    Creates only runtm.yaml - the user provides their own Dockerfile.
+
+    Args:
+        dest_path: Destination directory
+        name: Project name
+    """
+    # Create runtm.yaml with minimal config
+    runtm_yaml = f"""# Runtm Docker Template
+# Bring your own Dockerfile - deploy any containerized app
+
+name: {name}
+template: docker
+port: 8080
+health_path: /health
+tier: starter
+
+# Optional: declare environment variables your app needs
+# env_schema:
+#   - name: DATABASE_URL
+#     type: string
+#     required: true
+#     secret: true
+"""
+    (dest_path / "runtm.yaml").write_text(runtm_yaml)
+
+    # Create a sample Dockerfile if none exists
+    dockerfile_path = dest_path / "Dockerfile"
+    if not dockerfile_path.exists():
+        sample_dockerfile = """# Sample Dockerfile - replace with your own
+# This is a minimal example for reference
+
+FROM alpine:latest
+
+# Install your runtime (e.g., go, rust, elixir)
+# RUN apk add --no-cache go
+
+# Set working directory
+WORKDIR /app
+
+# Copy your application files
+COPY . .
+
+# Build your application (if needed)
+# RUN go build -o main .
+
+# Expose the port specified in runtm.yaml
+EXPOSE 8080
+
+# Health check endpoint (must return HTTP 200)
+# Your app should implement GET /health returning 200 OK
+
+# Run your application
+# CMD ["./main"]
+CMD ["echo", "Replace this Dockerfile with your own!"]
+"""
+        dockerfile_path.write_text(sample_dockerfile)
 
 
 def copy_template(
@@ -262,7 +332,7 @@ def copy_template(
 def init_command(
     template: str | None = typer.Argument(
         None,
-        help="Template type: backend-service, static-site, or web-app",
+        help="Template type: backend-service, static-site, web-app, or docker",
     ),
     path: Path = typer.Option(
         Path("."),
@@ -284,6 +354,7 @@ def init_command(
         runtm init backend-service  # Creates FastAPI backend service
         runtm init static-site      # Creates Next.js static site
         runtm init web-app          # Creates fullstack app (Next.js + FastAPI)
+        runtm init docker           # Minimal runtm.yaml for BYOD projects
     """
     import time
 
@@ -307,9 +378,20 @@ def init_command(
     start_time = time.time()
 
     with command_span("init", {"runtm.template": template_name}):
-        # Get template path
-        template_path = get_template_path(template_name)
-        if not template_path:
+        # Resolve destination
+        dest_path = path.resolve()
+
+        # Resolve name early (needed for docker template)
+        if not name:
+            name = dest_path.name.lower().replace("_", "-")
+
+        # Docker template: generate minimal files instead of copying
+        is_docker_template = template_name == "docker"
+
+        # Get template path (None for docker template)
+        template_path = None if is_docker_template else get_template_path(template_name)
+
+        if not template_path and not is_docker_template:
             console.print(f"[red]✗[/red] Template not found: {template_name}")
             console.print()
             console.print("Available templates:")
@@ -321,9 +403,6 @@ def init_command(
                 "[dim]  or [bold]runtm init backend-service[/bold] to specify directly[/dim]"
             )
             raise typer.Exit(1)
-
-        # Resolve destination
-        dest_path = path.resolve()
 
         # Check if destination has files
         has_existing_files = dest_path.exists() and any(dest_path.iterdir())
@@ -352,18 +431,25 @@ def init_command(
         # Emit template selected event
         emit_init_template_selected(template_name, has_existing_files)
 
-        # Resolve name
-        if not name:
-            name = dest_path.name.lower().replace("_", "-")
-
         console.print(f"Initializing {template_name} project...")
         console.print(f"  Path: {dest_path}")
         console.print(f"  Name: {name}")
         console.print()
 
-        # Copy template
+        # Initialize based on template type
         try:
-            copy_template(template_path, dest_path, name, cleanup_old=should_cleanup)
+            dest_path.mkdir(parents=True, exist_ok=True)
+
+            if is_docker_template:
+                # Docker template: generate minimal files
+                if should_cleanup:
+                    old_template = _get_old_template(dest_path)
+                    if old_template and old_template in TEMPLATES:
+                        _cleanup_old_template(dest_path, old_template)
+                _generate_docker_template(dest_path, name)
+            else:
+                # Standard templates: copy from template directory
+                copy_template(template_path, dest_path, name, cleanup_old=should_cleanup)
         except Exception as e:
             console.print(f"[red]✗[/red] Failed to initialize: {e}")
             raise typer.Exit(1)
@@ -374,12 +460,20 @@ def init_command(
 
         console.print("[green]✓[/green] Project initialized!")
         console.print()
-        console.print("[dim]AI assistant rules auto-configured for:[/dim]")
-        console.print("[dim]  Cursor, Claude Code, Windsurf, GitHub Copilot[/dim]")
+
+        if is_docker_template:
+            console.print("[dim]Docker template initialized with minimal runtm.yaml[/dim]")
+            console.print("[dim]Edit the Dockerfile to add your application[/dim]")
+        else:
+            console.print("[dim]AI assistant rules auto-configured for:[/dim]")
+            console.print("[dim]  Cursor, Claude Code, Windsurf, GitHub Copilot[/dim]")
+
         console.print()
         console.print("Next steps:")
         # Only show cd if destination is different from current directory
         if dest_path.resolve() != Path.cwd().resolve():
             console.print(f"  cd {dest_path.name}")
+        if is_docker_template:
+            console.print("  # Edit Dockerfile with your application")
         console.print("  runtm validate")
         console.print("  runtm deploy")

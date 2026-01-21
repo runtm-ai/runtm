@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import time
 from pathlib import Path
+from typing import Any
 
 import typer
 from rich.console import Console
@@ -22,6 +24,14 @@ from .validate import validate_project
 console = Console()
 
 
+def _emit_json_event(event: dict[str, Any]) -> None:
+    """Emit a JSON event to stdout (NDJSON format).
+
+    Each event is a single line of JSON, flushed immediately.
+    """
+    print(json.dumps(event), flush=True)
+
+
 def deploy_command(
     path: Path = Path("."),
     wait: bool = True,
@@ -32,6 +42,7 @@ def deploy_command(
     config_only: bool = False,
     skip_validation: bool = False,
     force_validation: bool = False,
+    json_output: bool = False,
 ) -> None:
     """Deploy a project to a live URL.
 
@@ -45,11 +56,17 @@ def deploy_command(
     (Requires unchanged source code - only for env var or tier changes.)
     Use --skip-validation to skip Python import validation (faster but riskier).
     Use --force-validation to ignore validation cache and re-run checks.
+    Use --json for NDJSON output for AI agents (one JSON object per line).
 
     Machine tiers (all use auto-stop for cost savings):
       - starter: 1 shared CPU, 256MB RAM (~$2/month, much less with auto-stop)
       - standard: 1 shared CPU, 512MB RAM (~$5/month, much less with auto-stop)
       - performance: 2 shared CPUs, 1GB RAM (~$10/month, much less with auto-stop)
+
+    Examples:
+        runtm deploy                    # Deploy current directory
+        runtm deploy --json             # NDJSON output for AI agents
+        runtm deploy --yes              # Auto-fix lockfile issues
     """
     from runtm_cli.telemetry import (
         command_span,
@@ -64,6 +81,19 @@ def deploy_command(
     deploy_start_time = time.time()
     artifact_size: float | None = None
 
+    # Helper for conditional output
+    def log(msg: str) -> None:
+        if not json_output:
+            console.print(msg)
+
+    def log_warning(msg: str) -> None:
+        if not json_output:
+            console.print(f"[yellow]⚠[/yellow] {msg}")
+
+    def log_success(msg: str) -> None:
+        if not json_output:
+            console.print(f"[green]✓[/green] {msg}")
+
     with command_span("deploy", {"runtm.tier": tier or "default"}):
         # Validate tier if provided
         if tier is not None:
@@ -72,17 +102,36 @@ def deploy_command(
                 tier_spec = MACHINE_TIER_SPECS[tier_enum]
             except ValueError:
                 valid_tiers = ", ".join(t.value for t in MachineTier)
-                console.print(f"[red]✗[/red] Invalid tier: {tier}")
-                console.print(f"    Valid tiers: {valid_tiers}")
+                if json_output:
+                    _emit_json_event(
+                        {
+                            "phase": "init",
+                            "status": "failed",
+                            "error": f"Invalid tier: {tier}. Valid tiers: {valid_tiers}",
+                        }
+                    )
+                else:
+                    console.print(f"[red]✗[/red] Invalid tier: {tier}")
+                    console.print(f"    Valid tiers: {valid_tiers}")
                 raise typer.Exit(1)
 
         # Check auth - verify token exists AND is valid before expensive work
         token = get_token()
         if not token:
             emit_auth_failed("missing_token")
-            console.print("[red]✗[/red] Not authenticated. Run `runtm login` first.")
-            console.print()
-            console.print("Or set RUNTM_API_KEY environment variable.")
+            if json_output:
+                _emit_json_event(
+                    {
+                        "phase": "auth",
+                        "status": "failed",
+                        "error": "Not authenticated",
+                        "hint": "Run `runtm login` or set RUNTM_API_KEY",
+                    }
+                )
+            else:
+                console.print("[red]✗[/red] Not authenticated. Run `runtm login` first.")
+                console.print()
+                console.print("Or set RUNTM_API_KEY environment variable.")
             raise typer.Exit(1)
 
         # Pre-flight auth check: verify token is valid before doing validation/artifact work
@@ -90,35 +139,69 @@ def deploy_command(
             client = APIClient()
             if not client.check_auth():
                 emit_auth_failed("invalid_token")
-                console.print(
-                    "[red]✗[/red] Authentication failed. Your token may be invalid or expired."
-                )
-                console.print()
-                console.print("Try: runtm login")
-                console.print("Or check your RUNTM_API_KEY environment variable.")
+                if json_output:
+                    _emit_json_event(
+                        {
+                            "phase": "auth",
+                            "status": "failed",
+                            "error": "Authentication failed. Token may be invalid or expired.",
+                            "hint": "Run `runtm login` or check RUNTM_API_KEY",
+                        }
+                    )
+                else:
+                    console.print(
+                        "[red]✗[/red] Authentication failed. Your token may be invalid or expired."
+                    )
+                    console.print()
+                    console.print("Try: runtm login")
+                    console.print("Or check your RUNTM_API_KEY environment variable.")
                 raise typer.Exit(1)
 
         # Validate first
         with phase_span("validate"):
-            console.print("Validating project...")
+            if json_output:
+                _emit_json_event({"phase": "validate", "status": "running"})
+            else:
+                console.print("Validating project...")
+
             is_valid, errors, warnings = validate_project(
                 path,
                 skip_validation=skip_validation,
                 force_validation=force_validation,
             )
 
-            for warning in warnings:
-                console.print(f"[yellow]⚠[/yellow] {warning}")
-
             if not is_valid:
                 emit_deploy_validation_failed(len(errors), len(warnings))
-                for error in errors:
-                    console.print(f"[red]✗[/red] {error}")
-                console.print()
-                console.print("Fix validation errors and try again.")
+                if json_output:
+                    _emit_json_event(
+                        {
+                            "phase": "validate",
+                            "status": "failed",
+                            "errors": errors,
+                            "warnings": warnings,
+                        }
+                    )
+                else:
+                    for warning in warnings:
+                        console.print(f"[yellow]⚠[/yellow] {warning}")
+                    for error in errors:
+                        console.print(f"[red]✗[/red] {error}")
+                    console.print()
+                    console.print("Fix validation errors and try again.")
                 raise typer.Exit(1)
 
-            console.print("[green]✓[/green] Project validated")
+            if json_output:
+                _emit_json_event(
+                    {
+                        "phase": "validate",
+                        "status": "passed",
+                        "warnings": warnings,
+                    }
+                )
+            else:
+                for warning in warnings:
+                    console.print(f"[yellow]⚠[/yellow] {warning}")
+                console.print("[green]✓[/green] Project validated")
 
         # Check lockfile (prod must be reproducible)
         with phase_span("lockfile_check"):
@@ -129,28 +212,48 @@ def deploy_command(
                 if lockfile_status.needs_fix:
                     if yes:
                         action = "Creating" if not lockfile_status.exists else "Fixing"
-                        console.print(
+                        log(
                             f"[yellow]{action} lockfile via {lockfile_status.install_cmd}...[/yellow]"
                         )
                         if fix_lockfile(path, lockfile_status):
-                            console.print("[green]✓[/green] Lockfile fixed")
+                            log_success("Lockfile fixed")
                         else:
-                            console.print("[red]✗[/red] Failed to fix lockfile")
-                            console.print(f"    Run manually: {lockfile_status.install_cmd}")
+                            if json_output:
+                                _emit_json_event(
+                                    {
+                                        "phase": "lockfile",
+                                        "status": "failed",
+                                        "error": "Failed to fix lockfile",
+                                        "hint": f"Run manually: {lockfile_status.install_cmd}",
+                                    }
+                                )
+                            else:
+                                console.print("[red]✗[/red] Failed to fix lockfile")
+                                console.print(f"    Run manually: {lockfile_status.install_cmd}")
                             raise typer.Exit(1)
                     else:
                         issue = "missing" if not lockfile_status.exists else "out of sync"
-                        console.print(f"[red]✗[/red] Lockfile {issue}")
-                        console.print(f"    Run: [bold]{lockfile_status.install_cmd}[/bold]")
-                        console.print("    Or deploy with: [bold]runtm deploy --yes[/bold]")
+                        if json_output:
+                            _emit_json_event(
+                                {
+                                    "phase": "lockfile",
+                                    "status": "failed",
+                                    "error": f"Lockfile {issue}",
+                                    "hint": f"Run: {lockfile_status.install_cmd} or deploy with --yes",
+                                }
+                            )
+                        else:
+                            console.print(f"[red]✗[/red] Lockfile {issue}")
+                            console.print(f"    Run: [bold]{lockfile_status.install_cmd}[/bold]")
+                            console.print("    Or deploy with: [bold]runtm deploy --yes[/bold]")
                         raise typer.Exit(1)
                 else:
-                    console.print("[green]✓[/green] Lockfile in sync")
+                    log_success("Lockfile in sync")
             except typer.Exit:
                 raise
             except Exception as e:
                 # Don't block deploy on lockfile check errors, just warn
-                console.print(f"[yellow]⚠[/yellow] Could not check lockfile: {e}")
+                log_warning(f"Could not check lockfile: {e}")
 
         # Validate env vars (if env_schema is defined)
         resolved_secrets: dict = {}
@@ -161,17 +264,27 @@ def deploy_command(
                 resolved, missing_required, env_warnings = resolve_env_vars(path, manifest)
 
                 for warning in env_warnings:
-                    console.print(f"[yellow]⚠[/yellow] {warning}")
+                    log_warning(warning)
 
                 if missing_required:
                     emit_deploy_validation_failed(len(missing_required), 0)
-                    console.print("[red]✗[/red] Missing required environment variables:")
-                    for name in missing_required:
-                        console.print(f"    - {name}")
-                    console.print()
-                    console.print("Set them with:")
-                    for name in missing_required:
-                        console.print(f"  runtm secrets set {name}=<value>")
+                    if json_output:
+                        _emit_json_event(
+                            {
+                                "phase": "env",
+                                "status": "failed",
+                                "error": "Missing required environment variables",
+                                "missing": missing_required,
+                            }
+                        )
+                    else:
+                        console.print("[red]✗[/red] Missing required environment variables:")
+                        for name in missing_required:
+                            console.print(f"    - {name}")
+                        console.print()
+                        console.print("Set them with:")
+                        for name in missing_required:
+                            console.print(f"  runtm secrets set {name}=<value>")
                     raise typer.Exit(1)
 
                 # Extract secrets for injection (values marked as secret: true)
@@ -179,10 +292,8 @@ def deploy_command(
                 resolved_secrets = {k: v for k, v in resolved.items() if k in secret_names}
 
                 if resolved:
-                    console.print(
-                        f"[green]✓[/green] Environment variables resolved ({len(resolved)} vars)"
-                    )
-                    if resolved_secrets:
+                    log_success(f"Environment variables resolved ({len(resolved)} vars)")
+                    if resolved_secrets and not json_output:
                         console.print(
                             f"    [dim]{len(resolved_secrets)} secrets will be injected[/dim]"
                         )
@@ -190,17 +301,16 @@ def deploy_command(
         # Check for discovery metadata (optional, just warn)
         discovery_path = path / "runtm.discovery.yaml"
         if not discovery_path.exists():
-            console.print(
-                "[yellow]⚠[/yellow] No runtm.discovery.yaml found. "
-                "Consider adding app metadata for discoverability."
+            log_warning(
+                "No runtm.discovery.yaml found. Consider adding app metadata for discoverability."
             )
         else:
             # Check if discovery file has unfilled TODO placeholders
             try:
                 discovery_content = discovery_path.read_text()
                 if "# TODO:" in discovery_content or "TODO:" in discovery_content:
-                    console.print(
-                        "[yellow]⚠[/yellow] runtm.discovery.yaml has unfilled TODO placeholders. "
+                    log_warning(
+                        "runtm.discovery.yaml has unfilled TODO placeholders. "
                         "Fill them in for better app discoverability."
                     )
             except Exception:
@@ -208,7 +318,7 @@ def deploy_command(
 
         # Create artifact
         with phase_span("artifact_create"):
-            console.print("Creating artifact...")
+            log("Creating artifact...")
             manifest_path = path / "runtm.yaml"
 
             # If tier is specified via CLI, update the manifest temporarily
@@ -223,20 +333,30 @@ def deploy_command(
                     manifest_path.write_text(
                         yaml.safe_dump(manifest_data, default_flow_style=False, sort_keys=False)
                     )
-                    console.print(f"[dim]Using tier: {tier_spec.description}[/dim]")
+                    if not json_output:
+                        console.print(f"[dim]Using tier: {tier_spec.description}[/dim]")
                 except Exception as e:
-                    console.print(f"[yellow]⚠[/yellow] Could not update manifest tier: {e}")
+                    log_warning(f"Could not update manifest tier: {e}")
 
             try:
                 artifact_path = create_artifact_zip(path)
                 artifact_size = artifact_path.stat().st_size / (1024 * 1024)
-                console.print(f"[green]✓[/green] Artifact created ({artifact_size:.1f} MB)")
+                log_success(f"Artifact created ({artifact_size:.1f} MB)")
             except Exception as e:
                 # Restore original manifest if we modified it
                 if original_manifest_content is not None:
                     manifest_path.write_text(original_manifest_content)
                 emit_deploy_failed("artifact_error")
-                console.print(f"[red]✗[/red] Failed to create artifact: {e}")
+                if json_output:
+                    _emit_json_event(
+                        {
+                            "phase": "artifact",
+                            "status": "failed",
+                            "error": f"Failed to create artifact: {e}",
+                        }
+                    )
+                else:
+                    console.print(f"[red]✗[/red] Failed to create artifact: {e}")
                 raise typer.Exit(1)
             finally:
                 # Restore original manifest after creating artifact
@@ -251,16 +371,28 @@ def deploy_command(
         with phase_span("src_hash"):
             try:
                 src_hash = compute_src_hash(path)
-                console.print(f"[dim]Source hash: {src_hash}[/dim]")
+                if not json_output:
+                    console.print(f"[dim]Source hash: {src_hash}[/dim]")
             except Exception as e:
-                console.print(f"[yellow]⚠[/yellow] Could not compute source hash: {e}")
+                log_warning(f"Could not compute source hash: {e}")
 
         # Validate --config-only flag
         if config_only:
             with phase_span("config_only_validation"):
                 if new:
-                    console.print("[red]✗[/red] --config-only cannot be used with --new")
-                    console.print("    Config-only deploys require a previous deployment to reuse.")
+                    if json_output:
+                        _emit_json_event(
+                            {
+                                "phase": "config_only",
+                                "status": "failed",
+                                "error": "--config-only cannot be used with --new",
+                            }
+                        )
+                    else:
+                        console.print("[red]✗[/red] --config-only cannot be used with --new")
+                        console.print(
+                            "    Config-only deploys require a previous deployment to reuse."
+                        )
                     raise typer.Exit(1)
 
                 # Get previous deployment to check src_hash
@@ -270,28 +402,51 @@ def deploy_command(
                     previous = None
 
                 if not previous:
-                    console.print("[red]✗[/red] --config-only requires a previous deployment")
-                    console.print("    No existing deployment found for this project name.")
-                    console.print(
-                        "    Use `runtm deploy` (without --config-only) for first deploy."
-                    )
+                    if json_output:
+                        _emit_json_event(
+                            {
+                                "phase": "config_only",
+                                "status": "failed",
+                                "error": "--config-only requires a previous deployment",
+                            }
+                        )
+                    else:
+                        console.print("[red]✗[/red] --config-only requires a previous deployment")
+                        console.print("    No existing deployment found for this project name.")
+                        console.print(
+                            "    Use `runtm deploy` (without --config-only) for first deploy."
+                        )
                     raise typer.Exit(1)
 
                 # Check if source has changed
                 if previous.src_hash and src_hash and previous.src_hash != src_hash:
-                    console.print("[red]✗[/red] Source code has changed since last deploy")
-                    console.print(f"    Previous: {previous.src_hash}")
-                    console.print(f"    Current:  {src_hash}")
-                    console.print()
-                    console.print("--config-only requires unchanged source code.")
-                    console.print("Use `runtm deploy` (without --config-only) for a full rebuild.")
+                    if json_output:
+                        _emit_json_event(
+                            {
+                                "phase": "config_only",
+                                "status": "failed",
+                                "error": "Source code has changed since last deploy",
+                                "previous_hash": previous.src_hash,
+                                "current_hash": src_hash,
+                            }
+                        )
+                    else:
+                        console.print("[red]✗[/red] Source code has changed since last deploy")
+                        console.print(f"    Previous: {previous.src_hash}")
+                        console.print(f"    Current:  {src_hash}")
+                        console.print()
+                        console.print("--config-only requires unchanged source code.")
+                        console.print(
+                            "Use `runtm deploy` (without --config-only) for a full rebuild."
+                        )
                     raise typer.Exit(1)
 
                 if not previous.src_hash:
-                    console.print("[yellow]⚠[/yellow] Previous deployment has no src_hash")
-                    console.print("    Cannot validate source unchanged. Proceeding anyway.")
+                    log_warning(
+                        "Previous deployment has no src_hash. Cannot validate source unchanged. Proceeding anyway."
+                    )
 
-                console.print("[green]✓[/green] Config-only deploy - skipping Docker build")
+                log_success("Config-only deploy - skipping Docker build")
 
         with phase_span("api_call"):
             # Emit deploy started event
@@ -304,11 +459,11 @@ def deploy_command(
 
             try:
                 if config_only:
-                    console.print("Creating config-only deployment (reusing previous image)...")
+                    log("Creating config-only deployment (reusing previous image)...")
                 elif new:
-                    console.print("Creating new deployment...")
+                    log("Creating new deployment...")
                 else:
-                    console.print("Creating deployment (will redeploy if name exists)...")
+                    log("Creating deployment (will redeploy if name exists)...")
 
                 deployment = client.create_deployment(
                     manifest_path,
@@ -320,30 +475,60 @@ def deploy_command(
                     config_only=config_only,
                 )
 
-                if deployment.version > 1:
-                    console.print(
-                        f"[green]✓[/green] Redeployment created: {deployment.deployment_id} "
-                        f"(v{deployment.version})"
+                if json_output:
+                    _emit_json_event(
+                        {
+                            "phase": "deploy",
+                            "status": "running",
+                            "deployment_id": deployment.deployment_id,
+                            "version": deployment.version,
+                        }
                     )
-                    console.print(f"    Updating from: {deployment.previous_deployment_id}")
                 else:
-                    console.print(
-                        f"[green]✓[/green] Deployment created: {deployment.deployment_id}"
-                    )
+                    if deployment.version > 1:
+                        console.print(
+                            f"[green]✓[/green] Redeployment created: {deployment.deployment_id} "
+                            f"(v{deployment.version})"
+                        )
+                        console.print(f"    Updating from: {deployment.previous_deployment_id}")
+                    else:
+                        console.print(
+                            f"[green]✓[/green] Deployment created: {deployment.deployment_id}"
+                        )
             except RuntmError as e:
                 emit_deploy_failed("api_error")
-                console.print(f"[red]✗[/red] {e.message}")
-                if e.recovery_hint:
-                    console.print(f"    {e.recovery_hint}")
+                if json_output:
+                    _emit_json_event(
+                        {
+                            "phase": "deploy",
+                            "status": "failed",
+                            "error": e.message,
+                            "hint": e.recovery_hint,
+                        }
+                    )
+                else:
+                    console.print(f"[red]✗[/red] {e.message}")
+                    if e.recovery_hint:
+                        console.print(f"    {e.recovery_hint}")
                 raise typer.Exit(1)
 
         if not wait:
-            console.print()
-            console.print(f"Deployment ID: {deployment.deployment_id}")
-            console.print(f"Status: {deployment.state}")
-            console.print()
-            console.print("Check status with:")
-            console.print(f"  runtm status {deployment.deployment_id}")
+            if json_output:
+                _emit_json_event(
+                    {
+                        "phase": "deploy",
+                        "status": "queued",
+                        "deployment_id": deployment.deployment_id,
+                        "state": deployment.state,
+                    }
+                )
+            else:
+                console.print()
+                console.print(f"Deployment ID: {deployment.deployment_id}")
+                console.print(f"Status: {deployment.state}")
+                console.print()
+                console.print("Check status with:")
+                console.print(f"  runtm status {deployment.deployment_id}")
             return
 
         # Wait for completion
@@ -351,21 +536,22 @@ def deploy_command(
             poll_start_time = time.time()
             last_state = deployment.state
 
-            with Live(console=console, refresh_per_second=4) as live:
+            # For JSON output, don't use Live display
+            if json_output:
                 while True:
                     elapsed = time.time() - poll_start_time
                     if elapsed > timeout:
-                        live.stop()
                         emit_deploy_failed("timeout", state_reached=deployment.state)
-                        console.print(f"[red]✗[/red] Deployment timed out after {timeout}s")
-                        console.print()
-                        console.print("Check status with:")
-                        console.print(f"  runtm status {deployment.deployment_id}")
+                        _emit_json_event(
+                            {
+                                "phase": "deploy",
+                                "status": "failed",
+                                "error": f"Deployment timed out after {timeout}s",
+                                "deployment_id": deployment.deployment_id,
+                                "state": deployment.state,
+                            }
+                        )
                         raise typer.Exit(1)
-
-                    # Update display
-                    spinner = Spinner("dots", text=f" Deploying... ({deployment.state})")
-                    live.update(spinner)
 
                     # Check status
                     try:
@@ -375,35 +561,98 @@ def deploy_command(
 
                     if deployment.state != last_state:
                         last_state = deployment.state
+                        # Emit state change event
+                        _emit_json_event(
+                            {
+                                "phase": "deploy",
+                                "status": "running",
+                                "deployment_id": deployment.deployment_id,
+                                "state": deployment.state,
+                            }
+                        )
 
                     # Check terminal states
                     if deployment.state == "ready":
-                        live.stop()
                         break
                     elif deployment.state == "failed":
-                        live.stop()
                         emit_deploy_failed("deployment_failed", state_reached="failed")
-                        console.print("[red]✗[/red] Deployment failed")
-                        if deployment.error_message:
-                            console.print(f"    {deployment.error_message}")
-                        console.print()
-                        console.print("View logs with:")
-                        console.print(f"  runtm logs {deployment.deployment_id}")
+                        _emit_json_event(
+                            {
+                                "phase": "deploy",
+                                "status": "failed",
+                                "deployment_id": deployment.deployment_id,
+                                "error": deployment.error_message or "Deployment failed",
+                            }
+                        )
                         raise typer.Exit(1)
 
                     time.sleep(2)
+            else:
+                with Live(console=console, refresh_per_second=4) as live:
+                    while True:
+                        elapsed = time.time() - poll_start_time
+                        if elapsed > timeout:
+                            live.stop()
+                            emit_deploy_failed("timeout", state_reached=deployment.state)
+                            console.print(f"[red]✗[/red] Deployment timed out after {timeout}s")
+                            console.print()
+                            console.print("Check status with:")
+                            console.print(f"  runtm status {deployment.deployment_id}")
+                            raise typer.Exit(1)
+
+                        # Update display
+                        spinner = Spinner("dots", text=f" Deploying... ({deployment.state})")
+                        live.update(spinner)
+
+                        # Check status
+                        try:
+                            deployment = client.get_deployment(deployment.deployment_id)
+                        except RuntmError:
+                            pass  # Keep polling
+
+                        if deployment.state != last_state:
+                            last_state = deployment.state
+
+                        # Check terminal states
+                        if deployment.state == "ready":
+                            live.stop()
+                            break
+                        elif deployment.state == "failed":
+                            live.stop()
+                            emit_deploy_failed("deployment_failed", state_reached="failed")
+                            console.print("[red]✗[/red] Deployment failed")
+                            if deployment.error_message:
+                                console.print(f"    {deployment.error_message}")
+                            console.print()
+                            console.print("View logs with:")
+                            console.print(f"  runtm logs {deployment.deployment_id}")
+                            raise typer.Exit(1)
+
+                        time.sleep(2)
 
         # Success!
         duration_ms = (time.time() - deploy_start_time) * 1000
         duration_secs = duration_ms / 1000
         emit_deploy_completed(duration_ms, version=deployment.version, template=manifest.template)
 
-        console.print(f"[green]✓[/green] Deployed in {duration_secs:.1f}s")
-        console.print()
-        console.print(f"  URL: {deployment.url}")
-        console.print(f"  ID:  {deployment.deployment_id}")
-        console.print()
-        console.print("Next steps:")
-        console.print(f"  runtm status {deployment.deployment_id}")
-        console.print(f"  runtm logs {deployment.deployment_id}")
-        console.print(f"  curl {deployment.url}/health")
+        if json_output:
+            _emit_json_event(
+                {
+                    "phase": "deploy",
+                    "status": "ready",
+                    "deployment_id": deployment.deployment_id,
+                    "url": deployment.url,
+                    "version": deployment.version,
+                    "duration_seconds": round(duration_secs, 1),
+                }
+            )
+        else:
+            console.print(f"[green]✓[/green] Deployed in {duration_secs:.1f}s")
+            console.print()
+            console.print(f"  URL: {deployment.url}")
+            console.print(f"  ID:  {deployment.deployment_id}")
+            console.print()
+            console.print("Next steps:")
+            console.print(f"  runtm status {deployment.deployment_id}")
+            console.print(f"  runtm logs {deployment.deployment_id}")
+            console.print(f"  curl {deployment.url}/health")

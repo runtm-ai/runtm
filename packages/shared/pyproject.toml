@@ -1,6 +1,6 @@
 [project]
 name = "runtm-shared"
-version = "0.2.0"
+version = "0.2.2"
 description = "Canonical contracts for Runtm: manifest schema, types, errors"
 readme = "README.md"
 license = { text = "Apache-2.0" }
@@ -54,4 +54,3 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["runtm_shared"]
-

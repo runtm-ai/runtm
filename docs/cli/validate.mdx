@@ -8,7 +8,7 @@ description: "Validate project before deployment"
 Validate your project before deployment to catch issues early.
 
 ```bash
-runtm validate [path]
+runtm validate [path] [options]
 ```
 
 ## Arguments
@@ -17,13 +17,20 @@ runtm validate [path]
 |----------|----------|-------------|
 | `path` | No | Path to project (default: `.`) |
 
+## Options
+
+| Option | Description |
+|--------|-------------|
+| `--json` | Output as JSON for AI agents |
+
 ## What Gets Validated
 
 ### 1. Manifest (runtm.yaml)
 
-- Required fields present (`name`, `template`, `runtime`)
-- Valid template type
-- Valid runtime type
+- Required fields present (`name`, `template`)
+- `runtime` required for standard templates (not for `docker` template)
+- Valid template type (`backend-service`, `static-site`, `web-app`, `docker`)
+- Valid runtime type (`python`, `node`, `fullstack`)
 - Valid port number
 - Tier requirements (fullstack needs standard+)
 - Feature requirements (auth needs database)
@@ -50,6 +57,37 @@ runtm validate
 
 # Validate specific project
 runtm validate ./my-project
+
+# JSON output for AI agents
+runtm validate --json
+```
+
+### JSON Output
+
+Use `--json` for programmatic consumption:
+
+```bash
+runtm validate --json
+```
+
+Returns:
+
+```json
+{
+  "valid": true,
+  "errors": [],
+  "warnings": ["No runtm.discovery.yaml found"]
+}
+```
+
+Or on failure:
+
+```json
+{
+  "valid": false,
+  "errors": ["Missing runtm.yaml - run `runtm init backend-service`"],
+  "warnings": []
+}
 ```
 
 ## Output
@@ -159,4 +197,3 @@ runtm deploy --skip-validation
 
 - [`runtm fix`](/cli/fix) - Auto-fix common issues
 - [`runtm deploy`](/cli/deploy) - Deploy after validation
-

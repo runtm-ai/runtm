@@ -29,6 +29,7 @@ runtm deploy [path]
 | `--skip-validation` | | Skip Python import validation |
 | `--force-validation` | | Force re-validation even if cached |
 | `--new` | | Create new deployment (loses domains/secrets) |
+| `--json` | | Output as NDJSON for AI agents |
 
 ## Examples
 
@@ -73,13 +74,34 @@ runtm deploy --config-only
 runtm deploy --no-wait
 ```
 
+### JSON Output for AI Agents
+
+```bash
+# NDJSON output (one JSON object per line)
+runtm deploy --json
+```
+
+Output (each line is valid JSON):
+
+```json
+{"phase":"validate","status":"passed","warnings":[]}
+{"phase":"deploy","status":"running","deployment_id":"dep_abc123"}
+{"phase":"deploy","status":"ready","deployment_id":"dep_abc123","url":"https://my-app.fly.dev","version":1,"duration_seconds":45.2}
+```
+
+On failure:
+
+```json
+{"phase":"validate","status":"failed","errors":["Missing Dockerfile"],"warnings":[]}
+```
+
 ## Deployment Flow
 
 ```mermaid
 flowchart TB
     Start[runtm deploy] --> Validate[Validate] --> Artifact[Create Artifact] --> Upload[Upload]
     Upload --> Build[Build] --> Deploy[Deploy] --> Health[Health Check] --> Ready[Ready!]
-    
+
     style Start fill:#18181b,stroke:#18181b,stroke-width:2px,color:#fafafa
     style Validate fill:#f4f4f5,stroke:#18181b,stroke-width:1px,color:#18181b
     style Artifact fill:#f4f4f5,stroke:#18181b,stroke-width:1px,color:#18181b
@@ -239,4 +261,3 @@ Successful deployment shows:
 - [`runtm status`](/cli/status) - Check deployment status
 - [`runtm logs`](/cli/logs) - View deployment logs
 - [`runtm destroy`](/cli/destroy) - Remove a deployment
-

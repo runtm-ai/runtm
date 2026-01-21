@@ -1,0 +1,16 @@
+# Docker Template - Bring Your Own Dockerfile
+# Deploy any containerized application with Runtm
+
+name: my-docker-app
+template: docker
+port: 8080
+health_path: /health
+tier: starter
+
+# Optional: Declare environment variables your app needs
+# env_schema:
+#   - name: DATABASE_URL
+#     type: string
+#     required: true
+#     secret: true
+#     description: "Database connection string"

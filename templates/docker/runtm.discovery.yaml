@@ -1,0 +1,27 @@
+# runtm.discovery.yaml - App discovery metadata
+# ⚠️ Fill this in before deploying!
+
+description: |
+  # TODO: Describe what this app does (2-3 sentences).
+  # What problem does it solve? How does it work?
+
+summary: "# TODO: One-line tagline for search results"
+
+capabilities:
+  - "# TODO: Feature 1 this app provides"
+  - "# TODO: Feature 2 this app provides"
+
+use_cases:
+  - "# TODO: Who should use this app"
+  - "# TODO: What problems it solves"
+
+tags:
+  - docker
+  - "# TODO: add your keywords"
+
+# For API services:
+api:
+  openapi_path: /openapi.json  # Remove if not applicable
+  endpoints:
+    - "GET /health"
+    - "# TODO: Add your endpoints"

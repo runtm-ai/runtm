@@ -84,7 +84,8 @@
         "templates/overview",
         "templates/backend-service",
         "templates/static-site",
-        "templates/web-app"
+        "templates/web-app",
+        "templates/docker"
       ]
     },
     {

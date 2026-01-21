@@ -61,7 +61,7 @@ packages/
   worker/     # Build + deploy pipeline (Fly.io provider)
   cli/        # Python CLI (Typer) - the primary DX
 
-templates/    # Starter projects (backend-service, static-site, web-app)
+templates/    # Starter projects (backend-service, static-site, web-app, docker)
 infra/        # Docker compose for local development
 ```
 

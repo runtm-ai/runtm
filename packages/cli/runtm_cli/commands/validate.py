@@ -201,54 +201,33 @@ def validate_project(
         except Exception:
             pass  # Don't block on read errors
 
-    # Detect project type based on manifest or file structure
-    is_node_project = (path / "package.json").exists()
-    is_python_project = (path / "pyproject.toml").exists() or (path / "requirements.txt").exists()
+    # Docker template: skip runtime-specific validation (bring your own Dockerfile)
+    is_docker_template = manifest and manifest.template == "docker"
 
-    # Python-specific validation (backend-service template)
-    if is_python_project and not is_node_project:
-        if (path / "requirements.txt").exists() and not (path / "pyproject.toml").exists():
-            result.add_warning("Using requirements.txt without pyproject.toml")
+    if is_docker_template:
+        # Docker template only validates: runtm.yaml + Dockerfile + artifact size
+        # Skip Python/Node.js specific validation
+        pass
+    else:
+        # Detect project type based on manifest or file structure
+        is_node_project = (path / "package.json").exists()
+        is_python_project = (path / "pyproject.toml").exists() or (
+            path / "requirements.txt"
+        ).exists()
 
-        # Validate Python syntax for all .py files
-        python_errors = validate_python_syntax(path, exclude_dirs)
-        for error in python_errors:
-            result.add_error(error)
+        # Python-specific validation (backend-service template)
+        if is_python_project and not is_node_project:
+            if (path / "requirements.txt").exists() and not (path / "pyproject.toml").exists():
+                result.add_warning("Using requirements.txt without pyproject.toml")
 
-        # Validate Python imports with production dependencies
-        import_errors, import_warnings = validate_python_imports(
-            path,
-            skip_validation=skip_validation,
-            force_validation=force_validation,
-        )
-        for error in import_errors:
-            result.add_error(error)
-        for warning in import_warnings:
-            result.add_warning(warning)
-
-    # Node.js-specific validation
-    if is_node_project:
-        node_errors, node_warnings = validate_node_project(
-            path, manifest, skip_validation=skip_validation
-        )
-        for error in node_errors:
-            result.add_error(error)
-        for warning in node_warnings:
-            result.add_warning(warning)
-
-    # Fullstack (web-app) validation - check backend Python imports and frontend Node.js
-    if manifest and manifest.runtime == "fullstack":
-        backend_path = path / "backend"
-        if backend_path.exists():
-            # Validate Python syntax in backend
-            python_errors = validate_python_syntax(backend_path, exclude_dirs)
+            # Validate Python syntax for all .py files
+            python_errors = validate_python_syntax(path, exclude_dirs)
             for error in python_errors:
                 result.add_error(error)
 
-            # Validate Python imports in backend
+            # Validate Python imports with production dependencies
             import_errors, import_warnings = validate_python_imports(
                 path,
-                backend_path,
                 skip_validation=skip_validation,
                 force_validation=force_validation,
             )
@@ -257,16 +236,47 @@ def validate_project(
             for warning in import_warnings:
                 result.add_warning(warning)
 
-        # Validate frontend Next.js (ESLint + TypeScript)
-        frontend_path = path / "frontend"
-        if frontend_path.exists() and (frontend_path / "package.json").exists():
+        # Node.js-specific validation
+        if is_node_project:
             node_errors, node_warnings = validate_node_project(
-                frontend_path, manifest, skip_validation=skip_validation
+                path, manifest, skip_validation=skip_validation
             )
             for error in node_errors:
                 result.add_error(error)
             for warning in node_warnings:
                 result.add_warning(warning)
+
+        # Fullstack (web-app) validation - check backend Python imports and frontend Node.js
+        if manifest and manifest.runtime == "fullstack":
+            backend_path = path / "backend"
+            if backend_path.exists():
+                # Validate Python syntax in backend
+                python_errors = validate_python_syntax(backend_path, exclude_dirs)
+                for error in python_errors:
+                    result.add_error(error)
+
+                # Validate Python imports in backend
+                import_errors, import_warnings = validate_python_imports(
+                    path,
+                    backend_path,
+                    skip_validation=skip_validation,
+                    force_validation=force_validation,
+                )
+                for error in import_errors:
+                    result.add_error(error)
+                for warning in import_warnings:
+                    result.add_warning(warning)
+
+            # Validate frontend Next.js (ESLint + TypeScript)
+            frontend_path = path / "frontend"
+            if frontend_path.exists() and (frontend_path / "package.json").exists():
+                node_errors, node_warnings = validate_node_project(
+                    frontend_path, manifest, skip_validation=skip_validation
+                )
+                for error in node_errors:
+                    result.add_error(error)
+                for warning in node_warnings:
+                    result.add_warning(warning)
 
     return result.is_valid, result.errors, result.warnings
 
@@ -1210,6 +1220,11 @@ def validate_command(
         file_okay=False,
         dir_okay=True,
     ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Output as JSON for AI agents",
+    ),
 ) -> None:
     """Validate project before deployment.
 
@@ -1218,11 +1233,29 @@ def validate_command(
     - Dockerfile exists
     - Artifact size is within limits
     - No env/secrets in manifest (not supported in V0)
+
+    Examples:
+        runtm validate                    # Human-readable output
+        runtm validate --json             # JSON for AI agents
+        runtm validate ./my-project       # Validate specific directory
     """
-    console.print(f"Validating project: {path.absolute()}")
-    console.print()
+    import json
 
     is_valid, errors, warnings = validate_project(path)
+
+    # JSON output for programmatic consumption
+    if json_output:
+        result = {
+            "valid": is_valid,
+            "errors": errors,
+            "warnings": warnings,
+        }
+        print(json.dumps(result))
+        raise typer.Exit(0 if is_valid else 1)
+
+    # Human-readable output
+    console.print(f"Validating project: {path.absolute()}")
+    console.print()
 
     # Show warnings
     for warning in warnings:

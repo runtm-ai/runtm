@@ -218,7 +218,7 @@ class Manifest(BaseModel):
     # Required fields
     name: str
     template: str
-    runtime: str
+    runtime: str | None = None  # Optional for docker template
 
     # Optional fields with defaults
     health_path: str = "/health"
@@ -261,18 +261,9 @@ class Manifest(BaseModel):
     @classmethod
     def validate_template(cls, v: str) -> str:
         """Validate template name."""
-        allowed_templates = {"backend-service", "static-site", "web-app"}
+        allowed_templates = {"backend-service", "static-site", "web-app", "docker"}
         if v not in allowed_templates:
             raise ValueError(f"template must be one of: {', '.join(sorted(allowed_templates))}")
-        return v
-
-    @field_validator("runtime")
-    @classmethod
-    def validate_runtime(cls, v: str) -> str:
-        """Validate runtime name."""
-        allowed_runtimes = {"python", "node", "fullstack"}
-        if v not in allowed_runtimes:
-            raise ValueError(f"runtime must be one of: {', '.join(sorted(allowed_runtimes))}")
         return v
 
     @field_validator("port")
@@ -330,6 +321,32 @@ class Manifest(BaseModel):
                         f"Connection '{conn.name}' references undeclared env var '{env_var}'. "
                         f"Add it to env_schema first."
                     )
+        return self
+
+    @model_validator(mode="after")
+    def validate_runtime_for_template(self) -> Manifest:
+        """Validate runtime based on template.
+
+        Docker template doesn't require runtime (bring your own Dockerfile).
+        All other templates require a valid runtime.
+        """
+        if self.template == "docker":
+            # Runtime is optional/ignored for docker template
+            return self
+
+        # Non-docker templates require runtime
+        if not self.runtime:
+            raise ValueError(
+                f"runtime is required for template '{self.template}'. "
+                "Use 'python', 'node', or 'fullstack'."
+            )
+
+        allowed_runtimes = {"python", "node", "fullstack"}
+        if self.runtime not in allowed_runtimes:
+            raise ValueError(
+                f"runtime must be one of: {', '.join(sorted(allowed_runtimes))}. "
+                f"Got: {self.runtime}"
+            )
         return self
 
     @model_validator(mode="after")
@@ -451,11 +468,14 @@ class Manifest(BaseModel):
         data: dict[str, Any] = {
             "name": self.name,
             "template": self.template,
-            "runtime": self.runtime,
             "health_path": self.health_path,
             "port": self.port,
             "tier": self.tier,
         }
+
+        # Only include runtime if set (docker template doesn't require it)
+        if self.runtime:
+            data["runtime"] = self.runtime
 
         # Only include env_schema if non-empty
         if self.env_schema:
