@@ -54,6 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed indentation error in `runtm init` for docker template handling
 - Fixed `runtm start` bypassing interactive menus
 - Fixed `runtm attach` requiring sandbox ID (now defaults to active session)
 - Fixed sandbox-runtime config format (`allowedDomains` vs `allowDomains`)
