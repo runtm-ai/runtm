@@ -204,51 +204,57 @@ def deploy_command(
                 console.print("[green]✓[/green] Project validated")
 
         # Check lockfile (prod must be reproducible)
+        # Skip for docker template - user brings their own Dockerfile
         with phase_span("lockfile_check"):
             try:
                 manifest = Manifest.from_file(path / "runtm.yaml")
-                lockfile_status = check_lockfile(path, manifest.runtime)
+                
+                # Skip lockfile check for docker template (no runtime specified)
+                if manifest.template == "docker" or not manifest.runtime:
+                    log_success("Lockfile check skipped (docker template)")
+                else:
+                    lockfile_status = check_lockfile(path, manifest.runtime)
 
-                if lockfile_status.needs_fix:
-                    if yes:
-                        action = "Creating" if not lockfile_status.exists else "Fixing"
-                        log(
-                            f"[yellow]{action} lockfile via {lockfile_status.install_cmd}...[/yellow]"
-                        )
-                        if fix_lockfile(path, lockfile_status):
-                            log_success("Lockfile fixed")
+                    if lockfile_status.needs_fix:
+                        if yes:
+                            action = "Creating" if not lockfile_status.exists else "Fixing"
+                            log(
+                                f"[yellow]{action} lockfile via {lockfile_status.install_cmd}...[/yellow]"
+                            )
+                            if fix_lockfile(path, lockfile_status):
+                                log_success("Lockfile fixed")
+                            else:
+                                if json_output:
+                                    _emit_json_event(
+                                        {
+                                            "phase": "lockfile",
+                                            "status": "failed",
+                                            "error": "Failed to fix lockfile",
+                                            "hint": f"Run manually: {lockfile_status.install_cmd}",
+                                        }
+                                    )
+                                else:
+                                    console.print("[red]✗[/red] Failed to fix lockfile")
+                                    console.print(f"    Run manually: {lockfile_status.install_cmd}")
+                                raise typer.Exit(1)
                         else:
+                            issue = "missing" if not lockfile_status.exists else "out of sync"
                             if json_output:
                                 _emit_json_event(
                                     {
                                         "phase": "lockfile",
                                         "status": "failed",
-                                        "error": "Failed to fix lockfile",
-                                        "hint": f"Run manually: {lockfile_status.install_cmd}",
+                                        "error": f"Lockfile {issue}",
+                                        "hint": f"Run: {lockfile_status.install_cmd} or deploy with --yes",
                                     }
                                 )
                             else:
-                                console.print("[red]✗[/red] Failed to fix lockfile")
-                                console.print(f"    Run manually: {lockfile_status.install_cmd}")
+                                console.print(f"[red]✗[/red] Lockfile {issue}")
+                                console.print(f"    Run: [bold]{lockfile_status.install_cmd}[/bold]")
+                                console.print("    Or deploy with: [bold]runtm deploy --yes[/bold]")
                             raise typer.Exit(1)
                     else:
-                        issue = "missing" if not lockfile_status.exists else "out of sync"
-                        if json_output:
-                            _emit_json_event(
-                                {
-                                    "phase": "lockfile",
-                                    "status": "failed",
-                                    "error": f"Lockfile {issue}",
-                                    "hint": f"Run: {lockfile_status.install_cmd} or deploy with --yes",
-                                }
-                            )
-                        else:
-                            console.print(f"[red]✗[/red] Lockfile {issue}")
-                            console.print(f"    Run: [bold]{lockfile_status.install_cmd}[/bold]")
-                            console.print("    Or deploy with: [bold]runtm deploy --yes[/bold]")
-                        raise typer.Exit(1)
-                else:
-                    log_success("Lockfile in sync")
+                        log_success("Lockfile in sync")
             except typer.Exit:
                 raise
             except Exception as e:
