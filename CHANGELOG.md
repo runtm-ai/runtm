@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.11] - 2026-01-23
+
+### Changed
+
+- **Docker Template**: Lockfile validation is now skipped for docker template
+  - Docker template uses bring-your-own-Dockerfile approach, so lockfile checks are not applicable
+  - Validation focuses on `runtm.yaml`, `Dockerfile`, and artifact size only
+
+## [0.2.10] - 2026-01-23
+
 ### Added
 
 - **Docker Template**: Bring your own Dockerfile for Go, Rust, Elixir, or any language

@@ -208,7 +208,7 @@ def deploy_command(
         with phase_span("lockfile_check"):
             try:
                 manifest = Manifest.from_file(path / "runtm.yaml")
-                
+
                 # Skip lockfile check for docker template (no runtime specified)
                 if manifest.template == "docker" or not manifest.runtime:
                     log_success("Lockfile check skipped (docker template)")
@@ -235,7 +235,9 @@ def deploy_command(
                                     )
                                 else:
                                     console.print("[red]✗[/red] Failed to fix lockfile")
-                                    console.print(f"    Run manually: {lockfile_status.install_cmd}")
+                                    console.print(
+                                        f"    Run manually: {lockfile_status.install_cmd}"
+                                    )
                                 raise typer.Exit(1)
                         else:
                             issue = "missing" if not lockfile_status.exists else "out of sync"
@@ -250,7 +252,9 @@ def deploy_command(
                                 )
                             else:
                                 console.print(f"[red]✗[/red] Lockfile {issue}")
-                                console.print(f"    Run: [bold]{lockfile_status.install_cmd}[/bold]")
+                                console.print(
+                                    f"    Run: [bold]{lockfile_status.install_cmd}[/bold]"
+                                )
                                 console.print("    Or deploy with: [bold]runtm deploy --yes[/bold]")
                             raise typer.Exit(1)
                     else:
