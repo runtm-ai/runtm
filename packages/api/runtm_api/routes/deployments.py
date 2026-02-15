@@ -1481,6 +1481,11 @@ async def destroy_deployment(
 
     if deployment.is_latest:
         deployment.is_latest = False
+        # Flush the is_latest=False change to the database BEFORE promoting
+        # the previous deployment. Without this, SQLAlchemy may flush the
+        # SET is_latest=True on the previous deployment first, violating the
+        # ix_deployments_unique_active_name partial unique constraint.
+        db.flush()
 
         # Find the most recent READY deployment with the same name to promote
         # This ensures the redeployment chain stays intact
