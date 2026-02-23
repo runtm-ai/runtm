@@ -11,12 +11,14 @@ class MachineTier(str, Enum):
     """Machine size tiers for deployments.
 
     Tiers:
-        STARTER: Cheapest option, good for simple tools and APIs (~$2/month)
-                 shared-cpu-1x, 256MB RAM
-        STANDARD: Medium option for most workloads (~$5/month)
-                  shared-cpu-1x, 512MB RAM
-        PERFORMANCE: For full-stack apps and heavier workloads (~$10/month)
-                     shared-cpu-2x, 1024MB RAM
+        STARTER: Lightweight APIs and webhooks (~$4/month)
+                 shared-cpu-1x, 512MB RAM
+        STANDARD: Web apps and fullstack projects (~$15/month)
+                  shared-cpu-2x, 2GB RAM
+        PERFORMANCE: Heavier workloads and multi-service apps (~$30/month)
+                     shared-cpu-4x, 4GB RAM
+        PRO: Memory-intensive apps like OpenClaw (~$55/month)
+             shared-cpu-4x, 8GB RAM
 
     All tiers use auto-stop to minimize costs when idle.
     """
@@ -24,6 +26,7 @@ class MachineTier(str, Enum):
     STARTER = "starter"
     STANDARD = "standard"
     PERFORMANCE = "performance"
+    PRO = "pro"
 
 
 @dataclass
@@ -42,27 +45,35 @@ class MachineTierSpec:
 MACHINE_TIER_SPECS: dict[MachineTier, MachineTierSpec] = {
     MachineTier.STARTER: MachineTierSpec(
         tier=MachineTier.STARTER,
-        memory_mb=256,
-        cpus=1,
-        cpu_kind="shared",
-        description="Starter: 1 shared CPU, 256MB RAM",
-        estimated_cost="~$2/month (with auto-stop, much less)",
-    ),
-    MachineTier.STANDARD: MachineTierSpec(
-        tier=MachineTier.STANDARD,
         memory_mb=512,
         cpus=1,
         cpu_kind="shared",
-        description="Standard: 1 shared CPU, 512MB RAM",
-        estimated_cost="~$5/month (with auto-stop, much less)",
+        description="Starter: 1 shared CPU, 512MB RAM",
+        estimated_cost="~$4/month (with auto-stop, much less)",
+    ),
+    MachineTier.STANDARD: MachineTierSpec(
+        tier=MachineTier.STANDARD,
+        memory_mb=2048,
+        cpus=2,
+        cpu_kind="shared",
+        description="Standard: 2 shared CPUs, 2GB RAM",
+        estimated_cost="~$15/month (with auto-stop, much less)",
     ),
     MachineTier.PERFORMANCE: MachineTierSpec(
         tier=MachineTier.PERFORMANCE,
-        memory_mb=1024,
-        cpus=2,
+        memory_mb=4096,
+        cpus=4,
         cpu_kind="shared",
-        description="Performance: 2 shared CPUs, 1GB RAM",
-        estimated_cost="~$10/month (with auto-stop, much less)",
+        description="Performance: 4 shared CPUs, 4GB RAM",
+        estimated_cost="~$30/month (with auto-stop, much less)",
+    ),
+    MachineTier.PRO: MachineTierSpec(
+        tier=MachineTier.PRO,
+        memory_mb=8192,
+        cpus=4,
+        cpu_kind="shared",
+        description="Pro: 4 shared CPUs, 8GB RAM",
+        estimated_cost="~$55/month (with auto-stop, much less)",
     ),
 }
 
@@ -398,7 +409,7 @@ class Limits:
     DEPLOY_TIMEOUT_SECONDS: int = 5 * 60  # 5 minutes
 
     # Resource limits (defaults for starter tier)
-    DEFAULT_MEMORY_MB: int = 256
+    DEFAULT_MEMORY_MB: int = 512
     DEFAULT_CPUS: int = 1
     DEFAULT_TIER: MachineTier = MachineTier.STARTER
 

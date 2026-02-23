@@ -17,12 +17,14 @@ class TestValidateTierName:
         assert validate_tier_name("starter") == "starter"
         assert validate_tier_name("standard") == "standard"
         assert validate_tier_name("performance") == "performance"
+        assert validate_tier_name("pro") == "pro"
 
     def test_case_insensitive(self) -> None:
         """Tier names should be case-insensitive."""
         assert validate_tier_name("STARTER") == "starter"
         assert validate_tier_name("Standard") == "standard"
         assert validate_tier_name("PERFORMANCE") == "performance"
+        assert validate_tier_name("PRO") == "pro"
 
     def test_whitespace_stripped(self) -> None:
         """Whitespace should be stripped from tier names."""
@@ -49,6 +51,7 @@ class TestValidateTierName:
         assert "starter" in error_msg
         assert "standard" in error_msg
         assert "performance" in error_msg
+        assert "pro" in error_msg
 
 
 class TestValidTierNames:
@@ -59,6 +62,7 @@ class TestValidTierNames:
         assert "starter" in VALID_TIER_NAMES
         assert "standard" in VALID_TIER_NAMES
         assert "performance" in VALID_TIER_NAMES
+        assert "pro" in VALID_TIER_NAMES
 
     def test_is_frozenset(self) -> None:
         """VALID_TIER_NAMES should be a frozenset (immutable)."""
