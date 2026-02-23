@@ -11,10 +11,8 @@ class MachineTier(str, Enum):
     """Machine size tiers for deployments.
 
     Tiers:
-        STARTER: Lightweight APIs and webhooks (~$4/month)
-                 shared-cpu-1x, 512MB RAM
-        STANDARD: Web apps and fullstack projects (~$15/month)
-                  shared-cpu-2x, 2GB RAM
+        STARTER: Default tier for most projects (~$15/month)
+                 shared-cpu-2x, 2GB RAM
         PERFORMANCE: Heavier workloads and multi-service apps (~$30/month)
                      shared-cpu-4x, 4GB RAM
         PRO: Memory-intensive apps like OpenClaw (~$55/month)
@@ -24,7 +22,6 @@ class MachineTier(str, Enum):
     """
 
     STARTER = "starter"
-    STANDARD = "standard"
     PERFORMANCE = "performance"
     PRO = "pro"
 
@@ -45,18 +42,10 @@ class MachineTierSpec:
 MACHINE_TIER_SPECS: dict[MachineTier, MachineTierSpec] = {
     MachineTier.STARTER: MachineTierSpec(
         tier=MachineTier.STARTER,
-        memory_mb=512,
-        cpus=1,
-        cpu_kind="shared",
-        description="Starter: 1 shared CPU, 512MB RAM",
-        estimated_cost="~$4/month (with auto-stop, much less)",
-    ),
-    MachineTier.STANDARD: MachineTierSpec(
-        tier=MachineTier.STANDARD,
         memory_mb=2048,
         cpus=2,
         cpu_kind="shared",
-        description="Standard: 2 shared CPUs, 2GB RAM",
+        description="Starter: 2 shared CPUs, 2GB RAM",
         estimated_cost="~$15/month (with auto-stop, much less)",
     ),
     MachineTier.PERFORMANCE: MachineTierSpec(
@@ -409,8 +398,8 @@ class Limits:
     DEPLOY_TIMEOUT_SECONDS: int = 5 * 60  # 5 minutes
 
     # Resource limits (defaults for starter tier)
-    DEFAULT_MEMORY_MB: int = 512
-    DEFAULT_CPUS: int = 1
+    DEFAULT_MEMORY_MB: int = 2048
+    DEFAULT_CPUS: int = 2
     DEFAULT_TIER: MachineTier = MachineTier.STARTER
 
     # Rate limits

@@ -223,7 +223,7 @@ class Manifest(BaseModel):
     # Optional fields with defaults
     health_path: str = "/health"
     port: int = 8080
-    tier: str = "starter"  # Machine tier: starter, standard, performance
+    tier: str = "starter"  # Machine tier: starter, performance, pro
 
     # Environment variable schema (declares what env vars the app needs)
     env_schema: list[EnvVar] = []
@@ -353,16 +353,8 @@ class Manifest(BaseModel):
     def validate_fullstack_tier(self) -> Manifest:
         """Validate that fullstack apps use adequate resources.
 
-        Fullstack apps run both Node.js and Python simultaneously,
-        requiring at least 512MB RAM (standard tier).
+        All current tiers (starter 2GB+) can run fullstack apps.
         """
-        if self.runtime == "fullstack" and self.tier == "starter":
-            raise ValueError(
-                "Fullstack apps require at least 'standard' tier (512MB RAM). "
-                "The 'starter' tier (256MB) is insufficient to run both "
-                "Node.js and Python simultaneously. "
-                "Update your runtm.yaml: tier: standard"
-            )
         return self
 
     @model_validator(mode="after")

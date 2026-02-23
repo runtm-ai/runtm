@@ -134,7 +134,7 @@ class TestManifestWithFeatures:
                 name="test-app",
                 template="web-app",
                 runtime="fullstack",
-                tier="standard",
+                tier="starter",
                 features=Features(auth=True),  # database=False
             )
         assert "features.database" in str(exc_info.value)
@@ -165,7 +165,7 @@ class TestManifestWithFeatures:
                 name="test-app",
                 template="web-app",
                 runtime="fullstack",
-                tier="standard",
+                tier="starter",
                 features=Features(database=True, auth=True),
                 # No AUTH_SECRET defined
             )
@@ -177,7 +177,7 @@ class TestManifestWithFeatures:
             name="test-app",
             template="web-app",
             runtime="fullstack",
-            tier="standard",
+            tier="starter",
             features=Features(database=True, auth=True),
             env_schema=[
                 {
@@ -261,7 +261,7 @@ class TestManifestAuthFullExample:
 name: my-app
 template: web-app
 runtime: fullstack
-tier: standard
+tier: starter
 features:
   database: true
   auth: true

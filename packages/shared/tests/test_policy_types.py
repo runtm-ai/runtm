@@ -15,21 +15,19 @@ class TestValidateTierName:
     def test_valid_tier_names(self) -> None:
         """Valid tier names should be normalized and returned."""
         assert validate_tier_name("starter") == "starter"
-        assert validate_tier_name("standard") == "standard"
         assert validate_tier_name("performance") == "performance"
         assert validate_tier_name("pro") == "pro"
 
     def test_case_insensitive(self) -> None:
         """Tier names should be case-insensitive."""
         assert validate_tier_name("STARTER") == "starter"
-        assert validate_tier_name("Standard") == "standard"
         assert validate_tier_name("PERFORMANCE") == "performance"
         assert validate_tier_name("PRO") == "pro"
 
     def test_whitespace_stripped(self) -> None:
         """Whitespace should be stripped from tier names."""
         assert validate_tier_name("  starter  ") == "starter"
-        assert validate_tier_name("\tstandard\n") == "standard"
+        assert validate_tier_name("\tperformance\n") == "performance"
 
     def test_invalid_tier_raises(self) -> None:
         """Invalid tier names should raise ValueError."""
@@ -42,6 +40,11 @@ class TestValidateTierName:
         with pytest.raises(ValueError, match="Invalid tier:"):
             validate_tier_name("")
 
+    def test_old_standard_tier_is_invalid(self) -> None:
+        """The old 'standard' tier name should no longer be valid."""
+        with pytest.raises(ValueError, match="Invalid tier: standard"):
+            validate_tier_name("standard")
+
     def test_error_message_includes_valid_options(self) -> None:
         """Error message should include valid tier options."""
         with pytest.raises(ValueError) as exc_info:
@@ -49,7 +52,6 @@ class TestValidateTierName:
 
         error_msg = str(exc_info.value)
         assert "starter" in error_msg
-        assert "standard" in error_msg
         assert "performance" in error_msg
         assert "pro" in error_msg
 
@@ -60,9 +62,16 @@ class TestValidTierNames:
     def test_contains_all_tiers(self) -> None:
         """VALID_TIER_NAMES should contain all tier values."""
         assert "starter" in VALID_TIER_NAMES
-        assert "standard" in VALID_TIER_NAMES
         assert "performance" in VALID_TIER_NAMES
         assert "pro" in VALID_TIER_NAMES
+
+    def test_does_not_contain_old_tiers(self) -> None:
+        """Old tier names should not be present."""
+        assert "standard" not in VALID_TIER_NAMES
+
+    def test_exactly_three_tiers(self) -> None:
+        """There should be exactly 3 tiers."""
+        assert len(VALID_TIER_NAMES) == 3
 
     def test_is_frozenset(self) -> None:
         """VALID_TIER_NAMES should be a frozenset (immutable)."""
@@ -90,14 +99,14 @@ class TestTenantLimits:
             deploys_per_hour=20,
             deploys_per_day=100,
             concurrent_deploys=3,
-            allowed_tiers=["starter", "standard"],
+            allowed_tiers=["starter", "performance"],
         )
         assert limits.max_apps == 10
         assert limits.app_lifespan_days == 30
         assert limits.deploys_per_hour == 20
         assert limits.deploys_per_day == 100
         assert limits.concurrent_deploys == 3
-        assert limits.allowed_tiers == ["starter", "standard"]
+        assert limits.allowed_tiers == ["starter", "performance"]
 
     def test_partial_limits(self) -> None:
         """Some limits can be set while others remain None."""

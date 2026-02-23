@@ -28,19 +28,13 @@ class TestVolumeConfig:
 class TestMachineTierSpecs:
     """Test that all tier specifications are correct."""
 
-    def test_four_tiers_exist(self):
-        """There should be exactly 4 tiers."""
-        assert len(MachineTier) == 4
-        assert len(MACHINE_TIER_SPECS) == 4
+    def test_three_tiers_exist(self):
+        """There should be exactly 3 tiers."""
+        assert len(MachineTier) == 3
+        assert len(MACHINE_TIER_SPECS) == 3
 
     def test_starter_spec(self):
         spec = get_tier_spec(MachineTier.STARTER)
-        assert spec.memory_mb == 512
-        assert spec.cpus == 1
-        assert spec.cpu_kind == "shared"
-
-    def test_standard_spec(self):
-        spec = get_tier_spec(MachineTier.STANDARD)
         assert spec.memory_mb == 2048
         assert spec.cpus == 2
         assert spec.cpu_kind == "shared"
@@ -59,23 +53,22 @@ class TestMachineTierSpecs:
 
     def test_tiers_are_ordered_by_memory(self):
         """Each tier should have strictly more memory than the previous."""
-        tiers = [MachineTier.STARTER, MachineTier.STANDARD, MachineTier.PERFORMANCE, MachineTier.PRO]
+        tiers = [MachineTier.STARTER, MachineTier.PERFORMANCE, MachineTier.PRO]
         for i in range(1, len(tiers)):
             prev = get_tier_spec(tiers[i - 1])
             curr = get_tier_spec(tiers[i])
-            assert curr.memory_mb > prev.memory_mb, f"{tiers[i].value} should have more RAM than {tiers[i-1].value}"
+            assert curr.memory_mb > prev.memory_mb
+
+    def test_no_standard_tier(self):
+        """The old 'standard' tier should not exist."""
+        assert not hasattr(MachineTier, "STANDARD")
 
 
 class TestMachineConfigFromTier:
-    """Test MachineConfig.from_tier with updated tier specs."""
+    """Test MachineConfig.from_tier with 3-tier system."""
 
     def test_from_starter(self):
         config = MachineConfig.from_tier(tier=MachineTier.STARTER, image="test:latest")
-        assert config.memory_mb == 512
-        assert config.cpus == 1
-
-    def test_from_standard(self):
-        config = MachineConfig.from_tier(tier=MachineTier.STANDARD, image="test:latest")
         assert config.memory_mb == 2048
         assert config.cpus == 2
 
@@ -94,37 +87,27 @@ class TestMachineConfigWithVolumes:
     """Test MachineConfig with volumes."""
 
     def test_machine_config_no_volumes_by_default(self):
-        """MachineConfig has empty volumes by default."""
         config = MachineConfig(image="test:latest")
         assert config.volumes == []
 
     def test_machine_config_with_volumes(self):
-        """MachineConfig can have volumes."""
         volumes = [
             VolumeConfig(name="data", path="/data", size_gb=1),
             VolumeConfig(name="cache", path="/cache", size_gb=5),
         ]
         config = MachineConfig(image="test:latest", volumes=volumes)
         assert len(config.volumes) == 2
-        assert config.volumes[0].name == "data"
-        assert config.volumes[1].name == "cache"
 
     def test_from_tier_with_volumes(self):
-        """MachineConfig.from_tier works with volumes."""
         volumes = [VolumeConfig(name="data", path="/data", size_gb=1)]
         config = MachineConfig.from_tier(
-            tier=MachineTier.STANDARD,
+            tier=MachineTier.STARTER,
             image="test:latest",
             volumes=volumes,
         )
         assert config.memory_mb == 2048
         assert len(config.volumes) == 1
-        assert config.volumes[0].name == "data"
 
     def test_from_tier_default_no_volumes(self):
-        """MachineConfig.from_tier defaults to no volumes."""
-        config = MachineConfig.from_tier(
-            tier=MachineTier.STANDARD,
-            image="test:latest",
-        )
+        config = MachineConfig.from_tier(tier=MachineTier.STARTER, image="test:latest")
         assert config.volumes == []

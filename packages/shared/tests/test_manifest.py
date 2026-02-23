@@ -241,14 +241,14 @@ class TestWebAppTemplate:
     """Tests for web-app template support."""
 
     def test_valid_web_app_manifest(self) -> None:
-        """Parse a valid web-app template manifest with standard tier."""
+        """Parse a valid web-app template manifest with starter tier."""
         yaml_content = """
 name: my-web-app
 template: web-app
 runtime: fullstack
 health_path: /health
 port: 3000
-tier: standard
+tier: starter
 """
         manifest = Manifest.from_yaml(yaml_content)
         assert manifest.name == "my-web-app"
@@ -256,18 +256,18 @@ tier: standard
         assert manifest.runtime == "fullstack"
         assert manifest.health_path == "/health"
         assert manifest.port == 3000
-        assert manifest.tier == "standard"
+        assert manifest.tier == "starter"
 
-    def test_fullstack_rejects_starter_tier(self) -> None:
-        """Fullstack apps with starter tier should be rejected."""
+    def test_fullstack_accepts_starter_tier(self) -> None:
+        """Fullstack apps run fine on starter tier (2GB RAM)."""
         yaml_content = """
 name: my-web-app
 template: web-app
 runtime: fullstack
 tier: starter
 """
-        with pytest.raises(ValueError, match="Fullstack apps require at least 'standard' tier"):
-            Manifest.from_yaml(yaml_content)
+        manifest = Manifest.from_yaml(yaml_content)
+        assert manifest.tier == "starter"
 
     def test_fullstack_accepts_performance_tier(self) -> None:
         """Fullstack apps with performance tier should be accepted."""
@@ -605,7 +605,7 @@ name: my-custom-service
 template: docker
 port: 9000
 health_path: /healthz
-tier: standard
+tier: performance
 """
         manifest = Manifest.from_yaml(yaml_content)
         assert manifest.name == "my-custom-service"
@@ -613,7 +613,7 @@ tier: standard
         assert manifest.runtime is None
         assert manifest.port == 9000
         assert manifest.health_path == "/healthz"
-        assert manifest.tier == "standard"
+        assert manifest.tier == "performance"
 
     def test_non_docker_requires_runtime(self) -> None:
         """Non-docker templates require runtime."""
@@ -638,7 +638,7 @@ template: static-site
         yaml_content = """
 name: my-app
 template: web-app
-tier: standard
+tier: starter
 """
         with pytest.raises(ValueError, match="runtime is required"):
             Manifest.from_yaml(yaml_content)
