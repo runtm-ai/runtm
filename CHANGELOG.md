@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.15] - 2026-02-23
+
+### Fixed
+
+- **Lint**: Moved `pathspec` import to module level in `api_client.py`; removed quoted return type annotation from `build_ignore_spec` (fixes `UP037` + `F821`)
+
+## [0.2.14] - 2026-02-23
+
+### Fixed
+
+- **Validate**: Python syntax validation now skips irrelevant directories
+  - Added `exclude_dirs` set (`node_modules`, `.venv`, `venv`, `env`, `__pycache__`, `.git`, `.tox`, `dist`, `build`, `.mypy_cache`, `.ruff_cache`) to scope `validate_python_syntax` correctly
+  - Applies to both backend-service and web-app (backend path) validation passes
+  - Prevents false syntax errors from scanning virtual environments and build artifacts
+
+## [0.2.13] - 2026-02-23
+
+### Fixed
+
+- **Validate**: `runtm validate` now respects `.runtmignore` for artifact size checks
+  - Previously used a hardcoded set of 7 excluded directories, missing sandbox caches (`.npm`, `.cache`, `.local`) and other custom excludes defined in `.runtmignore`
+  - Extracted shared ignore logic (`build_ignore_spec()` + `ALWAYS_EXCLUDE_PATTERNS`) so `validate` and `deploy` use identical file matching
+  - Error message now correctly points users to `.runtmignore` instead of `.gitignore`
+
 ## [0.2.12] - 2026-02-22
 
 ### Changed
@@ -131,7 +155,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Build/deploy timeouts
 - Secret redaction in logs
 
-[Unreleased]: https://github.com/runtm-ai/runtm/compare/v0.2.12...HEAD
+[Unreleased]: https://github.com/runtm-ai/runtm/compare/v0.2.15...HEAD
+[0.2.15]: https://github.com/runtm-ai/runtm/compare/v0.2.14...v0.2.15
+[0.2.14]: https://github.com/runtm-ai/runtm/compare/v0.2.13...v0.2.14
+[0.2.13]: https://github.com/runtm-ai/runtm/compare/v0.2.12...v0.2.13
 [0.2.12]: https://github.com/runtm-ai/runtm/compare/v0.2.11...v0.2.12
 [0.2.11]: https://github.com/runtm-ai/runtm/compare/v0.1.0...v0.2.11
 [0.1.0]: https://github.com/runtm-ai/runtm/releases/tag/v0.1.0

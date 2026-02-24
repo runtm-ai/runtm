@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+import pathspec
 
 from runtm_shared import generate_idempotency_key
 from runtm_shared.errors import (
@@ -869,7 +870,7 @@ ALWAYS_EXCLUDE_PATTERNS = [
 ]
 
 
-def build_ignore_spec(project_path: Path) -> "pathspec.PathSpec":
+def build_ignore_spec(project_path: Path) -> pathspec.PathSpec:
     """Build a pathspec matcher for the project.
 
     Combines always-excluded patterns with .runtmignore (preferred)
@@ -881,8 +882,6 @@ def build_ignore_spec(project_path: Path) -> "pathspec.PathSpec":
     Returns:
         A pathspec.PathSpec matcher
     """
-    import pathspec
-
     patterns: list[str] = ALWAYS_EXCLUDE_PATTERNS.copy()
 
     runtmignore = project_path / ".runtmignore"

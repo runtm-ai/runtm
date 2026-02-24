@@ -216,6 +216,21 @@ def validate_project(
             path / "requirements.txt"
         ).exists()
 
+        # Directories to skip during Python syntax validation
+        exclude_dirs = {
+            "node_modules",
+            ".venv",
+            "venv",
+            "env",
+            "__pycache__",
+            ".git",
+            ".tox",
+            "dist",
+            "build",
+            ".mypy_cache",
+            ".ruff_cache",
+        }
+
         # Python-specific validation (backend-service template)
         if is_python_project and not is_node_project:
             if (path / "requirements.txt").exists() and not (path / "pyproject.toml").exists():
