@@ -373,8 +373,8 @@ def deploy_command(
                 if original_manifest_content is not None:
                     manifest_path.write_text(original_manifest_content)
 
-        # Deploy
-        client = APIClient()
+        # Deploy — use a longer timeout for the upload+build request
+        client = APIClient(timeout=300.0)
 
         # Compute source hash for tracking and config-only validation
         src_hash: str | None = None
