@@ -802,6 +802,100 @@ class APIClient:
         )
 
 
+ALWAYS_EXCLUDE_PATTERNS = [
+    # Git
+    ".git",
+    ".git/**",
+    # Dependencies (these are rebuilt in container)
+    "node_modules",
+    "node_modules/**",
+    "__pycache__",
+    "__pycache__/**",
+    "*.pyc",
+    "*.pyo",
+    "*.pyd",
+    ".venv",
+    ".venv/**",
+    "venv",
+    "venv/**",
+    "env",
+    "env/**",
+    # Build outputs
+    ".next",
+    ".next/**",
+    "out",
+    "out/**",
+    "dist",
+    "dist/**",
+    "build",
+    "build/**",
+    "*.egg-info",
+    "*.egg-info/**",
+    # Environment files
+    ".env",
+    ".env.*",
+    "*.env",
+    # IDE/Editor
+    ".vscode",
+    ".vscode/**",
+    ".idea",
+    ".idea/**",
+    "*.swp",
+    "*.swo",
+    # OS files
+    ".DS_Store",
+    "Thumbs.db",
+    # Testing/coverage
+    ".pytest_cache",
+    ".pytest_cache/**",
+    ".coverage",
+    "htmlcov",
+    "htmlcov/**",
+    ".tox",
+    ".tox/**",
+    # Type checking
+    ".mypy_cache",
+    ".mypy_cache/**",
+    ".ruff_cache",
+    ".ruff_cache/**",
+    "*.tsbuildinfo",
+    # Logs
+    "npm-debug.log*",
+    "yarn-debug.log*",
+    "yarn-error.log*",
+    # Ignore files themselves
+    ".runtmignore",
+    ".gitignore",
+]
+
+
+def build_ignore_spec(project_path: Path) -> "pathspec.PathSpec":
+    """Build a pathspec matcher for the project.
+
+    Combines always-excluded patterns with .runtmignore (preferred)
+    or .gitignore. Used by both artifact creation and size validation.
+
+    Args:
+        project_path: Path to project directory
+
+    Returns:
+        A pathspec.PathSpec matcher
+    """
+    import pathspec
+
+    patterns: list[str] = ALWAYS_EXCLUDE_PATTERNS.copy()
+
+    runtmignore = project_path / ".runtmignore"
+    gitignore = project_path / ".gitignore"
+
+    if runtmignore.exists():
+        patterns.extend(_parse_ignore_file(runtmignore))
+    elif gitignore.exists():
+        patterns.extend(_parse_ignore_file(gitignore))
+
+    return pathspec.PathSpec.from_lines("gitwildmatch", patterns)
+
+
 def create_artifact_zip(project_path: Path) -> Path:
     """Create artifact.zip from project directory.
 
@@ -816,93 +910,10 @@ def create_artifact_zip(project_path: Path) -> Path:
     """
     import tempfile
 
-    import pathspec
-
-    # Create temp file for zip
     temp_dir = Path(tempfile.mkdtemp())
     zip_path = temp_dir / "artifact.zip"
 
-    # Always-exclude patterns (regardless of ignore files)
-    always_exclude = [
-        # Git
-        ".git",
-        ".git/**",
-        # Dependencies (these are rebuilt in container)
-        "node_modules",
-        "node_modules/**",
-        "__pycache__",
-        "__pycache__/**",
-        "*.pyc",
-        "*.pyo",
-        "*.pyd",
-        ".venv",
-        ".venv/**",
-        "venv",
-        "venv/**",
-        "env",
-        "env/**",
-        # Build outputs
-        ".next",
-        ".next/**",
-        "out",
-        "out/**",
-        "dist",
-        "dist/**",
-        "build",
-        "build/**",
-        "*.egg-info",
-        "*.egg-info/**",
-        # Environment files
-        ".env",
-        ".env.*",
-        "*.env",
-        # IDE/Editor
-        ".vscode",
-        ".vscode/**",
-        ".idea",
-        ".idea/**",
-        "*.swp",
-        "*.swo",
-        # OS files
-        ".DS_Store",
-        "Thumbs.db",
-        # Testing/coverage
-        ".pytest_cache",
-        ".pytest_cache/**",
-        ".coverage",
-        "htmlcov",
-        "htmlcov/**",
-        ".tox",
-        ".tox/**",
-        # Type checking
-        ".mypy_cache",
-        ".mypy_cache/**",
-        ".ruff_cache",
-        ".ruff_cache/**",
-        "*.tsbuildinfo",
-        # Logs
-        "npm-debug.log*",
-        "yarn-debug.log*",
-        "yarn-error.log*",
-        # Ignore files themselves
-        ".runtmignore",
-        ".gitignore",
-    ]
-
-    # Build the pathspec from ignore files + always-exclude patterns
-    patterns: list[str] = always_exclude.copy()
-
-    # Check for .runtmignore first, then .gitignore
-    runtmignore = project_path / ".runtmignore"
-    gitignore = project_path / ".gitignore"
-
-    if runtmignore.exists():
-        patterns.extend(_parse_ignore_file(runtmignore))
-    elif gitignore.exists():
-        patterns.extend(_parse_ignore_file(gitignore))
-
-    # Create pathspec matcher
-    spec = pathspec.PathSpec.from_lines("gitwildmatch", patterns)
+    spec = build_ignore_spec(project_path)
 
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for item in project_path.rglob("*"):
@@ -910,7 +921,6 @@ def create_artifact_zip(project_path: Path) -> Path:
                 relative = item.relative_to(project_path)
                 relative_str = str(relative)
 
-                # Check if file or any parent matches ignore patterns
                 if not spec.match_file(relative_str):
                     zf.write(item, relative)
 

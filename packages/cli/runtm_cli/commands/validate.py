@@ -157,25 +157,26 @@ def validate_project(
         for warning in cache_warnings:
             result.add_warning(warning)
 
-    # Check artifact size
+    # Check artifact size using the same ignore logic as create_artifact_zip
+    from runtm_cli.api_client import build_ignore_spec
+
+    spec = build_ignore_spec(path)
     total_size = 0
     file_count = 0
-    exclude_dirs = {".git", "__pycache__", "node_modules", ".venv", "venv", ".next", "out"}
 
     for item in path.rglob("*"):
-        # Skip excluded directories
-        if any(excluded in item.parts for excluded in exclude_dirs):
-            continue
         if item.is_file():
-            total_size += item.stat().st_size
-            file_count += 1
+            relative_str = str(item.relative_to(path))
+            if not spec.match_file(relative_str):
+                total_size += item.stat().st_size
+                file_count += 1
 
     if total_size > Limits.MAX_ARTIFACT_SIZE_BYTES:
         size_mb = total_size / (1024 * 1024)
         limit_mb = Limits.MAX_ARTIFACT_SIZE_BYTES / (1024 * 1024)
         result.add_error(
             f"Project too large: {size_mb:.1f} MB > {limit_mb:.0f} MB limit. "
-            "Remove large files or add them to .gitignore"
+            "Remove large files or add them to .runtmignore"
         )
 
     # Check for common issues
