@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.12] - 2026-02-22
+
+### Changed
+
+- **Deployment Tiers**: Simplified and upgraded machine tier lineup
+  - Removed `standard` tier; tiers are now `starter`, `performance`, and `pro`
+  - `starter`: 2 shared CPUs, 2GB RAM (~$15/month) — default for all projects
+  - `performance`: 4 shared CPUs, 4GB RAM (~$30/month) — heavier workloads and multi-service apps
+  - `pro`: 4 shared CPUs, 8GB RAM (~$55/month) — memory-intensive applications
+  - Default resource limits updated to match new starter tier (2 CPUs, 2GB RAM)
+- **Manifest**: Removed fullstack tier validation — all current tiers can run fullstack apps
+
+### Fixed
+
+- **Deployments**: Flush `is_latest=False` before promoting previous deployment on destroy to prevent unique constraint violations
+
 ## [0.2.11] - 2026-01-23
 
 ### Changed
@@ -115,5 +131,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Build/deploy timeouts
 - Secret redaction in logs
 
-[Unreleased]: https://github.com/runtm-ai/runtm/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/runtm-ai/runtm/compare/v0.2.12...HEAD
+[0.2.12]: https://github.com/runtm-ai/runtm/compare/v0.2.11...v0.2.12
+[0.2.11]: https://github.com/runtm-ai/runtm/compare/v0.1.0...v0.2.11
 [0.1.0]: https://github.com/runtm-ai/runtm/releases/tag/v0.1.0

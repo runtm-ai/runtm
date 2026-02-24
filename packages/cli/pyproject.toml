@@ -1,6 +1,6 @@
 [project]
 name = "runtm"
-version = "0.2.11"
+version = "0.2.12"
 description = "Sandboxes where AI agents build and deploy. Spin up isolated environments for Claude Code, Cursor, and other agents."
 readme = "README.md"
 license = { text = "Apache-2.0" }
@@ -27,7 +27,7 @@ classifiers = [
     "Topic :: System :: Software Distribution",
 ]
 dependencies = [
-    "runtm-shared>=0.2.2",
+    "runtm-shared>=0.2.3",
     "typer>=0.9.0,<1.0",
     "rich>=13.0,<14.0",
     "httpx>=0.24,<1.0",
