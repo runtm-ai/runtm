@@ -9,11 +9,11 @@ class ArtifactStore(ABC):
     """Abstract interface for artifact storage.
 
     Implementations:
-        - LocalFileStore: Local filesystem (dev)
-        - S3Store: AWS S3 / GCS (future)
+        - LocalFileStore: Local filesystem (dev, shared Docker volume)
+        - S3FileStore: S3-compatible storage (production, Tigris/AWS S3/R2)
 
     Usage:
-        store = LocalFileStore("/artifacts")
+        store = get_artifact_store(backend="local", storage_path="/artifacts")
         uri = store.put("artifacts/dep_abc123/artifact.zip", data)
         data = store.get("artifacts/dep_abc123/artifact.zip")
     """

@@ -49,6 +49,9 @@ pytest
 | `REDIS_URL` | Redis connection string | Required |
 | `FLY_API_TOKEN` | Fly.io API token | Required |
 | `ARTIFACT_STORAGE_PATH` | Local artifact storage path | `/artifacts` |
+| `ARTIFACT_STORAGE_BACKEND` | Storage backend: `local` or `s3` | `local` |
+| `BUCKET_NAME` | S3/Tigris bucket name (when backend=s3) | - |
+| `AWS_ENDPOINT_URL_S3` | S3 endpoint URL (e.g. `https://fly.storage.tigris.dev`) | - |
 | `USE_REMOTE_BUILDER` | Use Fly's remote builder (faster) | `true` |
 
 ## Providers

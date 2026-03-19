@@ -784,13 +784,22 @@ async def create_deployment(
         # Use deployment_id generated earlier (before reservation)
         artifact_key = generate_artifact_key(deployment_id)
 
-        # Store artifact
-        import os
+        # Store artifact via configured backend (local disk or S3/Tigris)
+        # Runs in a thread to avoid blocking the async event loop during
+        # network I/O (boto3 is synchronous; local file writes are fast
+        # but S3 uploads can take seconds).
+        import asyncio
 
-        artifact_path = os.path.join(settings.artifact_storage_path, artifact_key)
-        os.makedirs(os.path.dirname(artifact_path), exist_ok=True)
-        with open(artifact_path, "wb") as f:
-            f.write(artifact_content)
+        from runtm_worker.storage import get_artifact_store
+
+        store = get_artifact_store(
+            backend=settings.artifact_storage_backend,
+            storage_path=settings.artifact_storage_path,
+            s3_bucket=settings.s3_bucket,
+            s3_endpoint_url=settings.s3_endpoint_url or None,
+            s3_region=settings.s3_region,
+        )
+        await asyncio.to_thread(store.put, artifact_key, artifact_content)
 
         # Create deployment record with tenant isolation
         deployment = Deployment(

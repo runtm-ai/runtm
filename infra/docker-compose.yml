@@ -16,6 +16,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - API_SECRET=${RUNTM_API_SECRET:?Set RUNTM_API_SECRET environment variable}
       - ARTIFACT_STORAGE_PATH=/artifacts
+      - ARTIFACT_STORAGE_BACKEND=local
       - AUTH_MODE=single_tenant
       - DEBUG=true
       # FLY_API_TOKEN and FLY_ORG are loaded from .env via env_file above
@@ -46,6 +47,7 @@ services:
       - API_SECRET=${RUNTM_API_SECRET:?Set RUNTM_API_SECRET environment variable}
       - FLY_ORG=${FLY_ORG:-personal}
       - ARTIFACT_STORAGE_PATH=/artifacts
+      - ARTIFACT_STORAGE_BACKEND=local
       - USE_REMOTE_BUILDER=true
       - DEBUG=true
       # ALLOW_LOCAL_BUILDS is intentionally NOT set - forbidden in production
