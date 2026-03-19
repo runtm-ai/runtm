@@ -835,7 +835,7 @@ def process_deployment(
     """
     from runtm_api.core.config import get_settings
     from runtm_api.db import create_session
-    from runtm_worker.storage import get_artifact_store
+    from runtm_shared.storage import get_artifact_store
 
     settings = get_settings()
     db = create_session()
