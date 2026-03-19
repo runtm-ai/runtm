@@ -420,6 +420,7 @@ class DeployJob:
             True if deployment succeeded, False otherwise
         """
         deployment = None
+        _artifact_path_to_cleanup = None
 
         try:
             # Load deployment
@@ -563,12 +564,13 @@ class DeployJob:
                 build_log.write(f"Name: {manifest.name}")
                 build_log.write(f"Template: {manifest.template}")
 
-                # Get artifact
+                # Get artifact (remote backends download to a temp file)
                 artifact_path = self.storage.get_path(deployment.artifact_key)
                 if not artifact_path.exists():
                     raise BuildError(f"Artifact not found: {deployment.artifact_key}")
 
                 build_log.write(f"Artifact: {artifact_path}")
+                _artifact_path_to_cleanup = artifact_path
 
                 # Build Docker image
                 builder = DockerBuilder(
@@ -805,6 +807,10 @@ class DeployJob:
                     )
 
             return False
+
+        finally:
+            if _artifact_path_to_cleanup is not None:
+                self.storage.cleanup_path(_artifact_path_to_cleanup)
 
 
 def process_deployment(

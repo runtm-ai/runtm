@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import tempfile
 from abc import ABC, abstractmethod
+from pathlib import Path
 
 
 class ArtifactStore(ABC):
@@ -87,6 +89,42 @@ class ArtifactStore(ABC):
             URI that can be used to reference the artifact
         """
         ...
+
+    def get_path(self, key: str) -> Path:
+        """Get a local filesystem path for an artifact.
+
+        For local backends this returns the real path. For remote backends
+        (S3, etc.) this downloads to a temp directory. Callers should call
+        cleanup_path() when done to avoid temp file leaks.
+
+        Args:
+            key: Storage key (path-like string)
+
+        Returns:
+            Path to the artifact on the local filesystem
+
+        Raises:
+            ArtifactNotFoundError: If artifact doesn't exist
+            StorageReadError: If download fails
+        """
+        data = self.get(key)
+        tmp_dir = Path(tempfile.mkdtemp(prefix="runtm-artifact-"))
+        filename = key.rsplit("/", 1)[-1] if "/" in key else key
+        dest = tmp_dir / filename
+        dest.write_bytes(data)
+        return dest
+
+    def cleanup_path(self, path: Path) -> None:
+        """Remove a temp directory created by get_path().
+
+        Safe to call on non-temp paths (no-op for local backends).
+        """
+        import shutil
+
+        if path.exists():
+            parent = path.parent
+            if parent.name.startswith("runtm-artifact-"):
+                shutil.rmtree(parent, ignore_errors=True)
 
     def put_file(self, key: str, file_path: str) -> str:
         """Store artifact from file path.

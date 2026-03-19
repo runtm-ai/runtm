@@ -67,6 +67,9 @@ class LocalFileStore(ArtifactStore):
         """Get the filesystem path for an artifact."""
         return self._resolve_path(key)
 
+    def cleanup_path(self, path: Path) -> None:
+        """No-op for local storage — paths are real, not temp."""
+
     def get_size(self, key: str) -> int | None:
         path = self._resolve_path(key)
         if path.exists():
