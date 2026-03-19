@@ -8,12 +8,14 @@ from abc import ABC, abstractmethod
 class ArtifactStore(ABC):
     """Abstract interface for artifact storage.
 
-    Implementations:
-        - LocalFileStore: Local filesystem (dev)
-        - S3Store: AWS S3 / GCS (future)
+    Built-in implementations:
+        - LocalFileStore: Local filesystem (dev, shared Docker volume)
+
+    Additional backends (e.g. S3/Tigris) can be registered via
+    register_backend() from external packages like runtm-cloud.
 
     Usage:
-        store = LocalFileStore("/artifacts")
+        store = get_artifact_store(backend="local", storage_path="/artifacts")
         uri = store.put("artifacts/dep_abc123/artifact.zip", data)
         data = store.get("artifacts/dep_abc123/artifact.zip")
     """
