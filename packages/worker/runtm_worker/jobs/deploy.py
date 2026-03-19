@@ -28,7 +28,7 @@ from runtm_shared.urls import construct_deployment_url, get_subdomain_for_app
 from runtm_worker.builder import DockerBuilder
 from runtm_worker.logs import LogCapture
 from runtm_worker.providers import FlyProvider
-from runtm_worker.storage import LocalFileStore
+from runtm_shared.storage.base import ArtifactStore
 
 
 class DeployJob:
@@ -70,7 +70,7 @@ class DeployJob:
     def __init__(
         self,
         db: Session,
-        storage_path: str,
+        storage: ArtifactStore,
         fly_api_token: str | None = None,
         redeploy_from: str | None = None,
         use_remote_builder: bool = True,
@@ -82,7 +82,7 @@ class DeployJob:
 
         Args:
             db: Database session
-            storage_path: Path to artifact storage
+            storage: Artifact store (LocalFileStore for dev, S3FileStore for prod)
             fly_api_token: Fly.io API token
             redeploy_from: Previous deployment ID for redeployments
             use_remote_builder: Use Fly's remote builder (faster, recommended)
@@ -91,7 +91,7 @@ class DeployJob:
             allow_local_builds: Explicit override for local builds (dev only)
         """
         self.db = db
-        self.storage = LocalFileStore(storage_path)
+        self.storage = storage
         self.fly_api_token = fly_api_token or os.environ.get("FLY_API_TOKEN")
         self.redeploy_from = redeploy_from
         self.use_remote_builder = use_remote_builder
@@ -835,6 +835,7 @@ def process_deployment(
     """
     from runtm_api.core.config import get_settings
     from runtm_api.db import create_session
+    from runtm_worker.storage import get_artifact_store
 
     settings = get_settings()
     db = create_session()
@@ -843,10 +844,18 @@ def process_deployment(
     if use_remote_builder is None:
         use_remote_builder = settings.use_remote_builder
 
+    storage = get_artifact_store(
+        backend=settings.artifact_storage_backend,
+        storage_path=settings.artifact_storage_path,
+        s3_bucket=settings.s3_bucket,
+        s3_endpoint_url=settings.s3_endpoint_url or None,
+        s3_region=settings.s3_region,
+    )
+
     try:
         job = DeployJob(
             db=db,
-            storage_path=settings.artifact_storage_path,
+            storage=storage,
             redeploy_from=redeploy_from,
             use_remote_builder=use_remote_builder,
             secrets=secrets,
