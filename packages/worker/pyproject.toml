@@ -32,7 +32,6 @@ dependencies = [
     "rq>=1.15,<2.0",
     "httpx>=0.24,<1.0",
     "docker>=6.0,<8.0",
-    "boto3>=1.28,<2.0",
 ]
 
 [project.optional-dependencies]

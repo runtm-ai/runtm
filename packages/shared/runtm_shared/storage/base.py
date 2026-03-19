@@ -8,9 +8,11 @@ from abc import ABC, abstractmethod
 class ArtifactStore(ABC):
     """Abstract interface for artifact storage.
 
-    Implementations:
+    Built-in implementations:
         - LocalFileStore: Local filesystem (dev, shared Docker volume)
-        - S3FileStore: S3-compatible storage (production, Tigris/AWS S3/R2)
+
+    Additional backends (e.g. S3/Tigris) can be registered via
+    register_backend() from external packages like runtm-cloud.
 
     Usage:
         store = get_artifact_store(backend="local", storage_path="/artifacts")

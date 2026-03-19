@@ -790,7 +790,7 @@ async def create_deployment(
         # but S3 uploads can take seconds).
         import asyncio
 
-        from runtm_worker.storage import get_artifact_store
+        from runtm_shared.storage import get_artifact_store
 
         store = get_artifact_store(
             backend=settings.artifact_storage_backend,
