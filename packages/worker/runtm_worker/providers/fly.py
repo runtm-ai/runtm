@@ -352,8 +352,9 @@ class FlyProvider(DeployProvider):
                     "type": "http",
                     "port": config.internal_port,
                     "path": config.health_check_path,
-                    "interval": "10s",
-                    "timeout": "5s",
+                    "interval": "30s",
+                    "timeout": "20s",
+                    "grace_period": "120s",
                 },
             },
             "guest": {
@@ -489,8 +490,9 @@ class FlyProvider(DeployProvider):
                     "type": "http",
                     "port": config.internal_port,
                     "path": config.health_check_path,
-                    "interval": "10s",
-                    "timeout": "5s",
+                    "interval": "30s",
+                    "timeout": "20s",
+                    "grace_period": "120s",
                 },
             },
             "guest": {

@@ -563,10 +563,14 @@ class DeployJob:
                 build_log.write(f"Name: {manifest.name}")
                 build_log.write(f"Template: {manifest.template}")
 
-                # Get artifact
-                artifact_path = self.storage.get_path(deployment.artifact_key)
-                if not artifact_path.exists():
-                    raise BuildError(f"Artifact not found: {deployment.artifact_key}")
+                # Get artifact (retry for S3 eventual consistency)
+                from runtm_shared.storage.base import wait_for_artifact
+
+                artifact_path = wait_for_artifact(
+                    self.storage,
+                    deployment.artifact_key,
+                    log_callback=build_log.write,
+                )
 
                 build_log.write(f"Artifact: {artifact_path}")
 
@@ -803,6 +807,21 @@ class DeployJob:
                         DeploymentState.FAILED,
                         error_message=error_message,
                     )
+
+            # Rollback: clean up partially provisioned infrastructure
+            _app_name = locals().get("app_name")
+            _provider = locals().get("provider")
+            if _app_name and not is_redeployment:
+                from runtm_shared.storage.base import compensate_failed_deploy
+                from runtm_shared.urls import get_base_domain
+
+                compensate_failed_deploy(
+                    app_name=_app_name,
+                    is_redeployment=is_redeployment,
+                    provider=_provider,
+                    dns_provider=self._get_dns_provider(),
+                    base_domain=get_base_domain(),
+                )
 
             return False
 
