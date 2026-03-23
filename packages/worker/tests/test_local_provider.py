@@ -192,7 +192,7 @@ class TestFactory:
 
         with (
             patch.dict("os.environ", {"DEPLOY_PROVIDER": "fly"}, clear=False),
-            pytest.raises(Exception),
+            pytest.raises(ValueError),
         ):
             get_provider()
 
