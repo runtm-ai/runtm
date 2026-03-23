@@ -37,7 +37,4 @@ def get_provider(
 
         return LocalProvider(**kwargs)
 
-    raise ValueError(
-        f"Unknown DEPLOY_PROVIDER: {name!r}.  "
-        "Supported values: 'local', 'fly'."
-    )
+    raise ValueError(f"Unknown DEPLOY_PROVIDER: {name!r}.  Supported values: 'local', 'fly'.")

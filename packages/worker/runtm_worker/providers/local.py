@@ -34,7 +34,9 @@ class LocalProvider(DeployProvider):
     """
 
     def __init__(self, base_url: str | None = None):
-        self._client = docker.from_env() if base_url is None else docker.DockerClient(base_url=base_url)
+        self._client = (
+            docker.from_env() if base_url is None else docker.DockerClient(base_url=base_url)
+        )
         self._ensure_network()
 
     @property
@@ -58,7 +60,9 @@ class LocalProvider(DeployProvider):
         """Find the first unused port in the local deploy range."""
         used: set[int] = set()
         for c in self._client.containers.list(all=True):
-            for _internal, bindings in (c.attrs.get("NetworkSettings", {}).get("Ports") or {}).items():
+            for _internal, bindings in (
+                c.attrs.get("NetworkSettings", {}).get("Ports") or {}
+            ).items():
                 for b in bindings or []:
                     try:
                         used.add(int(b["HostPort"]))
@@ -141,7 +145,9 @@ class LocalProvider(DeployProvider):
             try:
                 old = self._client.containers.get(cname)
                 # Grab the port before tearing down
-                for _internal, bindings in (old.attrs.get("NetworkSettings", {}).get("Ports") or {}).items():
+                for _internal, bindings in (
+                    old.attrs.get("NetworkSettings", {}).get("Ports") or {}
+                ).items():
                     for b in bindings or []:
                         try:
                             old_port = int(b["HostPort"])
