@@ -17,9 +17,9 @@ import pytest
 
 from runtm_shared.errors import ArtifactNotFoundError, StorageWriteError
 from runtm_shared.storage import (
-    _backend_registry,
     ArtifactStore,
     LocalFileStore,
+    _backend_registry,
     get_artifact_store,
     register_backend,
 )
