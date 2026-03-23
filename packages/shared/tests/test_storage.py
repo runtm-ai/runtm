@@ -163,18 +163,36 @@ class TestRegisterBackend:
         """Registering the same name twice replaces the factory."""
 
         class StoreA(ArtifactStore):
-            def put(self, key, data): return ""
-            def get(self, key): return b""
-            def delete(self, key): pass
-            def exists(self, key): return False
-            def get_uri(self, key): return ""
+            def put(self, key, data):
+                return ""
+
+            def get(self, key):
+                return b""
+
+            def delete(self, key):
+                pass
+
+            def exists(self, key):
+                return False
+
+            def get_uri(self, key):
+                return ""
 
         class StoreB(ArtifactStore):
-            def put(self, key, data): return ""
-            def get(self, key): return b""
-            def delete(self, key): pass
-            def exists(self, key): return False
-            def get_uri(self, key): return ""
+            def put(self, key, data):
+                return ""
+
+            def get(self, key):
+                return b""
+
+            def delete(self, key):
+                pass
+
+            def exists(self, key):
+                return False
+
+            def get_uri(self, key):
+                return ""
 
         register_backend("x", lambda **_kw: StoreA())
         register_backend("x", lambda **_kw: StoreB())
@@ -187,11 +205,20 @@ class TestRegisterBackend:
         received = {}
 
         class Dummy(ArtifactStore):
-            def put(self, key, data): return ""
-            def get(self, key): return b""
-            def delete(self, key): pass
-            def exists(self, key): return False
-            def get_uri(self, key): return ""
+            def put(self, key, data):
+                return ""
+
+            def get(self, key):
+                return b""
+
+            def delete(self, key):
+                pass
+
+            def exists(self, key):
+                return False
+
+            def get_uri(self, key):
+                return ""
 
         def factory(**kwargs):
             received.update(kwargs)
