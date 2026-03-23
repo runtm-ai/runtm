@@ -175,6 +175,51 @@ def _require_sandbox() -> None:
         raise typer.Exit(1)
 
 
+DOCKER_PROVIDER_AVAILABLE = False
+try:
+    from runtm_sandbox.providers.docker import DockerSandboxProvider
+
+    DOCKER_PROVIDER_AVAILABLE = True
+except ImportError:
+    pass
+
+
+def _get_sandbox_provider(provider_name: str | None = None):
+    """Select sandbox provider by name.
+
+    Resolution order:
+      1. Explicit --provider flag
+      2. RUNTM_SANDBOX_PROVIDER env var
+      3. Auto-detect: docker if available, else local
+    """
+    import os
+    import shutil
+
+    name = provider_name or os.environ.get("RUNTM_SANDBOX_PROVIDER")
+
+    if name is None:
+        name = "docker" if DOCKER_PROVIDER_AVAILABLE and shutil.which("docker") else "local"
+
+    if name == "docker":
+        if not DOCKER_PROVIDER_AVAILABLE:
+            console.print("[red]Docker sandbox provider not available.[/red]")
+            console.print("Install sandbox package: [cyan]pip install runtm[sandbox][/cyan]")
+            raise typer.Exit(1)
+        if not shutil.which("docker"):
+            console.print("[red]Docker not found.[/red]")
+            console.print()
+            console.print("Install Docker Desktop: [cyan]https://www.docker.com/products/docker-desktop[/cyan]")
+            raise typer.Exit(1)
+        return DockerSandboxProvider()  # type: ignore[name-defined]
+
+    if name == "local":
+        return LocalSandboxProvider()  # type: ignore[name-defined]
+
+    console.print(f"[red]Unknown sandbox provider: {name}[/red]")
+    console.print("Valid providers: docker, local")
+    raise typer.Exit(1)
+
+
 def _require_agents() -> None:
     """Check if agents package is available, exit with helpful message if not."""
     if not AGENTS_AVAILABLE:
@@ -263,6 +308,12 @@ def start(
         "--no-deploy",
         help="Disable deploy command in sandbox",
     ),
+    provider: str | None = typer.Option(
+        None,
+        "--provider",
+        "-p",
+        help="Sandbox provider: docker (recommended), local (srt process sandbox)",
+    ),
     verbose: bool = typer.Option(
         False,
         "--verbose",
@@ -304,18 +355,25 @@ def start(
     if agent is None:
         agent = _prompt_agent_selection()
 
-    # 1. Check dependencies are installed
-    if not ensure_sandbox_deps(auto_install=False):  # type: ignore[name-defined]
-        console.print("[red]Missing sandbox dependencies.[/red]")
-        console.print()
-        console.print("For development, run:")
-        console.print("  [cyan]./scripts/dev.sh setup[/cyan]")
-        console.print()
-        console.print("Or install manually:")
-        console.print("  curl -fsSL https://bun.sh/install | bash")
-        console.print("  bun install -g @anthropic-ai/sandbox-runtime")
-        console.print("  curl -fsSL https://claude.ai/install.sh | bash")
-        raise typer.Exit(1)
+    # 1. Resolve provider and check deps
+    sandbox_provider = _get_sandbox_provider(provider)
+    use_docker = hasattr(sandbox_provider, '_container_name')
+
+    if not use_docker:
+        if not ensure_sandbox_deps(auto_install=False):  # type: ignore[name-defined]
+            console.print("[red]Missing sandbox dependencies.[/red]")
+            console.print()
+            console.print("For development, run:")
+            console.print("  [cyan]./scripts/dev.sh setup[/cyan]")
+            console.print()
+            console.print("Or install manually:")
+            console.print("  curl -fsSL https://bun.sh/install | bash")
+            console.print("  bun install -g @anthropic-ai/sandbox-runtime")
+            console.print("  curl -fsSL https://claude.ai/install.sh | bash")
+            console.print()
+            console.print("Or use Docker instead:")
+            console.print("  [cyan]runtm start --provider docker[/cyan]")
+            raise typer.Exit(1)
 
     # 2. Validate agent type
     try:
@@ -338,10 +396,8 @@ def start(
         allow_deploy=not no_deploy,
     )
 
-    provider = LocalSandboxProvider()  # type: ignore[name-defined]
-
     console.print(f"\n[dim]Creating sandbox {session_id}...[/dim]")
-    sandbox = provider.create(session_id, config)
+    sandbox = sandbox_provider.create(session_id, config)
 
     # 4. Create session record
     session = Session(
@@ -370,7 +426,7 @@ def start(
         console.print()
 
         # Attach to sandbox (drops user into isolated shell)
-        provider.attach(session_id)
+        sandbox_provider.attach(session_id)
 
         # Always show exit message
         console.print()
