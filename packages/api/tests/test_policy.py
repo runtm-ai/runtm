@@ -82,7 +82,7 @@ class TestDefaultPolicyProvider:
         self, mock_settings: MagicMock, mock_db: MagicMock
     ) -> None:
         """Should block tiers not in allowlist."""
-        mock_settings.parsed_allowed_tiers = ["starter", "standard"]
+        mock_settings.parsed_allowed_tiers = ["starter", "pro"]
 
         with patch("runtm_api.core.config.get_settings", return_value=mock_settings):
             provider = DefaultPolicyProvider()
@@ -91,17 +91,17 @@ class TestDefaultPolicyProvider:
         assert result.allowed is False
         assert "performance" in result.reason
         assert "starter" in result.reason
-        assert "standard" in result.reason
+        assert "pro" in result.reason
 
     def test_tier_allowlist_allows_valid_tier(
         self, mock_settings: MagicMock, mock_db: MagicMock
     ) -> None:
         """Should allow tiers in allowlist."""
-        mock_settings.parsed_allowed_tiers = ["starter", "standard"]
+        mock_settings.parsed_allowed_tiers = ["starter", "pro"]
 
         with patch("runtm_api.core.config.get_settings", return_value=mock_settings):
             provider = DefaultPolicyProvider()
-            result = provider.check_deploy("tenant_1", mock_db, requested_tier="standard")
+            result = provider.check_deploy("tenant_1", mock_db, requested_tier="pro")
 
         assert result.allowed is True
 
