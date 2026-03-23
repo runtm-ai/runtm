@@ -189,8 +189,8 @@ class TLSEnforcementMiddleware(BaseHTTPMiddleware):
         Returns:
             Response (403 if not HTTPS, otherwise route response)
         """
-        # Skip health checks (needed for load balancer probes)
-        if request.url.path in ("/health", "/healthz", "/ready"):
+        # Skip health checks (needed for load balancer probes and monitoring)
+        if request.url.path in ("/health", "/health/detailed", "/healthz", "/ready"):
             return await call_next(request)
 
         scheme = get_request_scheme(request, self.settings)

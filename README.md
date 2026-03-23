@@ -113,27 +113,107 @@ pip install runtm
 
 See the [CLI docs](https://docs.runtm.com/cli/overview) for the full reference.
 
-## Self-Hosting
+## Run with Docker (any OS)
 
-Runtm can be fully self-hosted. See the [self-hosting guide](https://docs.runtm.com/self-hosting/overview).
+Get the full stack running in under 5 minutes on **Linux, macOS, or Windows**.
+The only prerequisite is [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine + Compose on Linux).
+
+```bash
+git clone https://github.com/runtm-ai/runtm.git
+cd runtm
+cp infra/local.env.example .env   # defaults to DEPLOY_PROVIDER=local — no accounts needed
+make dev                           # builds images, starts Postgres, Redis, API, and worker
+```
+
+That's it. The API is live at **http://localhost:8000**.
+
+```bash
+curl http://localhost:8000/health            # quick check
+curl http://localhost:8000/health/detailed   # Postgres, Redis, queue depth
+```
+
+### Common commands
+
+| Command | What it does |
+|---------|-------------|
+| `make dev` | Start the stack with hot-reload (code changes apply in ~3 s) |
+| `make test` | Run the full test suite inside Docker |
+| `make lint` | Lint with ruff inside Docker |
+| `make logs` | Tail all service logs (`make logs SVC=api` to filter) |
+| `make down` | Stop everything |
+| `make db-reset` | Wipe volumes and recreate from scratch |
+
+> **Windows without `make`?** Use the PowerShell helper instead:
+> ```powershell
+> .\scripts\dev.ps1 dev      # same as make dev
+> .\scripts\dev.ps1 test     # same as make test
+> ```
+
+### What's running
+
+```
+┌──────────┐   ┌───────┐   ┌─────────────────────┐   ┌────────────┐
+│ Postgres │   │ Redis │   │ API (uvicorn+reload) │   │   Worker   │
+│ :5432    │   │ :6379 │   │ :8000                │   │ (watchfiles│
+└──────────┘   └───────┘   └─────────────────────┘   │  auto-     │
+                                                      │  restart)  │
+                                                      └────────────┘
+```
+
+Source code is bind-mounted so edits to `packages/api/`, `packages/worker/`, or `packages/shared/` are picked up automatically.
+
+### Networking and deployed app URLs
+
+Everything runs on `localhost` -- **no ngrok, Cloudflare Tunnel, or port forwarding is required** to develop, test, or run the full workflow locally.
+
+When you deploy an app with the `local` provider, it starts as a Docker container on your machine at `http://localhost:9000` (ports 9000-9999 are allocated automatically). This is perfect for development and personal use.
+
+If you need a **public URL** to share with others:
+
+| Goal | Solution |
+|------|----------|
+| Quick sharing / demos | [ngrok](https://ngrok.com), [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/), or [tailscale funnel](https://tailscale.com/kb/1223/funnel) pointed at your local port |
+| Permanent self-hosting | Deploy on a VPS with `docker-compose.prod.yml` -- Caddy provides automatic HTTPS (see [Production self-hosting](#production-self-hosting)) |
+| Managed hosting | Use `DEPLOY_PROVIDER=fly` with a [Fly.io](https://fly.io) account -- apps get public URLs automatically |
+
+### Environment variables
+
+The `.env` file controls the stack. The only **required** variable is:
+
+| Variable | Required | Default | Purpose |
+|----------|----------|---------|---------|
+| `RUNTM_API_SECRET` | **Yes** | — | API authentication secret |
+| `DEPLOY_PROVIDER` | No | `local` | `local` (no accounts) or `fly` (Fly.io) |
+| `FLY_API_TOKEN` | Only if `fly` | — | Fly.io personal access token |
+| `FLY_ORG` | Only if `fly` | `personal` | Fly.io org slug |
+
+All other variables (`DATABASE_URL`, `REDIS_URL`, etc.) are set by the compose file and should not need changing for local development.
+
+### Production self-hosting
+
+For self-hosting with HTTPS and managed databases, see `infra/docker-compose.prod.yml`:
+
+```bash
+cp infra/local.env.prod.example .env.prod
+# Edit .env.prod: set DATABASE_URL, REDIS_URL, RUNTM_DOMAIN, RUNTM_API_SECRET
+docker compose -f infra/docker-compose.prod.yml --env-file .env.prod up -d
+```
+
+Caddy handles automatic TLS via Let's Encrypt. See the [self-hosting guide](https://docs.runtm.com/self-hosting/overview) for details.
+
+## Self-Hosting (bare metal)
+
+If you prefer running without Docker (e.g., for IDE debugging), you can install packages directly:
 
 ```bash
 git clone https://github.com/runtm-ai/runtm.git
 cd runtm
 cp infra/local.env.example .env
-
-# Install packages (includes sandbox and agents)
-./scripts/dev.sh setup
-
-# Start local services
-docker compose -f infra/docker-compose.yml up -d
-
-# Use the development CLI
-runtm-dev start                    # Start a sandbox session
-runtm-dev prompt "Build an API"    # Send prompt to agent
+./scripts/dev.sh setup    # creates venv, pip installs all packages
+./scripts/dev.sh up       # starts Postgres + Redis via Docker, API via uvicorn
 ```
 
-**Note:** Use `runtm-dev` (not `runtm`) when self-hosting. The dev CLI includes sandbox/agents packages.
+> **Note:** The bare-metal path requires Python 3.12+, bash, and still uses Docker for Postgres/Redis.
 
 ## Project Structure
 

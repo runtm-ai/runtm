@@ -1,0 +1,112 @@
+# Development compose with hot-reload via bind mounts.
+# Usage: docker compose -f infra/docker-compose.dev.yml up --build
+#
+# Source directories are mounted into containers so code changes are
+# picked up instantly (uvicorn --reload for API, watchfiles for worker).
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.api
+    command: >
+      sh -c "pip install -e '/app/packages/shared[dev]' -e '/app/packages/api[dev]' -e '/app/packages/worker[dev]' --quiet &&
+             cd /app/packages/api &&
+             alembic upgrade head &&
+             uvicorn runtm_api.main:app --host 0.0.0.0 --port 8000 --reload
+               --reload-dir /app/packages/api/runtm_api
+               --reload-dir /app/packages/shared/runtm_shared"
+    volumes:
+      - ../packages/shared:/app/packages/shared
+      - ../packages/api:/app/packages/api
+      - ../packages/worker:/app/packages/worker
+      - artifacts:/artifacts
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../.env
+    environment:
+      - DATABASE_URL=postgresql://runtm:runtm@postgres:5432/runtm
+      - REDIS_URL=redis://redis:6379
+      - API_SECRET=${RUNTM_API_SECRET:-dev-token-change-in-production}
+      - ARTIFACT_STORAGE_PATH=/artifacts
+      - ARTIFACT_STORAGE_BACKEND=local
+      - AUTH_MODE=single_tenant
+      - DEBUG=true
+      - DEPLOY_PROVIDER=${DEPLOY_PROVIDER:-local}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.worker
+    command: >
+      sh -c "pip install watchfiles --quiet &&
+             pip install -e '/app/packages/shared[dev]' -e '/app/packages/api[dev]' -e '/app/packages/worker[dev]' --quiet &&
+             watchfiles 'python -m runtm_worker.main'
+               /app/packages/worker/runtm_worker
+               /app/packages/shared/runtm_shared"
+    volumes:
+      - ../packages/shared:/app/packages/shared
+      - ../packages/api:/app/packages/api
+      - ../packages/worker:/app/packages/worker
+      - artifacts:/artifacts
+      - /var/run/docker.sock:/var/run/docker.sock
+    env_file:
+      - ../.env
+    environment:
+      - DATABASE_URL=postgresql://runtm:runtm@postgres:5432/runtm
+      - REDIS_URL=redis://redis:6379
+      - API_SECRET=${RUNTM_API_SECRET:-dev-token-change-in-production}
+      - ARTIFACT_STORAGE_PATH=/artifacts
+      - ARTIFACT_STORAGE_BACKEND=local
+      - DEPLOY_PROVIDER=${DEPLOY_PROVIDER:-local}
+      - DEBUG=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      api:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=runtm
+      - POSTGRES_PASSWORD=runtm
+      - POSTGRES_DB=runtm
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U runtm"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  artifacts:
+    driver: local
+  pgdata:
+    driver: local
