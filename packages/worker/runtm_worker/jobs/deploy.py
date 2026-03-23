@@ -506,7 +506,9 @@ class DeployJob:
                 )
 
                 if is_redeployment and previous_resource:
-                    deploy_log.write(f"Redeploying to existing container: {previous_resource.app_name}")
+                    deploy_log.write(
+                        f"Redeploying to existing container: {previous_resource.app_name}"
+                    )
                     result = provider.redeploy(previous_resource, config)
                 else:
                     deploy_log.write("Deploying to local Docker container...")

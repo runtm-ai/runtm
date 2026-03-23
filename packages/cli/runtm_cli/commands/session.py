@@ -208,7 +208,9 @@ def _get_sandbox_provider(provider_name: str | None = None):
         if not shutil.which("docker"):
             console.print("[red]Docker not found.[/red]")
             console.print()
-            console.print("Install Docker Desktop: [cyan]https://www.docker.com/products/docker-desktop[/cyan]")
+            console.print(
+                "Install Docker Desktop: [cyan]https://www.docker.com/products/docker-desktop[/cyan]"
+            )
             raise typer.Exit(1)
         return DockerSandboxProvider()  # type: ignore[name-defined]
 
@@ -357,7 +359,7 @@ def start(
 
     # 1. Resolve provider and check deps
     sandbox_provider = _get_sandbox_provider(provider)
-    use_docker = hasattr(sandbox_provider, '_container_name')
+    use_docker = hasattr(sandbox_provider, "_container_name")
 
     if not use_docker:
         if not ensure_sandbox_deps(auto_install=False):  # type: ignore[name-defined]
