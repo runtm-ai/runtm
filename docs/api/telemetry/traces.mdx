@@ -1,0 +1,160 @@
+---
+title: "Traces"
+api: "GET /v0/telemetry/traces"
+description: "List and retrieve distributed traces"
+---
+
+Query distributed traces to understand request flows through your deployments. Traces consist of spans that represent individual operations.
+
+All trace endpoints require `read` scope.
+
+## List Traces
+
+<ParamField query="limit" type="integer" default="50">
+  Maximum results (1–100)
+</ParamField>
+
+<ParamField query="service" type="string">
+  Filter by service name
+</ParamField>
+
+<RequestExample>
+```bash cURL — List traces
+curl -H "Authorization: Bearer runtm_xxx" \
+  "https://app.runtm.com/api/v0/telemetry/traces?limit=10"
+```
+
+```bash cURL — Filter by service
+curl -H "Authorization: Bearer runtm_xxx" \
+  "https://app.runtm.com/api/v0/telemetry/traces?service=my-api&limit=20"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/v0/telemetry/traces",
+    headers={"Authorization": "Bearer runtm_xxx"},
+    params={"service": "my-api", "limit": 10},
+)
+
+traces = response.json()
+for trace in traces.get("traces", []):
+    print(f"Trace {trace['trace_id']}: {trace['root_span_name']}")
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "traces": [
+    {
+      "trace_id": "abc123",
+      "root_span_name": "HTTP GET /users",
+      "service_name": "my-api",
+      "status": "ok",
+      "duration_ms": 50.5,
+      "span_count": 3,
+      "started_at": "2025-01-15T10:30:00Z"
+    }
+  ],
+  "total": 1
+}
+```
+</ResponseExample>
+
+---
+
+## Get Trace
+
+Retrieve a single trace with all its spans and events.
+
+```
+GET /v0/telemetry/traces/{trace_id}
+```
+
+<ParamField path="trace_id" type="string" required>
+  Trace identifier
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -H "Authorization: Bearer runtm_xxx" \
+  "https://app.runtm.com/api/v0/telemetry/traces/abc123"
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "trace_id": "abc123",
+  "service_name": "my-api",
+  "spans": [
+    {
+      "span_id": "span001",
+      "parent_span_id": null,
+      "name": "HTTP GET /users",
+      "status": "ok",
+      "start_time_ns": 1705312200000000000,
+      "end_time_ns": 1705312200050000000,
+      "attributes": {"http.method": "GET", "http.status_code": 200}
+    },
+    {
+      "span_id": "span002",
+      "parent_span_id": "span001",
+      "name": "db.query",
+      "status": "ok",
+      "start_time_ns": 1705312200010000000,
+      "end_time_ns": 1705312200030000000,
+      "attributes": {"db.statement": "SELECT * FROM users"}
+    }
+  ],
+  "events": []
+}
+```
+</ResponseExample>
+
+---
+
+## Deployment Traces
+
+Get traces for a specific deployment.
+
+```
+GET /v0/telemetry/deployments/{deployment_id}/traces
+```
+
+<ParamField path="deployment_id" type="string" required>
+  Deployment identifier
+</ParamField>
+
+<ParamField query="limit" type="integer" default="50">
+  Maximum results (1–100)
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -H "Authorization: Bearer runtm_xxx" \
+  "https://app.runtm.com/api/v0/telemetry/deployments/dep_abc123/traces?limit=20"
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "traces": [
+    {
+      "trace_id": "abc123",
+      "root_span_name": "HTTP GET /users",
+      "service_name": "my-api",
+      "status": "ok",
+      "duration_ms": 50.5,
+      "span_count": 3,
+      "started_at": "2025-01-15T10:30:00Z"
+    }
+  ],
+  "total": 1,
+  "deployment_id": "dep_abc123"
+}
+```
+</ResponseExample>

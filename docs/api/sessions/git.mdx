@@ -1,0 +1,178 @@
+---
+title: "Git Operations"
+api: "POST /v0/sessions/{session_id}/git"
+description: "Execute git operations inside a running sandbox"
+---
+
+Run git commands inside a sandbox session. Supports common workflows: checking status, committing changes, creating branches, and opening pull requests.
+
+The session must be in the `running` state.
+
+## Path Parameters
+
+<ParamField path="session_id" type="string" required>
+  Session UUID
+</ParamField>
+
+## Request Body
+
+<ParamField body="operation" type="string" required>
+  Git operation to perform. One of:
+
+  | Operation | Description |
+  |-----------|-------------|
+  | `status` | Check repo status (changes, branch, remote) |
+  | `commit` | Commit staged changes (requires `message`) |
+  | `push` | Push commits to remote |
+  | `pull` | Pull from remote |
+  | `sync` | Pull + push in one step |
+  | `create_branch` | Create and switch to a new branch (requires `branch`) |
+  | `switch_branch` | Switch to an existing branch (requires `branch`) |
+  | `list_branches` | List branches (optional `branch_search` filter) |
+  | `create_pr` | Create a pull request (requires `pr_title`) |
+  | `create_branch_and_pr` | Create branch + PR in one step |
+  | `init_repo` | Initialize a new git repository |
+</ParamField>
+
+<ParamField body="working_dir" type="string" default="/home/user">
+  Directory containing the git repository
+</ParamField>
+
+<ParamField body="message" type="string">
+  Commit message (required for `commit` operation)
+</ParamField>
+
+<ParamField body="branch" type="string">
+  Branch name (required for `create_branch` and `switch_branch`)
+</ParamField>
+
+<ParamField body="branch_search" type="string">
+  Search filter for branch names (for `list_branches`)
+</ParamField>
+
+<ParamField body="pr_title" type="string">
+  Pull request title (required for `create_pr` and `create_branch_and_pr`)
+</ParamField>
+
+<ParamField body="pr_body" type="string">
+  Pull request description
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  Whether the operation succeeded
+</ResponseField>
+
+<ResponseField name="operation" type="string">
+  The operation that was performed
+</ResponseField>
+
+<ResponseField name="output" type="string">
+  Raw git command output
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Error message if the operation failed
+</ResponseField>
+
+<ResponseField name="current_branch" type="string">
+  Current git branch name
+</ResponseField>
+
+<ResponseField name="has_changes" type="boolean">
+  Whether there are uncommitted changes
+</ResponseField>
+
+<ResponseField name="ahead" type="integer">
+  Commits ahead of remote
+</ResponseField>
+
+<ResponseField name="behind" type="integer">
+  Commits behind remote
+</ResponseField>
+
+<ResponseField name="pr_url" type="string">
+  URL of the created pull request (for `create_pr` / `create_branch_and_pr`)
+</ResponseField>
+
+<ResponseField name="pr_number" type="integer">
+  PR number (for `create_pr` / `create_branch_and_pr`)
+</ResponseField>
+
+<ResponseField name="branches" type="array">
+  List of branch names (for `list_branches`)
+</ResponseField>
+
+<RequestExample>
+```bash cURL — Check status
+curl -X POST "https://app.runtm.com/api/v0/sessions/{session_id}/git" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{"operation": "status"}'
+```
+
+```bash cURL — Commit and push
+curl -X POST "https://app.runtm.com/api/v0/sessions/{session_id}/git" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{"operation": "commit", "message": "Add todo API endpoints"}'
+
+curl -X POST "https://app.runtm.com/api/v0/sessions/{session_id}/git" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{"operation": "push"}'
+```
+
+```python Python
+import requests
+
+headers = {"Authorization": "Bearer runtm_xxx"}
+url = "https://app.runtm.com/api/v0/sessions/{session_id}/git"
+
+# Create branch, commit, and open PR
+for op in [
+    {"operation": "create_branch", "branch": "feat/todo-api"},
+    {"operation": "commit", "message": "Add todo API endpoints"},
+    {"operation": "create_pr", "pr_title": "feat: Add todo API", "pr_body": "CRUD endpoints for todos"},
+]:
+    result = requests.post(url, headers=headers, json=op).json()
+    print(f"{op['operation']}: {'ok' if result['success'] else result['error']}")
+
+    if result.get("pr_url"):
+        print(f"PR: {result['pr_url']}")
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 — Status
+{
+  "success": true,
+  "operation": "status",
+  "output": "On branch main\nYour branch is up to date...",
+  "is_git_repo": true,
+  "current_branch": "main",
+  "default_branch": "main",
+  "has_changes": true,
+  "ahead": 0,
+  "behind": 0
+}
+```
+
+```json 200 — Create PR
+{
+  "success": true,
+  "operation": "create_pr",
+  "output": "Creating pull request...",
+  "pr_url": "https://github.com/owner/repo/pull/42",
+  "pr_number": 42,
+  "current_branch": "feat/todo-api"
+}
+```
+
+```json 400
+{
+  "detail": "Session is not running (state: paused)"
+}
+```
+</ResponseExample>

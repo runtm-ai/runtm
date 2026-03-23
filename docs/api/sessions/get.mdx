@@ -1,0 +1,170 @@
+---
+title: "Get Session"
+api: "GET /v0/sessions/{session_id}"
+description: "Get session status including prompt completion status for polling"
+---
+
+Get the current status of a session, including prompt completion state. This is the primary polling endpoint for background agents launched via `POST /v0/sessions/launch`.
+
+## Path Parameters
+
+<ParamField path="session_id" type="string" required>
+  Session UUID
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  Session identifier
+</ResponseField>
+
+<ResponseField name="state" type="string">
+  Session state: `provisioning`, `running`, `paused`, `error`, or `destroyed`
+</ResponseField>
+
+<ResponseField name="agent" type="string">
+  Coding agent (e.g., `claude-code`)
+</ResponseField>
+
+<ResponseField name="template" type="string">
+  Template used, if any
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  ISO 8601 creation timestamp
+</ResponseField>
+
+<ResponseField name="expires_at" type="string">
+  ISO 8601 expiration timestamp (based on TTL)
+</ResponseField>
+
+<ResponseField name="total_cost_usd" type="number">
+  Cumulative cost of all prompts in this session
+</ResponseField>
+
+<ResponseField name="prompt_count" type="integer">
+  Number of prompts sent to this session
+</ResponseField>
+
+<ResponseField name="last_prompt" type="object">
+  Status of the most recent prompt. Key fields:
+  - `status`: `idle`, `running`, `completed`, `error`, or `timed_out`
+  - `prompt_preview`: First 200 characters of the prompt
+  - `model`: Model used (e.g., `sonnet`)
+  - `started_at`: When the prompt started
+  - `completed_at`: When the prompt finished
+  - `cost_usd`: Cost of this prompt
+  - `summary`: First 500 characters of the result (on completion)
+  - `error`: Error message (on failure)
+</ResponseField>
+
+<ResponseField name="prompt_history" type="array">
+  Full history of all prompts sent to this session, each with the same structure as `last_prompt`
+</ResponseField>
+
+<ResponseField name="lifecycle" type="object">
+  Lifecycle configuration: `on_complete` action, `ttl_minutes`, `ttl_expires_at`
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Human-readable session name, if set
+</ResponseField>
+
+<ResponseField name="github_repo" type="string">
+  GitHub repository full name (e.g., `owner/repo`), if linked
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -H "Authorization: Bearer runtm_xxx" \
+  "https://app.runtm.com/api/v0/sessions/a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/v0/sessions/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+
+session = response.json()
+prompt = session.get("last_prompt") or {}
+print(f"State: {session['state']}, Prompt: {prompt.get('status', 'idle')}")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/v0/sessions/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  { headers: { "Authorization": "Bearer runtm_xxx" } }
+);
+
+const session = await response.json();
+console.log(`State: ${session.state}, Prompt: ${session.last_prompt?.status ?? "idle"}`);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 — Prompt running
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "state": "running",
+  "agent": "claude-code",
+  "template": "backend-service",
+  "created_at": "2025-01-15T10:30:00Z",
+  "expires_at": "2025-01-15T11:30:00Z",
+  "total_cost_usd": 0.0,
+  "prompt_count": 1,
+  "last_prompt": {
+    "status": "running",
+    "prompt_preview": "Build a REST API with FastAPI...",
+    "model": "sonnet",
+    "started_at": "2025-01-15T10:30:05Z"
+  },
+  "prompt_history": [],
+  "lifecycle": {
+    "on_complete": "pause",
+    "ttl_minutes": 60,
+    "ttl_expires_at": "2025-01-15T11:30:00Z"
+  },
+  "name": null,
+  "github_repo": null
+}
+```
+
+```json 200 — Prompt completed
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "state": "running",
+  "agent": "claude-code",
+  "template": "backend-service",
+  "created_at": "2025-01-15T10:30:00Z",
+  "expires_at": "2025-01-15T11:30:00Z",
+  "total_cost_usd": 0.0342,
+  "prompt_count": 1,
+  "last_prompt": {
+    "status": "completed",
+    "prompt_preview": "Build a REST API with FastAPI...",
+    "model": "sonnet",
+    "started_at": "2025-01-15T10:30:05Z",
+    "completed_at": "2025-01-15T10:32:15Z",
+    "cost_usd": 0.0342,
+    "summary": "I built a complete FastAPI REST API with CRUD endpoints for a todo list..."
+  },
+  "prompt_history": [],
+  "lifecycle": {
+    "on_complete": "pause",
+    "ttl_minutes": 60,
+    "ttl_expires_at": "2025-01-15T11:30:00Z"
+  },
+  "name": null,
+  "github_repo": null
+}
+```
+
+```json 404
+{
+  "detail": "Session not found"
+}
+```
+</ResponseExample>

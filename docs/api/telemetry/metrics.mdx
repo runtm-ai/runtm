@@ -1,0 +1,118 @@
+---
+title: "Metrics"
+api: "GET /v0/telemetry/metrics"
+description: "Query raw metrics and aggregated summaries"
+---
+
+Query metrics collected from your deployments. Supports both raw metric queries and pre-aggregated summaries for dashboards.
+
+All metrics endpoints require `read` scope.
+
+## List Metrics
+
+Retrieve raw metric data points.
+
+<ParamField query="name" type="string">
+  Filter by metric name (e.g., `http.request.duration`)
+</ParamField>
+
+<ParamField query="type" type="string">
+  Filter by metric type: `counter`, `gauge`, or `histogram`
+</ParamField>
+
+<ParamField query="limit" type="integer" default="100">
+  Maximum results (1–500)
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -H "Authorization: Bearer runtm_xxx" \
+  "https://app.runtm.com/api/v0/telemetry/metrics?name=http.request.duration&limit=50"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/v0/telemetry/metrics",
+    headers={"Authorization": "Bearer runtm_xxx"},
+    params={"name": "http.request.duration", "limit": 50},
+)
+
+for metric in response.json().get("metrics", []):
+    print(f"{metric['name']}: {metric['value']} ({metric['labels']})")
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "metrics": [
+    {
+      "name": "http.request.duration",
+      "value": 50.5,
+      "metric_type": "gauge",
+      "labels": {"endpoint": "/users", "method": "GET"},
+      "timestamp": "2025-01-15T10:30:00Z"
+    },
+    {
+      "name": "http.request.duration",
+      "value": 120.3,
+      "metric_type": "gauge",
+      "labels": {"endpoint": "/users", "method": "POST"},
+      "timestamp": "2025-01-15T10:30:05Z"
+    }
+  ],
+  "total": 2
+}
+```
+</ResponseExample>
+
+---
+
+## Metrics Summary
+
+Get an aggregated summary over a time window. Useful for dashboards and high-level monitoring.
+
+```
+GET /v0/telemetry/metrics/summary
+```
+
+<ParamField query="days" type="integer" default="7">
+  Number of days to look back (1–90)
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -H "Authorization: Bearer runtm_xxx" \
+  "https://app.runtm.com/api/v0/telemetry/metrics/summary?days=7"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/v0/telemetry/metrics/summary",
+    headers={"Authorization": "Bearer runtm_xxx"},
+    params={"days": 7},
+)
+
+summary = response.json()
+print(f"Total deploys: {summary.get('total_deploys', 0)}")
+print(f"Success rate: {summary.get('success_rate', 0):.1%}")
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "period_days": 7,
+  "total_deploys": 24,
+  "successful_deploys": 22,
+  "failed_deploys": 2,
+  "success_rate": 0.917,
+  "avg_build_time_seconds": 45.2,
+  "total_cost_usd": 1.23
+}
+```
+</ResponseExample>
