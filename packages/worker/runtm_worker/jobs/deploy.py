@@ -290,9 +290,11 @@ class DeployJob:
         """Provision custom subdomain with DNS record and SSL certificate.
 
         When RUNTM_BASE_DOMAIN is configured (e.g., runtm.com), this method:
-        1. Creates a CNAME record via DNS provider (Cloudflare):
-           runtm-abc123.runtm.com -> runtm-abc123.fly.dev
-        2. Adds SSL certificate for the subdomain to the Fly app
+        1. Adds SSL certificate to the Fly app (to get ACME challenge details)
+        2. Creates DNS records via DNS provider (Cloudflare):
+           - Main CNAME: runtm-abc123.runtm.com -> runtm-abc123.fly.dev
+           - ACME challenge CNAME for certificate verification
+        3. Polls for certificate verification before returning
 
         This hides provider URLs - users only see runtm.com URLs.
 
@@ -301,48 +303,25 @@ class DeployJob:
             app_name: Fly app name (e.g., "runtm-abc123")
             deploy_log: Log capture for writing messages
         """
+        import time
+
         from runtm_shared.urls import get_base_domain
 
         base_domain = get_base_domain()
         subdomain = get_subdomain_for_app(app_name)
 
         if not subdomain or not base_domain:
-            # No custom domain configured, skip
             return
 
         deploy_log.write(f"Provisioning custom subdomain: {subdomain}")
 
-        # Step 1: Create DNS CNAME record
-        dns_provider = self._get_dns_provider()
-        if dns_provider:
-            try:
-                # Target is the provider's native URL (e.g., runtm-abc123.fly.dev)
-                target = f"{app_name}.fly.dev"
-
-                success = dns_provider.upsert_cname(
-                    subdomain=app_name,
-                    domain=base_domain,
-                    target=target,
-                    proxied=False,  # Don't proxy - let Fly handle SSL
-                )
-
-                if success:
-                    deploy_log.write(f"DNS record created: {subdomain} -> {target}")
-                else:
-                    deploy_log.write(f"Warning: Failed to create DNS record for {subdomain}")
-
-            except Exception as e:
-                deploy_log.write(f"Warning: DNS record creation failed: {e}")
-                # Continue to try adding certificate anyway
-        else:
-            deploy_log.write("Warning: DNS provider not configured, skipping DNS record")
-            deploy_log.write("DNS record must be created manually for custom domain to work")
-
-        # Step 2: Add SSL certificate to Fly app
+        # Step 1: Add SSL certificate to Fly app first to get ACME challenge details.
+        # Fly returns dnsValidationHostname/Target which we need to create in DNS
+        # for certificate verification to succeed.
+        domain_info = None
         try:
             from runtm_shared.types import ProviderResource
 
-            # Create a minimal resource for the add_custom_domain call
             resource = ProviderResource(
                 app_name=app_name,
                 machine_id="",
@@ -351,20 +330,104 @@ class DeployJob:
                 url="",
             )
 
-            # Add certificate for the subdomain
             domain_info = provider.add_custom_domain(resource, subdomain)
 
             if domain_info.certificate_status == "issued":
-                deploy_log.write(f"SSL certificate ready: https://{subdomain}")
+                deploy_log.write(f"SSL certificate already issued: https://{subdomain}")
             elif domain_info.certificate_status in ("pending", "awaiting_dns"):
-                deploy_log.write(f"SSL certificate pending (awaiting DNS): {subdomain}")
+                deploy_log.write("SSL certificate pending, creating DNS records for verification")
             else:
                 deploy_log.write(f"SSL certificate status: {domain_info.certificate_status}")
 
         except Exception as e:
-            # Non-fatal: deployment still works on fly.dev
             deploy_log.write(f"Warning: Could not provision SSL certificate: {e}")
             deploy_log.write(f"App is still accessible at https://{app_name}.fly.dev")
+
+        # Step 2: Create DNS records (main CNAME + ACME challenge)
+        dns_provider = self._get_dns_provider()
+        if dns_provider:
+            try:
+                target = f"{app_name}.fly.dev"
+
+                success = dns_provider.upsert_cname(
+                    subdomain=app_name,
+                    domain=base_domain,
+                    target=target,
+                    proxied=False,
+                )
+
+                if success:
+                    deploy_log.write(f"DNS record created: {subdomain} -> {target}")
+                else:
+                    deploy_log.write(f"Warning: Failed to create DNS record for {subdomain}")
+
+                # Create ACME challenge CNAME so Fly can verify domain ownership
+                # and issue the SSL certificate. Without this, cert verification
+                # can be delayed or fail entirely.
+                if domain_info and domain_info.dns_records:
+                    for record in domain_info.dns_records:
+                        if (
+                            record.record_type == "CNAME"
+                            and "_acme-challenge" in record.name
+                        ):
+                            acme_subdomain = record.name
+                            if acme_subdomain.endswith(f".{base_domain}"):
+                                acme_subdomain = acme_subdomain[: -len(f".{base_domain}")]
+
+                            acme_success = dns_provider.upsert_cname(
+                                subdomain=acme_subdomain,
+                                domain=base_domain,
+                                target=record.value,
+                                proxied=False,
+                            )
+
+                            if acme_success:
+                                deploy_log.write(
+                                    "ACME challenge record created for cert verification"
+                                )
+                            else:
+                                deploy_log.write("Warning: Failed to create ACME challenge record")
+                            break
+
+            except Exception as e:
+                deploy_log.write(f"Warning: DNS record creation failed: {e}")
+        else:
+            deploy_log.write("Warning: DNS provider not configured, skipping DNS record")
+            deploy_log.write("DNS record must be created manually for custom domain to work")
+
+        # Step 3: Poll for certificate verification so the custom domain works
+        # immediately when the deploy URL is returned to the user.
+        if domain_info and domain_info.certificate_status != "issued":
+            deploy_log.write("Waiting for SSL certificate verification...")
+            max_attempts = 6
+            for attempt in range(max_attempts):
+                time.sleep(5)
+                try:
+                    from runtm_shared.types import ProviderResource
+
+                    resource = ProviderResource(
+                        app_name=app_name,
+                        machine_id="",
+                        region="",
+                        image_ref="",
+                        url="",
+                    )
+                    status = provider.get_custom_domain_status(resource, subdomain)
+                    if status.certificate_status == "issued":
+                        deploy_log.write(f"SSL certificate verified: https://{subdomain}")
+                        break
+                    deploy_log.write(
+                        f"Certificate status: {status.certificate_status} "
+                        f"(attempt {attempt + 1}/{max_attempts})"
+                    )
+                except Exception:
+                    pass
+            else:
+                deploy_log.write(
+                    f"SSL certificate not yet verified after {max_attempts * 5}s. "
+                    f"It will be issued automatically once DNS propagates. "
+                    f"App is accessible at https://{app_name}.fly.dev in the meantime."
+                )
 
     def _ensure_fly_app_with_ips(
         self,
