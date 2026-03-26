@@ -16,6 +16,7 @@ from runtm_shared.errors import (
     DeployTimeoutError,
     HealthCheckError,
 )
+from runtm_shared.storage.base import ArtifactStore
 from runtm_shared.types import (
     DeploymentState,
     Limits,
@@ -28,7 +29,6 @@ from runtm_shared.urls import construct_deployment_url, get_subdomain_for_app
 from runtm_worker.builder import DockerBuilder
 from runtm_worker.logs import LogCapture
 from runtm_worker.providers import FlyProvider
-from runtm_shared.storage.base import ArtifactStore
 
 
 class DeployJob:
@@ -366,10 +366,7 @@ class DeployJob:
                 # can be delayed or fail entirely.
                 if domain_info and domain_info.dns_records:
                     for record in domain_info.dns_records:
-                        if (
-                            record.record_type == "CNAME"
-                            and "_acme-challenge" in record.name
-                        ):
+                        if record.record_type == "CNAME" and "_acme-challenge" in record.name:
                             acme_subdomain = record.name
                             if acme_subdomain.endswith(f".{base_domain}"):
                                 acme_subdomain = acme_subdomain[: -len(f".{base_domain}")]
