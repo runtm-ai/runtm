@@ -15,15 +15,14 @@ from pathlib import Path
 
 import pytest
 
-from runtm_shared.errors import ArtifactNotFoundError, StorageReadError, StorageWriteError
+from runtm_shared.errors import ArtifactNotFoundError, StorageWriteError
 from runtm_shared.storage import (
     ArtifactStore,
     LocalFileStore,
+    _backend_registry,
     get_artifact_store,
     register_backend,
 )
-from runtm_shared.storage import _backend_registry
-
 
 # ---------------------------------------------------------------------------
 # Fixture: clean registry between tests
@@ -116,7 +115,7 @@ class TestGetArtifactStore:
             get_artifact_store(backend="azure-blob")
 
     def test_unknown_backend_message_lists_available(self) -> None:
-        register_backend("mock", lambda **kw: None)  # type: ignore[arg-type]
+        register_backend("mock", lambda **_: None)  # type: ignore[arg-type]
         with pytest.raises(ValueError, match="mock"):
             get_artifact_store(backend="nope")
 
@@ -164,21 +163,39 @@ class TestRegisterBackend:
         """Registering the same name twice replaces the factory."""
 
         class StoreA(ArtifactStore):
-            def put(self, key, data): return ""
-            def get(self, key): return b""
-            def delete(self, key): pass
-            def exists(self, key): return False
-            def get_uri(self, key): return ""
+            def put(self, key, data):
+                return ""
+
+            def get(self, key):
+                return b""
+
+            def delete(self, key):
+                pass
+
+            def exists(self, key):
+                return False
+
+            def get_uri(self, key):
+                return ""
 
         class StoreB(ArtifactStore):
-            def put(self, key, data): return ""
-            def get(self, key): return b""
-            def delete(self, key): pass
-            def exists(self, key): return False
-            def get_uri(self, key): return ""
+            def put(self, key, data):
+                return ""
 
-        register_backend("x", lambda **kw: StoreA())
-        register_backend("x", lambda **kw: StoreB())
+            def get(self, key):
+                return b""
+
+            def delete(self, key):
+                pass
+
+            def exists(self, key):
+                return False
+
+            def get_uri(self, key):
+                return ""
+
+        register_backend("x", lambda **_: StoreA())
+        register_backend("x", lambda **_: StoreB())
 
         store = get_artifact_store(backend="x")
         assert isinstance(store, StoreB)
@@ -188,11 +205,20 @@ class TestRegisterBackend:
         received = {}
 
         class Dummy(ArtifactStore):
-            def put(self, key, data): return ""
-            def get(self, key): return b""
-            def delete(self, key): pass
-            def exists(self, key): return False
-            def get_uri(self, key): return ""
+            def put(self, key, data):
+                return ""
+
+            def get(self, key):
+                return b""
+
+            def delete(self, key):
+                pass
+
+            def exists(self, key):
+                return False
+
+            def get_uri(self, key):
+                return ""
 
         def factory(**kwargs):
             received.update(kwargs)
