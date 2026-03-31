@@ -1,0 +1,21 @@
+name: Lint
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Run Ruff check
+        run: uvx ruff check .
+
+      - name: Run Ruff format check
+        run: uvx ruff format --check .
