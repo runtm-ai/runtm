@@ -1,6 +1,6 @@
 [project]
 name = "runtm"
-version = "0.2.15"
+version = "0.2.16"
 description = "Sandboxes where AI agents build and deploy. Spin up isolated environments for Claude Code, Cursor, and other agents."
 readme = "README.md"
 license = { text = "Apache-2.0" }

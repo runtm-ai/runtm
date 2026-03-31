@@ -16,15 +16,11 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
 
-      - name: Build runtm-shared
-        working-directory: packages/shared
-        run: uv build
-
       - name: Build runtm (CLI)
         working-directory: packages/cli
         run: uv build
 
       - name: Publish to PyPI
-        run: uv publish packages/shared/dist/* packages/cli/dist/*
+        run: uv publish packages/cli/dist/*
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
