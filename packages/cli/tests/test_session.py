@@ -9,7 +9,15 @@ from unittest.mock import MagicMock, patch
 import pytest
 from typer.testing import CliRunner
 
-from runtm_shared.types import AgentType, Sandbox, SandboxConfig, SandboxState
+from runtm_shared.types import (
+    AgentType,
+    Sandbox,
+    SandboxConfig,
+    SandboxState,
+    Session,
+    SessionMode,
+    SessionState,
+)
 
 
 @pytest.fixture
@@ -41,7 +49,11 @@ class TestSessionStart:
         """Should create a new sandbox."""
         from runtm_cli.main import app
 
-        with patch("runtm_cli.commands.session.LocalSandboxProvider") as MockProvider:
+        with (
+            patch("runtm_cli.commands.session.LocalSandboxProvider") as MockProvider,
+            patch("runtm_cli.commands.session.SandboxStateStore"),
+            patch("runtm_cli.commands.session.ActiveSessionTracker"),
+        ):
             mock_provider = MagicMock()
             mock_sandbox = Sandbox(
                 id="sbx_test123",
@@ -54,9 +66,11 @@ class TestSessionStart:
             mock_provider.attach.return_value = 0
             MockProvider.return_value = mock_provider
 
-            # Mock deps check to pass
             with patch("runtm_cli.commands.session.ensure_sandbox_deps", return_value=True):
-                result = runner.invoke(app, ["session", "start", "--local"])
+                result = runner.invoke(
+                    app,
+                    ["session", "start", "--local", "--autopilot", "--agent", "claude-code"],
+                )
 
             assert result.exit_code == 0
             mock_provider.create.assert_called_once()
@@ -66,16 +80,23 @@ class TestSessionStart:
         from runtm_cli.main import app
 
         with patch("runtm_cli.commands.session.ensure_sandbox_deps", return_value=False):
-            result = runner.invoke(app, ["session", "start", "--local"])
+            result = runner.invoke(
+                app,
+                ["session", "start", "--local", "--autopilot", "--agent", "claude-code"],
+            )
 
         assert result.exit_code == 1
-        assert "dependencies" in result.output.lower() or "cannot" in result.output.lower()
+        assert "dependencies" in result.output.lower() or "missing" in result.output.lower()
 
     def test_start_with_template(self, runner, temp_sandboxes_dir) -> None:
         """Should pass template to provider."""
         from runtm_cli.main import app
 
-        with patch("runtm_cli.commands.session.LocalSandboxProvider") as MockProvider:
+        with (
+            patch("runtm_cli.commands.session.LocalSandboxProvider") as MockProvider,
+            patch("runtm_cli.commands.session.SandboxStateStore"),
+            patch("runtm_cli.commands.session.ActiveSessionTracker"),
+        ):
             mock_provider = MagicMock()
             mock_sandbox = Sandbox(
                 id="sbx_template",
@@ -90,7 +111,12 @@ class TestSessionStart:
 
             with patch("runtm_cli.commands.session.ensure_sandbox_deps", return_value=True):
                 result = runner.invoke(
-                    app, ["session", "start", "--local", "--template", "backend-service"]
+                    app,
+                    [
+                        "session", "start", "--local",
+                        "--autopilot", "--agent", "claude-code",
+                        "--template", "backend-service",
+                    ],
                 )
 
             assert result.exit_code == 0
@@ -102,7 +128,11 @@ class TestSessionStart:
         """Should pass agent type to provider."""
         from runtm_cli.main import app
 
-        with patch("runtm_cli.commands.session.LocalSandboxProvider") as MockProvider:
+        with (
+            patch("runtm_cli.commands.session.LocalSandboxProvider") as MockProvider,
+            patch("runtm_cli.commands.session.SandboxStateStore"),
+            patch("runtm_cli.commands.session.ActiveSessionTracker"),
+        ):
             mock_provider = MagicMock()
             mock_sandbox = Sandbox(
                 id="sbx_agent",
@@ -116,7 +146,10 @@ class TestSessionStart:
             MockProvider.return_value = mock_provider
 
             with patch("runtm_cli.commands.session.ensure_sandbox_deps", return_value=True):
-                result = runner.invoke(app, ["session", "start", "--local", "--agent", "codex"])
+                result = runner.invoke(
+                    app,
+                    ["session", "start", "--local", "--autopilot", "--agent", "codex"],
+                )
 
             assert result.exit_code == 0
             call_args = mock_provider.create.call_args
@@ -128,28 +161,34 @@ class TestSessionList:
     """Tests for session list command."""
 
     def test_list_shows_sandboxes(self, runner, temp_sandboxes_dir) -> None:
-        """Should list all sandboxes."""
+        """Should list all sessions."""
         from runtm_cli.main import app
 
-        with patch("runtm_cli.commands.session.LocalSandboxProvider") as MockProvider:
-            mock_provider = MagicMock()
-            mock_provider.list_sandboxes.return_value = [
-                Sandbox(
+        with (
+            patch("runtm_cli.commands.session.SandboxStateStore") as MockStateStore,
+            patch("runtm_cli.commands.session.ActiveSessionTracker") as MockTracker,
+        ):
+            mock_store = MagicMock()
+            mock_store.list_sessions.return_value = [
+                Session(
                     id="sbx_001",
-                    session_id="sbx_001",
-                    config=SandboxConfig(),
-                    state=SandboxState.RUNNING,
+                    mode=SessionMode.AUTOPILOT,
+                    state=SessionState.RUNNING,
+                    sandbox_id="sbx_001",
                     workspace_path="/tmp/ws1",
                 ),
-                Sandbox(
+                Session(
                     id="sbx_002",
-                    session_id="sbx_002",
-                    config=SandboxConfig(),
-                    state=SandboxState.STOPPED,
+                    mode=SessionMode.INTERACTIVE,
+                    state=SessionState.STOPPED,
+                    sandbox_id="sbx_002",
                     workspace_path="/tmp/ws2",
                 ),
             ]
-            MockProvider.return_value = mock_provider
+            MockStateStore.return_value = mock_store
+            mock_tracker = MagicMock()
+            mock_tracker.get_active.return_value = None
+            MockTracker.return_value = mock_tracker
 
             result = runner.invoke(app, ["session", "list"])
 
