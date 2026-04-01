@@ -54,9 +54,7 @@ def get_artifact_store(backend: str = "local", **kwargs) -> ArtifactStore:
 
     registered = ", ".join(sorted(_backend_registry)) if _backend_registry else ""
     available = f"local, {registered}" if registered else "local"
-    raise ValueError(
-        f"Unknown storage backend: '{backend}'. Available: {available}."
-    )
+    raise ValueError(f"Unknown storage backend: '{backend}'. Available: {available}.")
 
 
 __all__ = [

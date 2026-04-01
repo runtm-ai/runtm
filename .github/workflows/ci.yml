@@ -47,6 +47,8 @@ jobs:
           pip install -e packages/shared[dev]
           pip install -e packages/api[dev]
           pip install -e packages/worker[dev]
+          pip install -e packages/sandbox
+          pip install -e packages/agents
           pip install -e packages/cli[dev]
 
       - name: Run mypy on shared
@@ -143,6 +145,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e packages/shared[dev]
+          pip install -e packages/sandbox
+          pip install -e packages/agents
           pip install -e packages/cli[dev]
 
       - name: Run tests
