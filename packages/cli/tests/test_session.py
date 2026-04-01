@@ -113,9 +113,14 @@ class TestSessionStart:
                 result = runner.invoke(
                     app,
                     [
-                        "session", "start", "--local",
-                        "--autopilot", "--agent", "claude-code",
-                        "--template", "backend-service",
+                        "session",
+                        "start",
+                        "--local",
+                        "--autopilot",
+                        "--agent",
+                        "claude-code",
+                        "--template",
+                        "backend-service",
                     ],
                 )
 
