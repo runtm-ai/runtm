@@ -15,15 +15,14 @@ from pathlib import Path
 
 import pytest
 
-from runtm_shared.errors import ArtifactNotFoundError, StorageReadError, StorageWriteError
+from runtm_shared.errors import ArtifactNotFoundError, StorageWriteError
 from runtm_shared.storage import (
     ArtifactStore,
     LocalFileStore,
+    _backend_registry,
     get_artifact_store,
     register_backend,
 )
-from runtm_shared.storage import _backend_registry
-
 
 # ---------------------------------------------------------------------------
 # Fixture: clean registry between tests
@@ -116,7 +115,7 @@ class TestGetArtifactStore:
             get_artifact_store(backend="azure-blob")
 
     def test_unknown_backend_message_lists_available(self) -> None:
-        register_backend("mock", lambda **kw: None)  # type: ignore[arg-type]
+        register_backend("mock", lambda **_kw: None)  # type: ignore[arg-type]
         with pytest.raises(ValueError, match="mock"):
             get_artifact_store(backend="nope")
 
@@ -177,8 +176,8 @@ class TestRegisterBackend:
             def exists(self, key): return False
             def get_uri(self, key): return ""
 
-        register_backend("x", lambda **kw: StoreA())
-        register_backend("x", lambda **kw: StoreB())
+        register_backend("x", lambda **_kw: StoreA())
+        register_backend("x", lambda **_kw: StoreB())
 
         store = get_artifact_store(backend="x")
         assert isinstance(store, StoreB)
