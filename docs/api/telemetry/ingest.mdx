@@ -1,0 +1,147 @@
+---
+title: "Ingest Telemetry"
+api: "POST /v0/telemetry"
+description: "Send a batch of spans, events, and metrics"
+---
+
+Ingest a batch of telemetry data — spans, events, and/or metrics — in a single request. All three arrays are optional; include whichever data types you need.
+
+Requires `deploy` scope.
+
+## Headers
+
+<ParamField header="X-Service-Name" type="string">
+  Service name to associate with the batch (e.g., `my-api`, `frontend`)
+</ParamField>
+
+## Request Body
+
+<ParamField body="spans" type="array">
+  Array of span objects for distributed tracing:
+
+  | Field | Type | Required | Description |
+  |-------|------|----------|-------------|
+  | `trace_id` | string | Yes | Trace identifier (groups related spans) |
+  | `span_id` | string | Yes | Unique span identifier |
+  | `parent_span_id` | string | No | Parent span (for nested calls) |
+  | `name` | string | Yes | Span name (e.g., `HTTP GET /users`) |
+  | `status` | string | No | `unset`, `ok`, or `error` |
+  | `start_time_ns` | integer | Yes | Start time in nanoseconds since epoch |
+  | `end_time_ns` | integer | No | End time in nanoseconds since epoch |
+  | `attributes` | object | No | Key-value metadata |
+</ParamField>
+
+<ParamField body="events" type="array">
+  Array of event objects:
+
+  | Field | Type | Required | Description |
+  |-------|------|----------|-------------|
+  | `name` | string | Yes | Event name (e.g., `deploy.completed`) |
+  | `timestamp_ns` | integer | No | Timestamp in nanoseconds since epoch |
+  | `attributes` | object | No | Key-value metadata |
+  | `trace_id` | string | No | Associate with a trace |
+  | `span_id` | string | No | Associate with a span |
+</ParamField>
+
+<ParamField body="metrics" type="array">
+  Array of metric objects:
+
+  | Field | Type | Required | Description |
+  |-------|------|----------|-------------|
+  | `name` | string | Yes | Metric name (e.g., `http.request.duration`) |
+  | `value` | number | Yes | Metric value |
+  | `metric_type` | string | No | `counter` (default), `gauge`, or `histogram` |
+  | `labels` | object | No | Key-value labels for filtering |
+  | `timestamp_ns` | integer | No | Timestamp in nanoseconds since epoch |
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/v0/telemetry" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -H "X-Service-Name: my-api" \
+  -d '{
+    "spans": [
+      {
+        "trace_id": "abc123",
+        "span_id": "span001",
+        "name": "HTTP GET /users",
+        "status": "ok",
+        "start_time_ns": 1705312200000000000,
+        "end_time_ns": 1705312200050000000,
+        "attributes": {"http.method": "GET", "http.status_code": 200}
+      }
+    ],
+    "events": [
+      {
+        "name": "deploy.completed",
+        "timestamp_ns": 1705312200000000000,
+        "attributes": {"deployment_id": "dep_abc123", "version": 3}
+      }
+    ],
+    "metrics": [
+      {
+        "name": "http.request.duration",
+        "value": 50.5,
+        "metric_type": "gauge",
+        "labels": {"endpoint": "/users", "method": "GET"}
+      }
+    ]
+  }'
+```
+
+```python Python
+import requests
+import time
+
+ns = int(time.time() * 1e9)
+
+response = requests.post(
+    "https://app.runtm.com/api/v0/telemetry",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Service-Name": "my-api",
+    },
+    json={
+        "spans": [
+            {
+                "trace_id": "abc123",
+                "span_id": "span001",
+                "name": "HTTP GET /users",
+                "status": "ok",
+                "start_time_ns": ns,
+                "end_time_ns": ns + 50_000_000,
+            }
+        ],
+        "metrics": [
+            {
+                "name": "http.request.duration",
+                "value": 50.5,
+                "metric_type": "gauge",
+                "labels": {"endpoint": "/users"},
+            }
+        ],
+    },
+)
+
+print(f"Status: {response.status_code}")
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "accepted": true,
+  "spans_count": 1,
+  "events_count": 1,
+  "metrics_count": 1
+}
+```
+
+```json 400
+{
+  "detail": "Invalid span data: missing required field 'trace_id'"
+}
+```
+</ResponseExample>

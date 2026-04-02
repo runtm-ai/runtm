@@ -43,6 +43,11 @@
       "icon": "book-open"
     },
     {
+      "name": "Cloud Platform",
+      "url": "cloud",
+      "icon": "cloud"
+    },
+    {
       "name": "API Reference",
       "url": "api",
       "icon": "code"
@@ -114,6 +119,17 @@
       ]
     },
     {
+      "group": "Sessions",
+      "pages": [
+        "api/sessions/create",
+        "api/sessions/launch",
+        "api/sessions/get",
+        "api/sessions/prompt",
+        "api/sessions/git",
+        "api/sessions/delete"
+      ]
+    },
+    {
       "group": "Deployments",
       "pages": [
         "api/deployments/list",
@@ -121,6 +137,16 @@
         "api/deployments/get",
         "api/deployments/delete",
         "api/deployments/search"
+      ]
+    },
+    {
+      "group": "Telemetry",
+      "pages": [
+        "api/telemetry/overview",
+        "api/telemetry/ingest",
+        "api/telemetry/traces",
+        "api/telemetry/metrics",
+        "api/telemetry/events"
       ]
     },
     {
@@ -163,6 +189,15 @@
         "cli/domain",
         "cli/config",
         "cli/approve"
+      ]
+    },
+    {
+      "group": "Cloud Platform",
+      "pages": [
+        "cloud/overview",
+        "cloud/sandboxing",
+        "cloud/background-agents",
+        "cloud/telemetry"
       ]
     },
     {

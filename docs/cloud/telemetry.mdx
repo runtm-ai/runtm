@@ -1,0 +1,127 @@
+---
+title: Observability
+description: "Monitor your deployments with traces, metrics, and events"
+---
+
+Runtm Cloud collects telemetry data from your deployments automatically and exposes it through the Telemetry API. Use it to debug slow requests, monitor deployment health, and track usage patterns.
+
+## What Gets Tracked
+
+| Data Type | Collected From | Example |
+|-----------|---------------|---------|
+| **Traces** | HTTP requests, database queries, external calls | A request flowing through your API endpoint |
+| **Metrics** | Build times, response latency, error rates | Average response time over 7 days |
+| **Events** | Deploys, builds, configuration changes | `deploy.completed` with version and timing |
+
+## Querying Telemetry
+
+### Traces
+
+Find slow requests or debug errors by examining the full request flow:
+
+```bash
+# List recent traces
+curl -H "Authorization: Bearer runtm_xxx" \
+  "https://app.runtm.com/api/v0/telemetry/traces?limit=10"
+
+# Get a specific trace with all spans
+curl -H "Authorization: Bearer runtm_xxx" \
+  "https://app.runtm.com/api/v0/telemetry/traces/abc123"
+
+# Traces for a specific deployment
+curl -H "Authorization: Bearer runtm_xxx" \
+  "https://app.runtm.com/api/v0/telemetry/deployments/dep_abc123/traces"
+```
+
+### Metrics
+
+Monitor performance and health:
+
+```bash
+# Get a summary of the last 7 days
+curl -H "Authorization: Bearer runtm_xxx" \
+  "https://app.runtm.com/api/v0/telemetry/metrics/summary?days=7"
+
+# Query specific metrics
+curl -H "Authorization: Bearer runtm_xxx" \
+  "https://app.runtm.com/api/v0/telemetry/metrics?name=http.request.duration"
+```
+
+### Events
+
+Track deployment lifecycle events:
+
+```bash
+# Recent deploy events
+curl -H "Authorization: Bearer runtm_xxx" \
+  "https://app.runtm.com/api/v0/telemetry/events?name=deploy.completed"
+
+# Events for a deployment
+curl -H "Authorization: Bearer runtm_xxx" \
+  "https://app.runtm.com/api/v0/telemetry/events?deployment=dep_abc123"
+```
+
+## Sending Custom Telemetry
+
+You can send your own telemetry data from your deployed applications:
+
+```python
+import requests
+import time
+
+def send_telemetry(api_key, spans=None, events=None, metrics=None):
+    requests.post(
+        "https://app.runtm.com/api/v0/telemetry",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "X-Service-Name": "my-app",
+        },
+        json={
+            "spans": spans or [],
+            "events": events or [],
+            "metrics": metrics or [],
+        },
+    )
+
+# Track a custom event
+send_telemetry(
+    "runtm_xxx",
+    events=[{
+        "name": "user.signup",
+        "timestamp_ns": int(time.time() * 1e9),
+        "attributes": {"plan": "pro", "source": "landing_page"},
+    }],
+)
+
+# Record a performance metric
+send_telemetry(
+    "runtm_xxx",
+    metrics=[{
+        "name": "api.response_time",
+        "value": 120.5,
+        "metric_type": "gauge",
+        "labels": {"endpoint": "/api/users"},
+    }],
+)
+```
+
+## Dashboard
+
+The Runtm dashboard at [app.runtm.com](https://app.runtm.com) displays telemetry data with:
+
+- **Deploy timeline** — history of all deployments with build/deploy times
+- **Metrics summary** — success rates, average build times, costs
+- **Event feed** — real-time stream of deployment events
+
+## API Reference
+
+| Endpoint | Description |
+|----------|-------------|
+| [POST /v0/telemetry](/api/telemetry/ingest) | Ingest telemetry batch |
+| [GET /v0/telemetry/traces](/api/telemetry/traces) | List and get traces |
+| [GET /v0/telemetry/metrics](/api/telemetry/metrics) | Query metrics and summaries |
+| [GET /v0/telemetry/events](/api/telemetry/events) | List events |
+
+<Info>
+Telemetry data is retained for 90 days. For longer retention, export data using the API.
+</Info>

@@ -1,0 +1,182 @@
+---
+title: Background Agents
+description: "Launch autonomous coding agents via the API"
+---
+
+Background agents let you programmatically launch coding tasks. Send a prompt, get a session ID, and poll for results. The agent works autonomously in an isolated sandbox.
+
+## Quick Start
+
+### 1. Get an API key
+
+Create an API key with `sessions` scope at [app.runtm.com](https://app.runtm.com) or via CLI:
+
+```bash
+runtm login
+```
+
+### 2. Launch an agent
+
+```bash
+curl -X POST "https://app.runtm.com/api/v0/sessions/launch" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Build a FastAPI REST API with CRUD endpoints for a todo list. Use SQLite for storage. Include tests.",
+    "agent": "claude-code",
+    "template": "backend-service",
+    "on_complete": "pause",
+    "ttl_minutes": 30
+  }'
+```
+
+Response:
+```json
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "state": "provisioning",
+  "message": "Agent launched. Poll GET /api/v0/sessions/{id} for status."
+}
+```
+
+### 3. Poll for completion
+
+```bash
+curl -H "Authorization: Bearer runtm_xxx" \
+  "https://app.runtm.com/api/v0/sessions/a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+```
+
+Check `last_prompt.status`:
+- `running` — agent is still working
+- `completed` — done, check `last_prompt.summary`
+- `error` — failed, check `last_prompt.error`
+- `timed_out` — exceeded `prompt_timeout_minutes`
+
+### 4. Send follow-up prompts
+
+After the first prompt completes, send another:
+
+```bash
+curl -X POST "https://app.runtm.com/api/v0/sessions/a1b2c3d4-e5f6-7890-abcd-ef1234567890/prompt" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Add pagination to the list endpoint"}'
+```
+
+### 5. Create a PR from the result
+
+```bash
+curl -X POST "https://app.runtm.com/api/v0/sessions/a1b2c3d4-e5f6-7890-abcd-ef1234567890/git" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "operation": "create_branch_and_pr",
+    "branch": "feat/todo-api",
+    "pr_title": "feat: Add todo API with CRUD endpoints",
+    "pr_body": "Built by background agent"
+  }'
+```
+
+### 6. Clean up
+
+```bash
+curl -X DELETE "https://app.runtm.com/api/v0/sessions/a1b2c3d4-e5f6-7890-abcd-ef1234567890" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+## Full Python Example
+
+```python
+import requests
+import time
+
+API_KEY = "runtm_xxx"
+BASE = "https://app.runtm.com/api/v0/sessions"
+HEADERS = {"Authorization": f"Bearer {API_KEY}"}
+
+
+def launch_agent(prompt, template="backend-service", ttl=30):
+    """Launch a background agent and wait for completion."""
+    # Launch
+    resp = requests.post(
+        f"{BASE}/launch",
+        headers=HEADERS,
+        json={
+            "prompt": prompt,
+            "template": template,
+            "agent": "claude-code",
+            "on_complete": "keep_alive",
+            "ttl_minutes": ttl,
+        },
+    )
+    resp.raise_for_status()
+    session_id = resp.json()["id"]
+    print(f"Launched: {session_id}")
+
+    # Poll
+    while True:
+        status = requests.get(
+            f"{BASE}/{session_id}", headers=HEADERS
+        ).json()
+        prompt_status = (status.get("last_prompt") or {}).get("status", "idle")
+
+        if prompt_status in ("completed", "error", "timed_out"):
+            return status
+        
+        print(f"  Status: {prompt_status}...")
+        time.sleep(5)
+
+
+# Run it
+result = launch_agent("Build a REST API for a bookstore with search and pagination")
+prompt = result["last_prompt"]
+
+print(f"\nDone! Status: {prompt['status']}")
+print(f"Cost: ${result['total_cost_usd']:.4f}")
+print(f"Summary: {prompt.get('summary', 'N/A')[:200]}")
+```
+
+## Lifecycle Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `on_complete` | `pause` | What happens after the prompt: `pause`, `destroy`, or `keep_alive` |
+| `ttl_minutes` | `60` | Max session lifetime (1-1440 min) |
+| `prompt_timeout_minutes` | `15` | Max time for a single prompt (1-120 min) |
+| `mode` | `autopilot` | `autopilot` (auto-approve) or `interactive` |
+| `plan_mode` | `false` | Read-only analysis (no code changes) |
+
+## Plan Mode
+
+Set `plan_mode: true` to have the agent analyze code without making changes. Useful for:
+
+- Code review
+- Architecture analysis
+- Security audits
+- Understanding unfamiliar codebases
+
+```bash
+curl -X POST "https://app.runtm.com/api/v0/sessions/launch" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Review this codebase for security vulnerabilities and suggest fixes",
+    "plan_mode": true,
+    "on_complete": "keep_alive"
+  }'
+```
+
+<Tip>
+Plan mode automatically sets `on_complete` to `keep_alive` so you can send follow-up prompts after reviewing the analysis.
+</Tip>
+
+## API Reference
+
+| Endpoint | Description |
+|----------|-------------|
+| [POST /v0/sessions/launch](/api/sessions/launch) | Launch background agent |
+| [POST /v0/sessions](/api/sessions/create) | Create session without prompt |
+| [GET /v0/sessions/{id}](/api/sessions/get) | Poll session status |
+| [POST /v0/sessions/{id}/prompt](/api/sessions/prompt) | Send follow-up prompt |
+| [POST /v0/sessions/{id}/git](/api/sessions/git) | Git operations |
+| [DELETE /v0/sessions/{id}](/api/sessions/delete) | Destroy session |

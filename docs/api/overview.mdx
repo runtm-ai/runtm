@@ -33,12 +33,24 @@ API keys have specific permissions:
 
 | Scope | Permissions |
 |-------|-------------|
-| `read` | List deployments, view logs, check status |
-| `deploy` | Create/update deployments (includes `read`) |
+| `read` | List deployments, view logs, query telemetry |
+| `deploy` | Create/update deployments, ingest telemetry (includes `read`) |
 | `delete` | Destroy deployments (includes `read`) |
+| `sessions` | Create/manage sandbox sessions, launch background agents |
 | `admin` | Full access including token management |
 
 ## Endpoints
+
+### Sessions (Cloud)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/v0/sessions` | [Create session](/api/sessions/create) |
+| `POST` | `/v0/sessions/launch` | [Launch background agent](/api/sessions/launch) |
+| `GET` | `/v0/sessions/{id}` | [Get session / poll status](/api/sessions/get) |
+| `POST` | `/v0/sessions/{id}/prompt` | [Send prompt (SSE)](/api/sessions/prompt) |
+| `POST` | `/v0/sessions/{id}/git` | [Git operations](/api/sessions/git) |
+| `DELETE` | `/v0/sessions/{id}` | [Delete session](/api/sessions/delete) |
 
 ### Deployments
 
@@ -49,6 +61,18 @@ API keys have specific permissions:
 | `GET` | `/v0/deployments/{id}` | [Get deployment](/api/deployments/get) |
 | `DELETE` | `/v0/deployments/{id}` | [Delete deployment](/api/deployments/delete) |
 | `GET` | `/v0/deployments/search` | [Search deployments](/api/deployments/search) |
+
+### Telemetry
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/v0/telemetry` | [Ingest batch](/api/telemetry/ingest) |
+| `GET` | `/v0/telemetry/traces` | [List traces](/api/telemetry/traces) |
+| `GET` | `/v0/telemetry/traces/{trace_id}` | [Get trace](/api/telemetry/traces) |
+| `GET` | `/v0/telemetry/deployments/{id}/traces` | [Deployment traces](/api/telemetry/traces) |
+| `GET` | `/v0/telemetry/metrics` | [List metrics](/api/telemetry/metrics) |
+| `GET` | `/v0/telemetry/metrics/summary` | [Metrics summary](/api/telemetry/metrics) |
+| `GET` | `/v0/telemetry/events` | [List events](/api/telemetry/events) |
 
 ### Logs
 
@@ -126,9 +150,13 @@ If the same key is used again, the API returns the existing deployment instead o
     ```bash
     pip install runtm
     ```
-    Use the CLI module programmatically
+    Use the CLI module programmatically or call the REST API with `requests`
   </Card>
   <Card title="HTTP Client" icon="globe">
-    Use any HTTP client with the REST API
+    Use any HTTP client — `curl`, `fetch`, `axios`, etc.
   </Card>
 </CardGroup>
+
+## Cloud Platform
+
+The hosted platform at [app.runtm.com](https://app.runtm.com) adds sandbox sessions, background agents, and telemetry on top of the core deployment API. See the [Cloud Platform docs](/cloud/overview) for details.

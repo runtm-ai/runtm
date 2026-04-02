@@ -87,9 +87,36 @@ runtm logs dep_abc123xyz --type runtime
 
 Your agent can use these logs to debug and fix issues.
 
+## Quick Start via API
+
+Prefer to use the API directly? Launch a background agent with a single request:
+
+```bash
+curl -X POST "https://app.runtm.com/api/v0/sessions/launch" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Build a REST API with health check and CRUD endpoints",
+    "template": "backend-service",
+    "agent": "claude-code"
+  }'
+```
+
+Then poll for results:
+
+```bash
+curl -H "Authorization: Bearer runtm_xxx" \
+  "https://app.runtm.com/api/v0/sessions/{session_id}"
+```
+
+See the [Background Agents guide](/cloud/background-agents) for the full walkthrough.
+
 ## Next steps
 
 <CardGroup cols={2}>
+  <Card title="Background agents" icon="robot" href="/cloud/background-agents">
+    Launch agents via API
+  </Card>
   <Card title="Enable database" icon="database" href="/features/database">
     Persistent SQLite storage
   </Card>
@@ -98,6 +125,9 @@ Your agent can use these logs to debug and fix issues.
   </Card>
   <Card title="Machine tiers" icon="microchip" href="/features/machine-tiers">
     Scale resources
+  </Card>
+  <Card title="Cloud Platform" icon="cloud" href="/cloud/overview">
+    Sandboxing, telemetry, teams
   </Card>
   <Card title="CLI reference" icon="terminal" href="/cli/overview">
     All commands

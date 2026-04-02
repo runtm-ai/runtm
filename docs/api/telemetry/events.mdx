@@ -1,0 +1,82 @@
+---
+title: "Events"
+api: "GET /v0/telemetry/events"
+description: "Query telemetry events from your deployments"
+---
+
+List telemetry events — timestamped occurrences like deploy completions, errors, or configuration changes.
+
+Requires `read` scope.
+
+## Query Parameters
+
+<ParamField query="name" type="string">
+  Filter by event name (e.g., `deploy.completed`, `build.failed`)
+</ParamField>
+
+<ParamField query="deployment" type="string">
+  Filter by deployment ID
+</ParamField>
+
+<ParamField query="limit" type="integer" default="100">
+  Maximum results (1–500)
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -H "Authorization: Bearer runtm_xxx" \
+  "https://app.runtm.com/api/v0/telemetry/events?name=deploy.completed&limit=20"
+```
+
+```bash cURL — Filter by deployment
+curl -H "Authorization: Bearer runtm_xxx" \
+  "https://app.runtm.com/api/v0/telemetry/events?deployment=dep_abc123"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/v0/telemetry/events",
+    headers={"Authorization": "Bearer runtm_xxx"},
+    params={"name": "deploy.completed", "limit": 20},
+)
+
+for event in response.json().get("events", []):
+    print(f"[{event['timestamp']}] {event['name']}: {event['attributes']}")
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "events": [
+    {
+      "name": "deploy.completed",
+      "timestamp": "2025-01-15T10:32:15Z",
+      "attributes": {
+        "deployment_id": "dep_abc123",
+        "version": 3,
+        "build_time_seconds": 42,
+        "template": "backend-service"
+      },
+      "trace_id": "abc123",
+      "span_id": null
+    },
+    {
+      "name": "deploy.completed",
+      "timestamp": "2025-01-15T09:15:00Z",
+      "attributes": {
+        "deployment_id": "dep_xyz789",
+        "version": 1,
+        "build_time_seconds": 68,
+        "template": "web-app"
+      },
+      "trace_id": "xyz789",
+      "span_id": null
+    }
+  ],
+  "total": 2
+}
+```
+</ResponseExample>
