@@ -1,0 +1,16 @@
+# Runtm reverse proxy with automatic HTTPS.
+#
+# RUNTM_DOMAIN controls the domain Caddy listens on:
+#   - "localhost"          -> self-signed cert for local testing
+#   - "runtm.example.com" -> automatic Let's Encrypt certificate
+#
+# Caddy handles TLS termination and forwards plain HTTP to the API.
+
+{$RUNTM_DOMAIN:localhost} {
+	reverse_proxy api:8000
+
+	log {
+		output stdout
+		format console
+	}
+}

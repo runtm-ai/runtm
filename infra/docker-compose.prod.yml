@@ -1,0 +1,85 @@
+# Production self-hosting compose.
+#
+# Expects managed Postgres and Redis -- does NOT start local instances.
+# TLS is handled by Caddy with automatic Let's Encrypt certificates.
+#
+# Required env vars (see local.env.prod.example):
+#   DATABASE_URL, REDIS_URL, RUNTM_API_SECRET, RUNTM_DOMAIN
+#
+# Usage:
+#   cp infra/local.env.prod.example .env.prod
+#   # edit .env.prod with your values
+#   docker compose -f infra/docker-compose.prod.yml --env-file .env.prod up -d
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"   # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - RUNTM_DOMAIN=${RUNTM_DOMAIN:?Set RUNTM_DOMAIN in .env.prod}
+    depends_on:
+      api:
+        condition: service_healthy
+
+  api:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.api
+    restart: unless-stopped
+    # Do NOT expose 8000 externally -- Caddy is the only public entry point.
+    expose:
+      - "8000"
+    env_file:
+      - ../.env.prod
+    environment:
+      - DATABASE_URL=${DATABASE_URL:?Set DATABASE_URL in .env.prod}
+      - REDIS_URL=${REDIS_URL:?Set REDIS_URL in .env.prod}
+      - API_SECRET=${RUNTM_API_SECRET:?Set RUNTM_API_SECRET in .env.prod}
+      - ARTIFACT_STORAGE_PATH=/artifacts
+      - ARTIFACT_STORAGE_BACKEND=${ARTIFACT_STORAGE_BACKEND:-local}
+      - AUTH_MODE=${AUTH_MODE:-single_tenant}
+      - DEPLOY_PROVIDER=${DEPLOY_PROVIDER:-fly}
+      - DEBUG=false
+    volumes:
+      - artifacts:/artifacts
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.worker
+    restart: unless-stopped
+    env_file:
+      - ../.env.prod
+    environment:
+      - DATABASE_URL=${DATABASE_URL:?Set DATABASE_URL in .env.prod}
+      - REDIS_URL=${REDIS_URL:?Set REDIS_URL in .env.prod}
+      - API_SECRET=${RUNTM_API_SECRET:?Set RUNTM_API_SECRET in .env.prod}
+      - FLY_ORG=${FLY_ORG:-personal}
+      - ARTIFACT_STORAGE_PATH=/artifacts
+      - ARTIFACT_STORAGE_BACKEND=${ARTIFACT_STORAGE_BACKEND:-local}
+      - DEPLOY_PROVIDER=${DEPLOY_PROVIDER:-fly}
+      - USE_REMOTE_BUILDER=true
+      - DEBUG=false
+    volumes:
+      - artifacts:/artifacts
+
+volumes:
+  artifacts:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local

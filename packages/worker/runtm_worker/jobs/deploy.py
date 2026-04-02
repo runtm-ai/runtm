@@ -77,6 +77,7 @@ class DeployJob:
         secrets: dict | None = None,
         config_only: bool = False,
         allow_local_builds: bool | None = None,
+        deploy_provider: str | None = None,
     ):
         """Initialize deploy job.
 
@@ -89,6 +90,8 @@ class DeployJob:
             secrets: Secrets to inject (passed through to provider, never stored)
             config_only: Skip Docker build and reuse previous image
             allow_local_builds: Explicit override for local builds (dev only)
+            deploy_provider: Provider name ("local" or "fly"). Defaults to
+                DEPLOY_PROVIDER env var, falling back to "local".
         """
         self.db = db
         self.storage = storage
@@ -97,6 +100,9 @@ class DeployJob:
         self.use_remote_builder = use_remote_builder
         self.secrets = secrets or {}
         self.config_only = config_only
+        self.deploy_provider = (
+            deploy_provider or os.environ.get("DEPLOY_PROVIDER", "local")
+        ).lower()
         # SECURITY: Allow local builds only with explicit opt-in
         if allow_local_builds is None:
             self.allow_local_builds = os.environ.get("ALLOW_LOCAL_BUILDS", "").lower() == "true"
@@ -162,19 +168,27 @@ class DeployJob:
 
         self.db.commit()
 
-    def _save_provider_resource(self, deployment, resource, image_label: str | None = None) -> None:
+    def _save_provider_resource(
+        self,
+        deployment,
+        resource,
+        image_label: str | None = None,
+        provider_name: str = "fly",
+    ) -> None:
         """Save provider resource mapping to DB.
 
         Args:
             deployment: Deployment record
             resource: ProviderResource from deploy
             image_label: Optional image label for rollbacks/reuse
+            provider_name: Provider identifier stored in DB (default "fly"
+                for backward compatibility; "local" for local deploys)
         """
         from runtm_api.db.models import ProviderResource as ProviderResourceModel
 
         pr = ProviderResourceModel(
             deployment_id=deployment.id,
-            provider="fly",
+            provider=provider_name,
             app_name=resource.app_name,
             machine_id=resource.machine_id,
             region=resource.region,
@@ -470,6 +484,144 @@ class DeployJob:
 
         return True
 
+    def _run_local(
+        self,
+        deployment,
+        deployment_id: str,
+        manifest: Manifest,
+        is_redeployment: bool,
+        previous_resource,
+    ) -> bool:
+        """Run the deploy pipeline using the local Docker provider.
+
+        Builds the image locally (no registry push) and deploys it as a
+        Docker container on the host via LocalProvider.
+        """
+        _artifact_path_to_cleanup = None
+
+        try:
+            # === BUILD PHASE ===
+            self._transition_state(deployment, DeploymentState.BUILDING)
+
+            with LogCapture(self.db, str(deployment.id), LogType.BUILD) as build_log:
+                build_log.write(f"Processing deployment (local): {deployment_id}")
+                build_log.write(f"Name: {manifest.name}")
+
+                artifact_path = self.storage.get_path(deployment.artifact_key)
+                if not artifact_path.exists():
+                    raise BuildError(f"Artifact not found: {deployment.artifact_key}")
+
+                _artifact_path_to_cleanup = artifact_path
+
+                builder = DockerBuilder(
+                    registry="runtm-local",
+                    log_callback=build_log.write,
+                    use_remote_builder=False,
+                )
+
+                app_name = (
+                    previous_resource.app_name
+                    if is_redeployment and previous_resource
+                    else f"runtm-{deployment_id[:12]}".replace("_", "-")
+                )
+
+                build_result = builder.build_local_only(
+                    artifact_path=artifact_path,
+                    image_name=app_name,
+                    deployment_id=deployment_id,
+                )
+
+                if not build_result.success:
+                    raise BuildError(build_result.error or "Local build failed")
+
+                image_tag = build_result.image_tag
+                build_log.write(f"Built: {image_tag}")
+
+                if build_result.discovery_json:
+                    deployment.discovery_json = build_result.discovery_json
+                    self.db.commit()
+
+            # === DEPLOY PHASE ===
+            self._transition_state(deployment, DeploymentState.DEPLOYING)
+
+            with LogCapture(self.db, str(deployment.id), LogType.DEPLOY) as deploy_log:
+                if self.secrets:
+                    deploy_log.add_redact_values(self.secrets)
+
+                from runtm_worker.providers.factory import get_provider
+
+                provider = get_provider("local")
+
+                machine_tier = manifest.get_machine_tier()
+                tier_spec = get_tier_spec(machine_tier)
+                deploy_log.write(f"Machine tier: {tier_spec.description}")
+
+                env = dict(self.secrets) if self.secrets else {}
+                config = MachineConfig.from_tier(
+                    tier=machine_tier,
+                    image=image_tag,
+                    health_check_path=manifest.health_path,
+                    internal_port=manifest.port,
+                    env=env,
+                )
+
+                if is_redeployment and previous_resource:
+                    deploy_log.write(
+                        f"Redeploying to existing container: {previous_resource.app_name}"
+                    )
+                    result = provider.redeploy(previous_resource, config)
+                else:
+                    deploy_log.write("Deploying to local Docker container...")
+                    result = provider.deploy(deployment_id, config)
+
+                deploy_log.write_lines(result.logs.split("\n"))
+
+                if not result.success:
+                    raise BuildError(result.error or "Local deploy failed")
+
+                self._save_provider_resource(
+                    deployment,
+                    result.resource,
+                    build_result.image_label,
+                    provider_name="local",
+                )
+                deploy_log.write(f"Provider resource saved: {result.resource.app_name}")
+
+                deploy_log.write("Checking health...")
+                healthy = provider.health_check(
+                    result.resource,
+                    path=manifest.health_path,
+                    timeout_seconds=60,
+                )
+                if healthy:
+                    deploy_log.write("Health check passed!")
+                else:
+                    deploy_log.write("Warning: health check did not pass within 60 s")
+
+                deploy_log.write(f"URL: {result.resource.url}")
+
+            self._transition_state(
+                deployment,
+                DeploymentState.READY,
+                url=result.resource.url,
+            )
+            return True
+
+        except Exception as e:
+            error_message = str(e)
+            if deployment:
+                with contextlib.suppress(DeploymentStateError):
+                    self._transition_state(
+                        deployment,
+                        DeploymentState.FAILED,
+                        error_message=error_message,
+                    )
+            return False
+
+        finally:
+            if _artifact_path_to_cleanup is not None:
+                self.storage.cleanup_path(_artifact_path_to_cleanup)
+
     def run(self, deployment_id: str) -> bool:
         """Run the deploy pipeline.
 
@@ -507,6 +659,16 @@ class DeployJob:
                 )
                 if previous_resource:
                     is_redeployment = True
+
+            # === LOCAL DEPLOY PATH ===
+            if self.deploy_provider == "local":
+                return self._run_local(
+                    deployment,
+                    deployment_id,
+                    manifest,
+                    is_redeployment,
+                    previous_resource,
+                )
 
             # === CONFIG-ONLY DEPLOY PATH ===
             # Skip build entirely and reuse previous image (for env var/tier changes)
@@ -918,6 +1080,8 @@ def process_deployment(
         s3_region=settings.s3_region,
     )
 
+    deploy_provider = os.environ.get("DEPLOY_PROVIDER", "local")
+
     try:
         job = DeployJob(
             db=db,
@@ -927,6 +1091,7 @@ def process_deployment(
             secrets=secrets,
             config_only=config_only,
             allow_local_builds=settings.allow_local_builds,
+            deploy_provider=deploy_provider,
         )
         return job.run(deployment_id)
     finally:
