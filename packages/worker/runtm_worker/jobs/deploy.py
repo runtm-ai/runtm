@@ -33,6 +33,7 @@ from runtm_worker.providers import FlyProvider
 
 logger = logging.getLogger(__name__)
 
+
 class DeployJob:
     """Main deploy job that orchestrates the build/deploy pipeline.
 
@@ -368,10 +369,7 @@ class DeployJob:
                 # can be delayed or fail entirely.
                 if domain_info and domain_info.dns_records:
                     for record in domain_info.dns_records:
-                        if (
-                            record.record_type == "CNAME"
-                            and "_acme-challenge" in record.name
-                        ):
+                        if record.record_type == "CNAME" and "_acme-challenge" in record.name:
                             acme_subdomain = record.name
                             if acme_subdomain.endswith(f".{base_domain}"):
                                 acme_subdomain = acme_subdomain[: -len(f".{base_domain}")]
@@ -907,6 +905,7 @@ def process_deployment(
     from runtm_api.core.config import get_settings
     from runtm_api.db import create_session
     from runtm_shared.storage import get_artifact_store
+
     print(f"process deployment job {deployment_id}")
     settings = get_settings()
     db = create_session()
