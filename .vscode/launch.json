@@ -1,0 +1,39 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: Current File with Arguments",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": "${command:pickArgs}"
+        },
+        {
+            "name": "Debug: test_process_deployment",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "module": "pytest",
+            "args": [
+                "packages/worker/tests/test_process_deployment.py",
+                "-s",
+                "-v"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "envFile": "${workspaceFolder}/.env.local",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}:${workspaceFolder}/../runtm-cloud:${workspaceFolder}/packages/api:${workspaceFolder}/packages/shared:${workspaceFolder}/packages/worker"
+            },
+            "justMyCode": false
+        }
+    ]
+}

@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.17] - 2026-04-02
+
+### Fixed
+
+- **Worker**: Removed Depot builder and always use BuildKit for remote builds
+  - Depot requires mTLS / `DEPOT_TOKEN` auth that is unavailable inside Fly worker machines, causing a consistent 5-minute timeout before falling back to BuildKit on every deploy
+  - BuildKit communicates through Fly's internal registry mirror and only needs `FLY_API_TOKEN`, which is already present on the worker machine
+
+### Changed
+
+- **Worker**: `LogCapture.write()` now prints each log line to stdout in real time
+  - Output format: `[build] [2026-04-02 19:51:15] <message>` / `[deploy] [2026-04-02 19:58:43] <message>`
+  - Enables live visibility of build and deploy progress via `fly logs`
+  - Uses `flush=True` to prevent buffering in containerised environments
+
+## [0.2.16] - 2026-04-02
+
+### Changed
+
+- **Worker**: Upgraded RQ to latest version and improved worker reliability
+  - Redis connection now uses keepalive and retry-on-timeout to handle flaky Fly Upstash 6PN connections
+  - Worker startup warms up the Redis connection before registering birth to prevent `MULTI/EXEC` transaction failures
+  - Auto-restart loop (up to 5 restarts) added to `start-worker.sh` for resilience against Redis connection drops
+- **Worker**: Added minimal HTTP health-check server on `:9111` so Fly bluegreen deploys correctly start worker machines
+
 ## [0.2.15] - 2026-02-23
 
 ### Fixed
@@ -155,7 +180,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Build/deploy timeouts
 - Secret redaction in logs
 
-[Unreleased]: https://github.com/runtm-ai/runtm/compare/v0.2.15...HEAD
+[Unreleased]: https://github.com/runtm-ai/runtm/compare/v0.2.17...HEAD
+[0.2.17]: https://github.com/runtm-ai/runtm/compare/v0.2.16...v0.2.17
+[0.2.16]: https://github.com/runtm-ai/runtm/compare/v0.2.15...v0.2.16
 [0.2.15]: https://github.com/runtm-ai/runtm/compare/v0.2.14...v0.2.15
 [0.2.14]: https://github.com/runtm-ai/runtm/compare/v0.2.13...v0.2.14
 [0.2.13]: https://github.com/runtm-ai/runtm/compare/v0.2.12...v0.2.13

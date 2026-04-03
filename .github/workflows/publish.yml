@@ -20,7 +20,15 @@ jobs:
         working-directory: packages/cli
         run: uv build
 
+      - name: Build runtm-worker
+        working-directory: packages/worker
+        run: uv build
+
+      - name: Build runtm-api
+        working-directory: packages/api
+        run: uv build
+
       - name: Publish to PyPI
-        run: uv publish packages/cli/dist/*
+        run: uv publish packages/cli/dist/* packages/worker/dist/* packages/api/dist/*
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
