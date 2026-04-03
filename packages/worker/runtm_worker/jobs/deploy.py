@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import concurrent.futures
 import contextlib
-import os
 import logging
+import os
+
 from sqlalchemy.orm import Session
 
 from runtm_shared import Manifest
@@ -16,6 +17,7 @@ from runtm_shared.errors import (
     DeployTimeoutError,
     HealthCheckError,
 )
+from runtm_shared.storage.base import ArtifactStore
 from runtm_shared.types import (
     DeploymentState,
     Limits,
@@ -28,7 +30,6 @@ from runtm_shared.urls import construct_deployment_url, get_subdomain_for_app
 from runtm_worker.builder import DockerBuilder
 from runtm_worker.logs import LogCapture
 from runtm_worker.providers import FlyProvider
-from runtm_shared.storage.base import ArtifactStore
 
 logger = logging.getLogger(__name__)
 
