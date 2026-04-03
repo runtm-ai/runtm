@@ -43,8 +43,8 @@ class DockerBuilder:
 
     Modes:
         Remote Builder (Default, Recommended):
-            - Uses flyctl deploy to build AND deploy in one step
-            - Builds on Fly's infrastructure (faster, no local Docker needed)
+            - Uses flyctl deploy --buildkit to build AND deploy in one step
+            - Builds on Fly's remote BuildKit infrastructure (no local Docker needed)
             - Auto-generates fly.toml with optimized health check settings
             - Returns deployed=True with URL when complete
 
@@ -54,8 +54,7 @@ class DockerBuilder:
             - Requires separate machine creation step
 
     Features:
-        - BuildKit enabled for parallel multi-stage builds
-        - Layer caching for faster rebuilds
+        - BuildKit for parallel multi-stage builds and layer caching
         - Auto-generated fly.toml with health checks and graceful shutdown
     """
 
@@ -253,40 +252,20 @@ kill_timeout = "30s"
                 "3m",
             ]
 
-            # Try Depot first (best layer caching), fall back to BuildKit
-            # --depot: Use Depot builder for faster builds with persistent cache
-            # --depot-scope org: Share cache across all apps in org (better hits)
-            depot_cmd = base_cmd + ["--depot", "--depot-scope", "org"]
-
-            self._log("Using Depot builder (org-scoped cache)...", logs)
+            # Use BuildKit directly — Depot requires mTLS/DEPOT_TOKEN auth that is
+            # unavailable inside Fly worker machines; it times out after 5 min before
+            # failing. BuildKit uses FLY_API_TOKEN through Fly's registry mirror and
+            # works reliably from within Fly machines.
+            self._log("Using BuildKit builder...", logs)
 
             result = subprocess.run(
-                depot_cmd,
+                base_cmd + ["--buildkit"],
                 cwd=str(context_path),
                 capture_output=True,
                 text=True,
                 timeout=timeout_seconds,
                 env=env,
             )
-
-            # Check if Depot failed - fall back to BuildKit
-            # NOTE: Only check for stalled message if build actually failed (returncode != 0)
-            # The "waiting for depot" string can appear in stderr even on successful builds
-            depot_failed = result.returncode != 0
-
-            if depot_failed:
-                self._log("Depot build failed, falling back to BuildKit...", logs)
-
-                # Fall back to BuildKit
-                buildkit_cmd = base_cmd + ["--buildkit"]
-                result = subprocess.run(
-                    buildkit_cmd,
-                    cwd=str(context_path),
-                    capture_output=True,
-                    text=True,
-                    timeout=timeout_seconds,
-                    env=env,
-                )
 
             # Log output
             if result.stdout:

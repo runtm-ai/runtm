@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
 from runtm_shared.types import LogType
+
+logger = logging.getLogger(__name__)
 
 
 def redact_secrets(message: str, secrets: set[str]) -> str:
@@ -103,6 +106,8 @@ class LogCapture:
         safe_message = redact_secrets(message, self.redact_values)
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         self.buffer.append(f"[{timestamp}] {safe_message}")
+        print(f"[{self.log_type.value}] {self.buffer[-1]}", flush=True)
+        logger.info("[%s] %s", self.log_type.value, safe_message)
 
     def write_lines(self, lines: list[str]) -> None:
         """Write multiple log lines.

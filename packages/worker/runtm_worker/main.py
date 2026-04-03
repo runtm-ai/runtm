@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import atexit
 import os
+import uuid
 
 # Ensure .env is loaded from project root before reading environment
 from runtm_shared.env import ensure_env_loaded  # noqa: F401
@@ -11,6 +12,7 @@ from runtm_shared.env import ensure_env_loaded  # noqa: F401
 ensure_env_loaded()
 
 from redis import Redis
+from redis.exceptions import ConnectionError as RedisConnectionError
 from rq import Queue, Worker
 
 from runtm_worker.jobs import process_deployment
@@ -18,9 +20,21 @@ from runtm_worker.telemetry import init_telemetry, shutdown_telemetry
 
 
 def get_redis_connection() -> Redis:
-    """Get Redis connection from environment."""
+    """Get Redis connection from environment.
+
+    Configures socket timeouts and retry to handle flaky Upstash/Fly 6PN
+    connections where the first attempt often gets "Connection closed by server".
+    """
     redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379")
-    return Redis.from_url(redis_url)
+    return Redis.from_url(
+        redis_url,
+        socket_connect_timeout=30,
+        socket_timeout=30,
+        socket_keepalive=True,
+        retry_on_timeout=True,
+        retry_on_error=[RedisConnectionError],
+        health_check_interval=30,
+    )
 
 
 def create_queue(redis_conn: Redis | None = None) -> Queue:
@@ -56,6 +70,27 @@ def enqueue_deployment(deployment_id: str) -> str:
     return job.id
 
 
+def _warm_redis(conn: Redis, max_attempts: int = 5) -> None:
+    """Warm up Redis connection with retries.
+
+    Fly Upstash Redis over 6PN often drops the first connection attempt
+    with "Connection closed by server". Warming up ensures the connection
+    is stable before RQ tries register_birth() with a MULTI/EXEC transaction.
+    """
+    import time
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            conn.ping()
+            print(f"Redis connection ready (attempt {attempt})")
+            return
+        except Exception as e:
+            print(f"Redis warmup attempt {attempt}/{max_attempts}: {e}")
+            if attempt < max_attempts:
+                time.sleep(2 * attempt)
+    raise RuntimeError(f"Redis not reachable after {max_attempts} attempts")
+
+
 def run_worker() -> None:
     """Run the worker process.
 
@@ -73,13 +108,14 @@ def run_worker() -> None:
     print(f"Telemetry initialized (sending to {api_url})")
 
     redis_conn = get_redis_connection()
+    _warm_redis(redis_conn)
     queue = create_queue(redis_conn)
 
     # Create and run worker
     worker = Worker(
         [queue],
         connection=redis_conn,
-        name=f"runtm-worker-{os.getpid()}",
+        name=f"runtm-worker-{uuid.uuid4().hex[:8]}",
     )
 
     print(f"Worker {worker.name} started, listening on queue: {queue.name}")

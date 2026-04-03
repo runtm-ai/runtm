@@ -29,7 +29,7 @@ dependencies = [
     "sqlalchemy>=2.0,<3.0",
     "psycopg2-binary>=2.9,<3.0",
     "redis>=4.5,<6.0",
-    "rq>=1.15,<2.0",
+    "rq>=2.3.2,<3.0",
     "httpx>=0.24,<1.0",
     "docker>=6.0,<8.0",
 ]

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import contextlib
+import logging
 import os
 
 from sqlalchemy.orm import Session
@@ -29,6 +30,8 @@ from runtm_shared.urls import construct_deployment_url, get_subdomain_for_app
 from runtm_worker.builder import DockerBuilder
 from runtm_worker.logs import LogCapture
 from runtm_worker.providers import FlyProvider
+
+logger = logging.getLogger(__name__)
 
 
 class DeployJob:
@@ -903,6 +906,7 @@ def process_deployment(
     from runtm_api.db import create_session
     from runtm_shared.storage import get_artifact_store
 
+    print(f"process deployment job {deployment_id}")
     settings = get_settings()
     db = create_session()
 
