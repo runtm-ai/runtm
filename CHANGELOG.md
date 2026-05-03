@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.18] - 2026-05-03
+
+### Fixed
+
+- **API**: Aligned DB connection pool config with cloud backend to fix recurring SSL connection drops
+  - Increased `pool_size` from 5 to 10 to match cloud backend capacity
+  - Added `pool_use_lifo=True` to prefer freshest connections, preventing PgBouncer stale SSL sessions
+  - Resolves `psycopg2.OperationalError: SSL connection has been closed unexpectedly` errors seen in production (Datadog issue `c8209896`)
+
 ## [0.2.17] - 2026-04-02
 
 ### Fixed
@@ -180,7 +189,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Build/deploy timeouts
 - Secret redaction in logs
 
-[Unreleased]: https://github.com/runtm-ai/runtm/compare/v0.2.17...HEAD
+[Unreleased]: https://github.com/runtm-ai/runtm/compare/v0.2.18...HEAD
+[0.2.18]: https://github.com/runtm-ai/runtm/compare/v0.2.17...v0.2.18
 [0.2.17]: https://github.com/runtm-ai/runtm/compare/v0.2.16...v0.2.17
 [0.2.16]: https://github.com/runtm-ai/runtm/compare/v0.2.15...v0.2.16
 [0.2.15]: https://github.com/runtm-ai/runtm/compare/v0.2.14...v0.2.15
