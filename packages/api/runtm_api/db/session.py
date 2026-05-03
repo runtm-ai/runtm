@@ -30,13 +30,14 @@ def get_engine():
         _engine = create_engine(
             settings.database_url,
             pool_pre_ping=True,
-            pool_size=5,
+            pool_size=10,
             max_overflow=10,
             pool_timeout=30,
             pool_recycle=1800,
+            pool_use_lifo=True,
             connect_args={"connect_timeout": 5},
         )
-        logger.info("Created SQLAlchemy engine (pool_size=5, max_overflow=10)")
+        logger.info("Created SQLAlchemy engine (pool_size=10, max_overflow=10, lifo=True)")
     return _engine
 
 
