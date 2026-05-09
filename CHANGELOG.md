@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.19] - 2026-05-09
+
+### Added
+
+- **Worker**: Persistent volume support in the remote builder deploy path
+  - `DockerBuilder.build_remote()` now generates `[[mounts]]` sections in `fly.toml` when manifest declares volumes
+  - Fly volumes are pre-created via the Machines API before `flyctl deploy` (idempotent — skips existing volumes in the same region)
+  - `DeployJob` parses `manifest.volumes` and passes `VolumeConfig` list through to both remote and local builder paths
+  - Enables end-to-end persistent storage: UI defines volumes → `runtm.yaml` → worker creates Fly volumes → `flyctl deploy` attaches them
+
 ## [0.2.18] - 2026-05-03
 
 ### Fixed
