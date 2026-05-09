@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import textwrap
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -117,7 +116,7 @@ class TestEnsureFlyVolumes:
         assert call_kwargs[1]["json"]["name"] == "data"
         assert call_kwargs[1]["json"]["size_gb"] == 1
         assert call_kwargs[1]["json"]["region"] == "iad"
-        assert any("Created volume" in l for l in logs)
+        assert any("Created volume" in line for line in logs)
 
     def test_skips_existing_volume(self) -> None:
         builder = DockerBuilder(use_remote_builder=True)
@@ -141,7 +140,7 @@ class TestEnsureFlyVolumes:
             )
 
         mock_post.assert_not_called()
-        assert any("already exists" in l for l in logs)
+        assert any("already exists" in line for line in logs)
 
     def test_handles_api_error_gracefully(self) -> None:
         builder = DockerBuilder(use_remote_builder=True)
@@ -167,7 +166,7 @@ class TestEnsureFlyVolumes:
                 logs=logs,
             )
 
-        assert any("Warning" in l for l in logs)
+        assert any("Warning" in line for line in logs)
 
 
 class TestBuildAndPushVolumes:
