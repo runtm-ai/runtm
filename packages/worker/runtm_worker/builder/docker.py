@@ -124,6 +124,7 @@ class DockerBuilder:
         internal_port: int = 3000,
         health_check_path: str = "/health",
         memory_mb: int = 256,
+        volumes: list | None = None,
     ) -> BuildResult:
         """Build AND deploy using Fly's remote builder (recommended).
 
@@ -137,6 +138,7 @@ class DockerBuilder:
         - Optimized health check settings (120s grace period for fullstack apps)
         - Auto-stop/auto-start for cost savings
         - Graceful shutdown (SIGTERM, 30s timeout)
+        - Persistent volume mounts (if volumes provided)
 
         Args:
             context_path: Path to build context (extracted artifact)
@@ -147,6 +149,7 @@ class DockerBuilder:
             internal_port: Internal port the app listens on (default 3000)
             health_check_path: Health check endpoint path (default /health)
             memory_mb: Memory in MB (determines VM size)
+            volumes: Persistent volume configs (VolumeConfig objects with name, path, size_gb)
 
         Returns:
             BuildResult with deployed=True and url if successful
@@ -225,7 +228,36 @@ memory = "{memory_str}"
 kill_signal = "SIGTERM"
 kill_timeout = "30s"
 """
+        # Append [[mounts]] sections for persistent volumes
+        vol_list = volumes or []
+        if vol_list:
+            for vol in vol_list:
+                fly_toml_content += f"""
+[[mounts]]
+source = "{vol.name}"
+destination = "{vol.path}"
+"""
+            self._log(
+                f"Added {len(vol_list)} volume mount(s) to fly.toml: "
+                + ", ".join(f"{v.name}:{v.path}" for v in vol_list),
+                logs,
+            )
+
         fly_toml_path.write_text(fly_toml_content)
+
+        # Pre-create Fly volumes before deploy — flyctl deploy expects them to exist
+        if vol_list:
+            self._log("Creating Fly volumes...", logs)
+            try:
+                self._ensure_fly_volumes(
+                    app_name=app_name,
+                    volumes=vol_list,
+                    fly_api_token=fly_api_token,
+                    region="iad",
+                    logs=logs,
+                )
+            except Exception as e:
+                self._log(f"Warning: Volume creation issue: {e}", logs)
 
         try:
             # Set up environment for flyctl
@@ -323,6 +355,82 @@ kill_timeout = "30s"
                 error=str(e),
                 logs=logs,
             )
+
+    def _ensure_fly_volumes(
+        self,
+        app_name: str,
+        volumes: list,
+        fly_api_token: str,
+        region: str,
+        logs: list[str],
+    ) -> None:
+        """Create Fly volumes if they don't already exist (idempotent).
+
+        Uses the Fly Machines API directly to create volumes before
+        flyctl deploy attaches them via [[mounts]].
+
+        Args:
+            app_name: Fly app name
+            volumes: VolumeConfig objects (name, path, size_gb)
+            fly_api_token: Fly API token
+            region: Fly region
+            logs: Log buffer
+        """
+        import httpx
+
+        api_base = "https://api.machines.dev/v1"
+        headers = {
+            "Authorization": f"Bearer {fly_api_token}",
+            "Content-Type": "application/json",
+        }
+
+        # List existing volumes
+        existing: dict[str, str] = {}
+        try:
+            resp = httpx.get(
+                f"{api_base}/apps/{app_name}/volumes",
+                headers=headers,
+                timeout=30.0,
+            )
+            if resp.status_code == 200:
+                for vol in resp.json():
+                    key = f"{vol.get('name')}:{vol.get('region')}"
+                    existing[key] = vol["id"]
+        except Exception as e:
+            self._log(f"Warning: Could not list existing volumes: {e}", logs)
+
+        for vol in volumes:
+            key = f"{vol.name}:{region}"
+            if key in existing:
+                self._log(f"Volume '{vol.name}' already exists in {region}", logs)
+                continue
+
+            try:
+                resp = httpx.post(
+                    f"{api_base}/apps/{app_name}/volumes",
+                    headers=headers,
+                    json={
+                        "name": vol.name,
+                        "region": region,
+                        "size_gb": vol.size_gb,
+                    },
+                    timeout=30.0,
+                )
+                if resp.status_code >= 400:
+                    error = resp.text
+                    try:
+                        error = resp.json().get("error", error)
+                    except Exception:
+                        pass
+                    self._log(f"Warning: Failed to create volume '{vol.name}': {error}", logs)
+                else:
+                    vol_id = resp.json().get("id", "unknown")
+                    self._log(
+                        f"Created volume '{vol.name}' ({vol.size_gb}GB) in {region}: {vol_id}",
+                        logs,
+                    )
+            except Exception as e:
+                self._log(f"Warning: Failed to create volume '{vol.name}': {e}", logs)
 
     def build(
         self,
@@ -490,6 +598,7 @@ kill_timeout = "30s"
         internal_port: int = 3000,
         health_check_path: str = "/health",
         memory_mb: int = 256,
+        volumes: list | None = None,
     ) -> BuildResult:
         """Build and deploy a Docker image from an artifact.
 
@@ -512,6 +621,7 @@ kill_timeout = "30s"
             internal_port: Internal port the app listens on (default 3000)
             health_check_path: Health check endpoint path (default /health)
             memory_mb: Memory in MB (determines VM size)
+            volumes: Persistent volume configs (VolumeConfig objects with name, path, size_gb)
 
         Returns:
             BuildResult with final status
@@ -566,6 +676,7 @@ kill_timeout = "30s"
                     internal_port=internal_port,
                     health_check_path=health_check_path,
                     memory_mb=memory_mb,
+                    volumes=volumes,
                 )
                 all_logs.extend(result.logs)
                 return BuildResult(

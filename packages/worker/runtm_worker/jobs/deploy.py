@@ -23,6 +23,7 @@ from runtm_shared.types import (
     Limits,
     LogType,
     MachineConfig,
+    VolumeConfig,
     can_transition,
     get_tier_spec,
 )
@@ -688,6 +689,18 @@ class DeployJob:
                 machine_tier = manifest.get_machine_tier()
                 tier_spec = get_tier_spec(machine_tier)
 
+                # Convert manifest volumes to VolumeConfig for the builder/provider
+                volume_configs: list[VolumeConfig] = []
+                if manifest.volumes:
+                    for vol in manifest.volumes:
+                        volume_configs.append(
+                            VolumeConfig(name=vol.name, path=vol.path, size_gb=vol.size_gb)
+                        )
+                    build_log.write(
+                        f"Manifest declares {len(volume_configs)} volume(s): "
+                        + ", ".join(f"{v.name}:{v.path}({v.size_gb}GB)" for v in volume_configs)
+                    )
+
                 # Build and push (or use remote builder which also deploys)
                 if self.use_remote_builder:
                     build_log.write("Using Fly remote builder (builds and deploys)...")
@@ -701,6 +714,7 @@ class DeployJob:
                     internal_port=manifest.port,
                     health_check_path=manifest.health_path,
                     memory_mb=tier_spec.memory_mb,
+                    volumes=volume_configs if volume_configs else None,
                 )
 
                 if not build_result.success:
@@ -802,6 +816,7 @@ class DeployJob:
                         image=image_tag,
                         health_check_path=manifest.health_path,
                         internal_port=manifest.port,
+                        volumes=volume_configs if volume_configs else None,
                     )
 
                     # Use redeployment info computed earlier (same as remote builder path)
