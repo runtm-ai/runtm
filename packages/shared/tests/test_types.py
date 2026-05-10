@@ -88,12 +88,12 @@ class TestLimits:
         assert Limits.MAX_ARTIFACT_SIZE_BYTES == 20 * 1024 * 1024
 
     def test_build_timeout(self) -> None:
-        """Build timeout should be 10 minutes."""
-        assert Limits.BUILD_TIMEOUT_SECONDS == 10 * 60
+        """Build timeout should be 15 minutes."""
+        assert Limits.BUILD_TIMEOUT_SECONDS == 15 * 60
 
     def test_deploy_timeout(self) -> None:
-        """Deploy timeout should be 5 minutes."""
-        assert Limits.DEPLOY_TIMEOUT_SECONDS == 5 * 60
+        """Deploy timeout should be 10 minutes."""
+        assert Limits.DEPLOY_TIMEOUT_SECONDS == 10 * 60
 
     def test_rate_limit(self) -> None:
         """Rate limit should be 10 deployments per hour."""
