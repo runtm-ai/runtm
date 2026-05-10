@@ -1,0 +1,78 @@
+---
+title: "WebSockets Overview"
+description: "Real-time communication via WebSockets"
+---
+
+The Runtime Cloud API uses WebSockets for three real-time channels: **terminal access**, **prompt streaming**, and **collaboration presence**. All three follow the same authentication pattern: exchange a short-lived token via REST, then connect over `wss://`.
+
+## Channels
+
+| Channel | Purpose | Capability | Required scope |
+|---------|---------|-----------|----------------|
+| [Terminal](/cloud-api/websockets/terminal) | Interactive shell access to the sandbox | `terminal` | `sessions:terminal` |
+| [Prompt](/cloud-api/websockets/prompt) | Stream prompts and agent output | `prompt` | `sessions:prompt` |
+| [Collaboration](/cloud-api/websockets/collaboration) | Presence tracking and cursor sharing | `collaborate` | `sessions:read` |
+
+## Token exchange flow
+
+WebSocket endpoints do not accept API keys directly. Instead, you exchange your API key for a short-lived WebSocket token:
+
+<Steps>
+  <Step title="Request a token">
+    Call the [Token Exchange](/cloud-api/websockets/token-exchange) endpoint with the desired capability:
+
+    ```bash
+    curl -X POST "https://app.runtm.com/api/sessions/ses_abc123/ws-token" \
+      -H "Authorization: Bearer runtm_sk_live_abc123..." \
+      -H "Content-Type: application/json" \
+      -d '{"capability": "terminal"}'
+    ```
+
+    The response contains a short-lived JWT:
+
+    ```json
+    {
+      "token": "eyJhbGciOiJIUzI1NiIs...",
+      "expires_at": "2026-05-09T21:05:00Z"
+    }
+    ```
+  </Step>
+
+  <Step title="Connect via WebSocket">
+    Pass the token as a query parameter when opening the WebSocket:
+
+    ```
+    wss://app.runtm.com/api/sessions/ses_abc123/terminal?token=eyJhbGciOiJIUzI1NiIs...
+    ```
+  </Step>
+
+  <Step title="Exchange messages">
+    Once connected, send and receive messages according to the channel's protocol. Each channel page documents its message format.
+  </Step>
+</Steps>
+
+## Connection lifecycle
+
+1. **Connect** — Open a WebSocket to the channel URL with a valid token.
+2. **Authenticate** — The server validates the token on connection. Invalid or expired tokens result in an immediate close with code `4001`.
+3. **Message flow** — Send and receive messages per the channel protocol.
+4. **Disconnect** — Either side can close the connection. The server closes idle connections after a timeout (varies by channel).
+
+## Reconnection
+
+Tokens are short-lived (typically 5 minutes). If the connection drops or the token expires:
+
+1. Request a new token via the [Token Exchange](/cloud-api/websockets/token-exchange) endpoint.
+2. Reconnect with the fresh token.
+
+Implement exponential backoff for reconnection attempts to avoid flooding the server during outages.
+
+## Error codes
+
+| WebSocket close code | Meaning |
+|---------------------|---------|
+| `4001` | Authentication failed — token is invalid or expired. |
+| `4003` | Forbidden — insufficient scope for this channel. |
+| `4004` | Session not found or not accessible. |
+| `4009` | Session is in an invalid state (e.g. paused or destroyed). |
+| `1011` | Unexpected server error. |

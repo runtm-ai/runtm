@@ -1,0 +1,161 @@
+---
+title: "Import Directives"
+api: "POST /agent-directives:import"
+description: "Import one or more directives from an external source (URL or GitHub repo)"
+---
+
+Imports one or more directives from an external source. Three source kinds are supported:
+
+* `github_repo` - scan a repository for skill candidates and import the selected ones (or all of them when `paths` is omitted).
+* `github_url` - import a single skill from a path inside a GitHub repo.
+* `url` - import a single directive from a generic URL.
+
+Optional `attach` and `publish` arguments make this a one-shot import-attach-publish pipeline so callers don't need to chain three calls.
+
+<Info>Required scope: `context:write`</Info>
+
+<Note>
+Agent directives are **organization-scoped**. The request must include `X-Organization-Id` (or use an org-scoped API key). For `github_repo`/`github_url` sources the org must have an active GitHub App installation that can read the target repo.
+</Note>
+
+## Body Parameters
+
+<ParamField body="source_kind" type="string" required>
+  One of `github_repo`, `github_url`, `url`.
+</ParamField>
+
+<ParamField body="uri" type="string" required>
+  The source URI:
+  - `github_repo`: `owner/name`
+  - `github_url`: full GitHub URL to the file
+  - `url`: any HTTP/HTTPS URL
+</ParamField>
+
+<ParamField body="ref" type="string">
+  Optional git ref (branch or tag) for `github_*` sources.
+</ParamField>
+
+<ParamField body="paths" type="array">
+  For `github_repo` only - restrict the import to these paths within the repo. If omitted, every discovered candidate is imported.
+</ParamField>
+
+<ParamField body="attach" type="object">
+  Attach the imported directives to specific repos in one call.
+  <Expandable title="ReplaceAttachmentsRequest">
+    <ResponseField name="repo_full_names" type="array">
+      List of `owner/name` strings.
+    </ResponseField>
+    <ResponseField name="applies_to_all" type="boolean">
+      If true, attach to every repo in the org instead of a specific list.
+    </ResponseField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="publish" type="boolean" default="false">
+  If true, publish each imported directive immediately after import (and after applying `attach`).
+</ParamField>
+
+## Headers
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization context.
+</ParamField>
+
+## Response
+
+<ResponseField name="directives" type="array">
+  The imported directives. Same canonical shape as [Get Directive](/cloud-api/integrations/agent-directives/get).
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/agent-directives:import" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_456" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source_kind": "github_repo",
+    "uri": "acme-corp/skills",
+    "ref": "main",
+    "paths": [".claude/skills/deploy-checks/SKILL.md"],
+    "attach": { "repo_full_names": ["acme-corp/backend"], "applies_to_all": false },
+    "publish": true
+  }'
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://app.runtm.com/api/agent-directives:import",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_456",
+    },
+    json={
+        "source_kind": "github_repo",
+        "uri": "acme-corp/skills",
+        "ref": "main",
+        "paths": [".claude/skills/deploy-checks/SKILL.md"],
+        "attach": {
+            "repo_full_names": ["acme-corp/backend"],
+            "applies_to_all": False,
+        },
+        "publish": True,
+    },
+)
+
+for d in response.json()["directives"]:
+    print(f"Imported {d['name']} v{d['version']}")
+```
+
+```javascript JavaScript
+const response = await fetch("https://app.runtm.com/api/agent-directives:import", {
+  method: "POST",
+  headers: {
+    "Authorization": "Bearer runtm_xxx",
+    "X-Organization-Id": "org_456",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    source_kind: "github_repo",
+    uri: "acme-corp/skills",
+    ref: "main",
+    paths: [".claude/skills/deploy-checks/SKILL.md"],
+    attach: { repo_full_names: ["acme-corp/backend"], applies_to_all: false },
+    publish: true,
+  }),
+});
+
+const data = await response.json();
+for (const d of data.directives) {
+  console.log(`Imported ${d.name} v${d.version}`);
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "directives": [
+    {
+      "id": "dir_aaa",
+      "type": "skill_v0",
+      "name": "deploy-checks",
+      "version": 1,
+      "is_published": true,
+      "content_kind": "inline",
+      "content_hash": "sha256:abc...",
+      "source": {
+        "kind": "github_repo",
+        "uri": "acme-corp/skills",
+        "ref": "main",
+        "commit_sha": "deadbeef",
+        "path": ".claude/skills/deploy-checks/SKILL.md"
+      },
+      "attachments": { "repos": ["acme-corp/backend"], "applies_to_all": false }
+    }
+  ]
+}
+```
+</ResponseExample>

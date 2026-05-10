@@ -1,0 +1,125 @@
+---
+title: "Check Deploy Permission"
+api: "GET /api/organizations/{org_id}/can-deploy"
+description: "Check whether the caller is allowed to deploy in the given organization, based on org policy and member role."
+---
+
+<Info>
+  Required scope: `deployments:read`
+</Info>
+
+Returns whether the caller is permitted to deploy in the given organization.
+The decision combines:
+
+- The caller's role in the organization (`owner`, `admin`, or `member`).
+- The org's `deployment` policy (configured via [Update Org Limits](/cloud-api/configuration/org-limits)).
+- Any explicit `user_grants` list in the policy.
+
+Owners are always allowed. For everyone else, the policy applies as
+described below.
+
+<Note>
+  Organization context is required. Set `X-Organization-Id` to the same org
+  ID as the path parameter, or use an org-scoped API key whose org ID
+  matches.
+</Note>
+
+## Decision Logic
+
+| Condition | Result |
+|-----------|--------|
+| Caller is the org `owner` | `allowed: true` |
+| Caller is in `deployment.user_grants` | `allowed: true` |
+| `deployment.mode` is `"all"` (or no policy set) | `allowed: true` |
+| `deployment.mode` is `"none"` | `allowed: false` |
+| `deployment.mode` is `"per_role"` and the caller's role is enabled in `deployment.roles` | `allowed: true` |
+| `deployment.mode` is `"per_role"` and the caller's role is disabled | `allowed: false` |
+| Caller is not a member of the org | `allowed: false` |
+
+## Path Parameters
+
+<ParamField path="org_id" type="string" required>
+  Organization ID to check. Must be the same org the API key is scoped to.
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  `Bearer <your_api_key>`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  Required when using a personal API key. Must match `org_id`.
+</ParamField>
+
+## Response
+
+<ResponseField name="allowed" type="boolean">
+  `true` if the caller may deploy in this organization, `false` otherwise.
+</ResponseField>
+
+<ResponseField name="reason" type="string">
+  Human-readable explanation when `allowed` is `false`. `null` on success.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "https://app.runtm.com/api/organizations/org_abc123/can-deploy" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/organizations/org_abc123/can-deploy",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+data = response.json()
+if not data["allowed"]:
+    print(f"Cannot deploy: {data['reason']}")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/organizations/org_abc123/can-deploy",
+  {
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  },
+);
+const data = await response.json();
+if (!data.allowed) {
+  console.warn(`Cannot deploy: ${data.reason}`);
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 (allowed)
+{
+  "allowed": true,
+  "reason": null
+}
+```
+
+```json 200 (denied)
+{
+  "allowed": false,
+  "reason": "Deployment is not enabled for members in this organization. Contact your admin for access."
+}
+```
+
+```json 200 (not a member)
+{
+  "allowed": false,
+  "reason": "You are not a member of this organization"
+}
+```
+</ResponseExample>

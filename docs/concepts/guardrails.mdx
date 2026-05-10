@@ -1,0 +1,212 @@
+---
+title: Guardrails
+description: "Allowlists, hooks, network rules, approvals, RBAC, and audit trails that govern agent behavior"
+---
+
+Guardrails let you set the rules your entire team operates under. They govern what agents can run, what they can access, and where they can deploy. Set guardrails once at the org level, and every [session](/concepts/sessions) and [agent](/concepts/agents) inherits them automatically.
+
+The dashboard's **Guardrails** page has six tabs, each controlling a different enforcement layer:
+
+| Tab | What it governs |
+|-----|----------------|
+| [Allowlists](#allowlists) | Which bash commands agents can run, need approval for, or are blocked from |
+| [Hooks](#hooks) | Event-driven scripts that fire before/after tool calls, prompts, and session lifecycle |
+| [Network](#network) | Which hosts and IP ranges the sandbox can reach on the network |
+| [Approvals](#approvals) | Human-in-the-loop gates for sensitive operations |
+| [RBAC](#rbac) | Role-based access control across the org |
+| [Audit](#audit) | Full record of what every agent and user did |
+
+## Allowlists
+
+Bash allowlists control what shell commands agents can execute. Each rule matches a command string with a shell-glob pattern and assigns one of three dispositions:
+
+| Kind | Behavior |
+|------|----------|
+| **Allow** | Command runs immediately without stopping for approval |
+| **Ask** | Agent must ask the user before running the command |
+| **Deny** | Command is blocked outright |
+
+Rules are evaluated in priority order: **deny** rules win first, then **ask**, then **allow**. Anything not matched by any rule falls through to the org-level default policy (which itself can be `allow`, `ask`, or `deny`).
+
+### Examples
+
+| Pattern | Kind | Purpose |
+|---------|------|---------|
+| `rm -rf /` | deny | Never wipe the system root |
+| `git push origin main` | ask | Production pushes require approval |
+| `git push origin *` | ask | All pushes need a second look |
+| `npm install *` | allow | Package installs are fine |
+| `docker run *` | deny | No container-in-container |
+| `curl *` | allow | Allow HTTP requests |
+
+### How enforcement works
+
+When a session boots, Runtime installs a Claude Code `PreToolUse` hook that intercepts every bash command before execution. The hook evaluates the command against the org's allowlist rules and either permits, blocks, or pauses for approval. This works at the VM level, not the application layer, so agents cannot bypass it.
+
+Rules can be scoped to all repos or specific ones, and personal or team scope.
+
+### API endpoints
+
+Allowlist rules use `type=allowlist_rule_v0`. See the [Skills API reference](/cloud-api/context/skills/list).
+
+## Hooks
+
+Hooks are event-driven scripts that fire at specific points in the agent lifecycle. They let you run custom logic before or after tool calls, when prompts are submitted, when sessions start or end, and more.
+
+### Supported events
+
+| Event | When it fires |
+|-------|--------------|
+| `PreToolUse` | Before any tool invocation (read file, write file, bash, etc.) |
+| `PostToolUse` | After a tool invocation completes |
+| `UserPromptSubmit` | When the user submits a prompt |
+| `Notification` | When the agent emits a notification |
+| `Stop` | Before the agent finishes responding |
+| `SubagentStop` | When a subagent finishes |
+| `SessionStart` | When a sandbox session starts |
+| `SessionEnd` | When a sandbox session ends |
+| `PreCompact` | Before the conversation history is compacted |
+
+### Tool-scoped hooks
+
+For `PreToolUse` and `PostToolUse`, you can narrow the hook to fire only for specific tools:
+
+- `Bash` - shell commands
+- `Read` / `Write` / `Edit` - file operations
+- `WebFetch` - HTTP requests
+- `TodoWrite` - task list operations
+
+### What hooks can do
+
+Each hook defines a command (a bash script) that runs when the event fires. The script receives context about the event and can:
+
+- **Log** the event for audit purposes
+- **Block** the action (for `PreToolUse` hooks)
+- **Modify** the environment before the action proceeds
+- **Notify** external systems (post to Slack, update a dashboard, etc.)
+
+Hooks can be synchronous (block until the script finishes) or asynchronous (fire-and-forget for events that support it).
+
+### Scoping
+
+Hooks can be scoped to personal or team, and attached to all repos or specific ones. Like other directives, they are versioned and publishable.
+
+### API endpoints
+
+Hooks use `type=hook_v0`. See the [Skills API reference](/cloud-api/context/skills/list).
+
+## Network
+
+Network rules restrict which hosts and IP ranges the sandbox can reach on the network. This is enforced at the VM level, not the application layer, so agents cannot bypass it.
+
+### Rule types
+
+| Type | Format | Example |
+|------|--------|---------|
+| **Host** | Domain name | `registry.npmjs.org`, `api.stripe.com` |
+| **CIDR** | IP range | `10.0.0.0/8`, `192.168.1.0/24` |
+
+### Default behavior
+
+By default, sandboxes have outbound access to the public internet (package registries, APIs, etc.). Network rules let you lock that down:
+
+- **Allowlist mode** - only explicitly listed hosts and CIDRs are reachable
+- **Denylist mode** - everything is reachable except explicitly blocked hosts
+
+Use network rules when:
+
+- Your org handles sensitive data and agents should only reach approved API hosts
+- You want to prevent agents from contacting arbitrary external services
+- Compliance requires restricting egress to a known set of endpoints
+
+### API endpoints
+
+Network rules use `type=network_rule_v0`. See the [Skills API reference](/cloud-api/context/skills/list).
+
+## Approvals
+
+Approvals add human-in-the-loop gates for sensitive operations. When an action requires approval, the agent pauses and waits for a team member to review and approve before proceeding.
+
+Approval workflows can be configured for:
+
+- **Production deploys** - require admin sign-off before shipping to production
+- **Sensitive commands** - flag specific bash patterns for manual review (via allowlist `ask` rules)
+- **Plan mode** - agents generate a plan first and wait for approval before executing
+
+Approvals integrate with the dashboard's notification system so reviewers are alerted when something needs their attention.
+
+## RBAC
+
+Role-based access control defines what each role in the organization can do:
+
+| Role | Sessions | Templates | Secrets | Guardrails | Integrations | Deploy |
+|------|----------|-----------|---------|------------|--------------|--------|
+| **Member** | Create, use | Read, use | Read names | Read | Read | Staging |
+| **Admin** | Everything | Create, edit, delete, build | Read, write | Read, write | Read, write | All |
+| **Owner** | Everything | Everything | Everything | Everything | Everything | Everything |
+
+RBAC applies across every surface: dashboard, CLI, and API. API keys cannot exceed their owner's role ceiling, even if the scope is requested. See [Scopes](/cloud-api/scopes#role-ceilings) for the full matrix.
+
+### Per-user controls
+
+Beyond roles, admins can set per-user limits:
+
+- Maximum concurrent sessions
+- Monthly spend budgets
+- Model restrictions (which LLMs the user's agents can call)
+- Deploy target restrictions (staging only, specific apps only)
+
+See [Org Limits](/cloud-api/guardrails/org-limits).
+
+## Audit
+
+Audit trails record every action taken by agents and users in the organization. Every prompt, file change, command, deploy, and cost event is captured with:
+
+- **Who** - user id, email, role
+- **What** - prompt text, files changed, commands run, tools called
+- **When** - UTC timestamp
+- **How much** - tokens consumed, dollars spent, compute time
+- **Where** - session id, template, agent type
+
+### What gets logged
+
+- Every prompt submitted
+- Every tool call (bash, file read/write, search, etc.)
+- Every file created, modified, or deleted
+- Every git operation (clone, commit, push, PR)
+- Every deploy (start, success, failure)
+- Every session lifecycle event (create, pause, resume, destroy)
+- Every API key creation, revocation, and usage
+- Every guardrail enforcement (blocked command, hook fired, network rule hit)
+
+### Accessing audit data
+
+- **Dashboard** - the Activity tab shows a real-time stream of events
+- **API** - [Team Events](/cloud-api/activity/team-events) returns structured event data for export
+- **Metrics** - [Team Summary](/cloud-api/activity/team-summary) aggregates events into time-series data
+
+See [Observability](/concepts/observability) for the full picture.
+
+## Putting it all together
+
+A typical org configuration:
+
+1. **Allowlists** - prevent destructive commands, gate production pushes, allow package installs
+2. **Hooks** - log every tool call to your SIEM, block writes to protected config files
+3. **Network** - restrict to package registries plus approved API hosts
+4. **Approvals** - require admin sign-off for production deploys
+5. **RBAC** - members can create sessions and deploy to staging; admins manage templates and secrets
+6. **Audit** - weekly review by the security team, events exported to your data warehouse
+
+With these in place, agents can move fast on routine work while the org stays in control of cost, security, and risk.
+
+## Related guides
+
+<CardGroup cols={2}>
+  <Card title="Best practices" icon="shield" href="/guides/best-practices">
+    Key hygiene, scope selection, and cost control patterns.
+  </Card>
+  <Card title="Teach the agent your codebase" icon="brain" href="/guides/teach-the-agent-your-codebase">
+    AGENTS.md, skills, and org instructions.
+  </Card>
+</CardGroup>

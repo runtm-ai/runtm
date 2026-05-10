@@ -1,0 +1,134 @@
+---
+title: "Presign Skill File Upload"
+api: "POST /agent-directives/{directive_id}/files:presign-upload"
+description: "Mint a short-TTL presigned PUT URL for a draft skill file"
+---
+
+Mints a short-TTL presigned `PUT` URL for uploading a single file into a draft skill directive. The flow is:
+
+1. The client hashes the file contents locally to a SHA-256 hex digest.
+2. POST this endpoint with the file `path`, the digest, and the byte size.
+3. PUT the file body directly to the returned `url`. The signature binds the size to the digest, so the URL only accepts the exact bytes the client hashed.
+4. PATCH the directive's `content.files` entry with `{ "ref": ref, "inline": null }` so the directive references the uploaded blob instead of inlining its bytes.
+
+This keeps large skill files out of the regular request body - they never traverse the Runtime backend.
+
+<Info>Required scope: `context:write`</Info>
+
+<Note>
+Agent directives are **organization-scoped**. The request must include `X-Organization-Id` (or use an org-scoped API key).
+</Note>
+
+## Path Parameters
+
+<ParamField path="directive_id" type="string" required>
+  Draft directive id (must be unpublished).
+</ParamField>
+
+## Body Parameters
+
+<ParamField body="path" type="string" required>
+  File path inside the skill bundle (e.g. `assets/diagram.png`). 1-512 chars.
+</ParamField>
+
+<ParamField body="sha256" type="string" required>
+  Lowercase hex SHA-256 digest of the file contents (64 chars).
+</ParamField>
+
+<ParamField body="size" type="integer" required>
+  File size in bytes. Must be greater than 0.
+</ParamField>
+
+## Headers
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization context.
+</ParamField>
+
+## Response
+
+<ResponseField name="url" type="string">
+  Presigned `PUT` URL. Send the file body directly to this URL.
+</ResponseField>
+
+<ResponseField name="ref" type="string">
+  Content-addressable reference (`sha256:<hex>`) to use in the directive's `files[].ref` field after upload.
+</ResponseField>
+
+<ResponseField name="expires_at" type="string">
+  ISO 8601 timestamp at which the presigned URL expires.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/agent-directives/dir_aaa/files:presign-upload" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_456" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "path": "assets/diagram.png",
+    "sha256": "1f3d...",
+    "size": 49284
+  }'
+```
+
+```python Python
+import hashlib
+import requests
+
+with open("diagram.png", "rb") as f:
+    body = f.read()
+digest = hashlib.sha256(body).hexdigest()
+
+presign = requests.post(
+    "https://app.runtm.com/api/agent-directives/dir_aaa/files:presign-upload",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_456",
+    },
+    json={"path": "assets/diagram.png", "sha256": digest, "size": len(body)},
+).json()
+
+requests.put(presign["url"], data=body)
+```
+
+```javascript JavaScript
+const file = await selectFile();
+const buf = new Uint8Array(await file.arrayBuffer());
+const digest = await crypto.subtle.digest("SHA-256", buf);
+const hex = [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, "0")).join("");
+
+const presign = await fetch(
+  "https://app.runtm.com/api/agent-directives/dir_aaa/files:presign-upload",
+  {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "X-Organization-Id": "org_456",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ path: file.name, sha256: hex, size: buf.byteLength }),
+  }
+).then(r => r.json());
+
+await fetch(presign.url, { method: "PUT", body: buf });
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "url": "https://uploads.runtm.com/...",
+  "ref": "sha256:1f3d...",
+  "expires_at": "2026-05-09T22:53:00Z"
+}
+```
+
+```json 422
+{
+  "detail": [
+    { "loc": ["body", "sha256"], "msg": "string does not match regex" }
+  ]
+}
+```
+</ResponseExample>

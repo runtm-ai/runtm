@@ -1,0 +1,86 @@
+---
+title: "Personal Activity"
+api: "GET /api/sessions/telemetry/activity"
+description: "Daily activity feed for the current user (GitHub-style grid data)."
+---
+
+Returns daily activity data for the authenticated user, suitable for rendering a GitHub-style contribution grid. Each entry contains the number of sessions, prompts, and cost for that day.
+
+When `X-Organization-Id` is provided, only activity within that organization is included. Otherwise returns all personal activity.
+
+**Required scope:** `activity:read`
+
+<ParamField query="days" type="integer" default="90">
+  Number of days to look back. Range: 1–365.
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string">
+  Optional. Scope results to a specific organization.
+</ParamField>
+
+<ResponseField name="daily_activity" type="DailyActivityItem[]" required>
+  Array of daily activity entries.
+</ResponseField>
+
+<ResponseField name="daily_activity[].date" type="string">
+  ISO 8601 date (`YYYY-MM-DD`).
+</ResponseField>
+
+<ResponseField name="daily_activity[].sessions" type="integer" required>
+  Number of sessions created on this day.
+</ResponseField>
+
+<ResponseField name="daily_activity[].prompts" type="integer" required>
+  Number of prompts sent on this day.
+</ResponseField>
+
+<ResponseField name="daily_activity[].cost_usd" type="number" required>
+  Total cost in USD for this day.
+</ResponseField>
+
+<ResponseField name="period_days" type="integer" required>
+  Number of days covered by the response.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/sessions/telemetry/activity?days=30" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+resp = requests.get(
+    "https://app.runtm.com/api/sessions/telemetry/activity",
+    params={"days": 30},
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  "https://app.runtm.com/api/sessions/telemetry/activity?days=30",
+  {
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+    },
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "daily_activity": [
+    { "date": "2026-05-09", "sessions": 3, "prompts": 12, "cost_usd": 0.45 },
+    { "date": "2026-05-08", "sessions": 1, "prompts": 5, "cost_usd": 0.18 },
+    { "date": "2026-05-07", "sessions": 0, "prompts": 0, "cost_usd": 0.0 }
+  ],
+  "period_days": 30
+}
+```
+</ResponseExample>

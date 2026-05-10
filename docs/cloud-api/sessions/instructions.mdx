@@ -1,0 +1,172 @@
+---
+title: "Session Instructions"
+description: "Read or update the session-specific custom instructions"
+---
+
+Each session can carry a small block of custom instructions that is appended
+to the agent's system prompt. They are layered on top of system defaults and
+any user- or org-level instructions:
+
+```
+system instructions → user instructions → org instructions → session instructions
+```
+
+Use these endpoints to push session-specific guidance (style guides,
+project-specific rules, "always run tests after editing X") without changing
+the broader account or org configuration. For account- and org-wide
+instructions see [User Instructions](/cloud-api/configuration/user-instructions)
+and [Org Instructions](/cloud-api/configuration/org-instructions).
+
+<Info>
+  Required scopes:
+  - `context:read` - get
+  - `context:write` - update
+</Info>
+
+<Note>
+  Changes take effect on the **next** session resume. A session that is
+  already running keeps its current effective instructions until restarted
+  (e.g. via [Pause](/cloud-api/sessions/lifecycle#pause-session) and
+  [Resume](/cloud-api/sessions/lifecycle#resume-session)).
+</Note>
+
+---
+
+## Get Session Instructions
+
+`GET /api/sessions/{session_id}/instructions`
+
+### Path Parameters
+
+<ParamField path="session_id" type="string" required>Session UUID.</ParamField>
+
+### Response
+
+<ResponseField name="instructions" type="string">
+  Session-specific custom instructions, or `null` when none are set.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "https://app.runtm.com/api/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11/instructions" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+session_id = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11"
+response = requests.get(
+    f"https://app.runtm.com/api/sessions/{session_id}/instructions",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+print(response.json())
+```
+
+```javascript JavaScript
+const sessionId = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11";
+const res = await fetch(
+  `https://app.runtm.com/api/sessions/${sessionId}/instructions`,
+  { headers: { Authorization: "Bearer runtm_xxx" } },
+);
+console.log(await res.json());
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{ "instructions": "Use TypeScript strict mode for any new files." }
+```
+
+```json 200
+{ "instructions": null }
+```
+
+```json 404
+{ "detail": "Session not found" }
+```
+</ResponseExample>
+
+---
+
+## Update Session Instructions
+
+`PUT /api/sessions/{session_id}/instructions`
+
+Sets or clears the session-specific instructions. Pass an empty string or
+`null` to clear and fall back to user/org defaults. Maximum length: **5000
+characters**.
+
+### Path Parameters
+
+<ParamField path="session_id" type="string" required>Session UUID.</ParamField>
+
+### Body Parameters
+
+<ParamField body="instructions" type="string">
+  Custom instructions for this session (max 5000 characters). Pass `null` or
+  an empty string to clear.
+</ParamField>
+
+### Response
+
+<ResponseField name="instructions" type="string">
+  Resulting instructions (`null` after a clear).
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X PUT "https://app.runtm.com/api/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11/instructions" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{ "instructions": "Use TypeScript strict mode for any new files." }'
+```
+
+```python Python
+import requests
+
+session_id = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11"
+response = requests.put(
+    f"https://app.runtm.com/api/sessions/{session_id}/instructions",
+    headers={"Authorization": "Bearer runtm_xxx"},
+    json={"instructions": "Use TypeScript strict mode for any new files."},
+)
+print(response.json())
+```
+
+```javascript JavaScript
+const sessionId = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11";
+const res = await fetch(
+  `https://app.runtm.com/api/sessions/${sessionId}/instructions`,
+  {
+    method: "PUT",
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      instructions: "Use TypeScript strict mode for any new files.",
+    }),
+  },
+);
+console.log(await res.json());
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{ "instructions": "Use TypeScript strict mode for any new files." }
+```
+
+```json 422
+{
+  "detail": [
+    {
+      "type": "string_too_long",
+      "loc": ["body", "instructions"],
+      "msg": "String should have at most 5000 characters"
+    }
+  ]
+}
+```
+</ResponseExample>

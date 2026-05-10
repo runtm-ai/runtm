@@ -1,0 +1,148 @@
+---
+title: "Get Current Plan"
+api: "GET /api/user/current-plan"
+description: "Inspect the plan limits that apply to the caller in the current personal or organization context."
+---
+
+<Info>
+  Required scope: `activity:read`
+</Info>
+
+Returns the plan limits that govern session creation, deployment tiers, and
+sandbox sizing for the caller. The exact response is contextual:
+
+- **Without `X-Organization-Id`** (and using a personal API key) the response
+  describes the caller's individual plan (`free` or `builder`).
+- **With `X-Organization-Id`** (or an org-scoped API key) the response
+  describes the organization's plan (`free` or `teams`), with seat counts
+  populated for paid Teams orgs.
+
+<Note>
+  This is the same data the dashboard uses to decide whether to show the
+  "Upgrade" banner, gate the deploy button, and pick a sandbox tier. Treat
+  the response as the source of truth for what the current key is allowed to
+  do.
+</Note>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  `Bearer <your_api_key>`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string">
+  Optional. Switches the response from individual-plan limits to org-plan
+  limits.
+</ParamField>
+
+## Response
+
+<ResponseField name="plan_name" type="string">
+  Plan tier. One of `"free"`, `"builder"` (individual paid), or `"teams"`
+  (org paid).
+</ResponseField>
+
+<ResponseField name="sandbox_tier" type="string">
+  E2B sandbox tier the caller's sessions boot with. One of `"base"` or
+  `"standard"`.
+</ResponseField>
+
+<ResponseField name="max_sessions" type="integer">
+  Maximum number of concurrent running/paused sessions the caller may have at
+  once. Free plans default to `3`.
+</ResponseField>
+
+<ResponseField name="max_apps" type="integer">
+  Maximum number of active deployments the caller may own. Free plans default
+  to `1`.
+</ResponseField>
+
+<ResponseField name="allowed_deployment_tiers" type="array">
+  Fly machine tiers the plan is permitted to deploy to. Free plans default to
+  `["starter"]`; paid plans typically include `"performance"` and `"pro"`.
+</ResponseField>
+
+<ResponseField name="idle_timeout_minutes" type="integer">
+  Minutes of inactivity before a running session is automatically paused.
+  Free plans default to `30`.
+</ResponseField>
+
+<ResponseField name="subscription_status" type="string">
+  Stripe subscription status: `"active"`, `"canceling"`, `"past_due"`,
+  `"manual"`, or `null` for free plans.
+</ResponseField>
+
+<ResponseField name="seats_purchased" type="integer">
+  Teams plans only. Number of seats the org has paid for.
+</ResponseField>
+
+<ResponseField name="seats_used" type="integer">
+  Teams plans only. Current member count consuming a seat.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "https://app.runtm.com/api/user/current-plan" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/user/current-plan",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+plan = response.json()
+print(f"Plan: {plan['plan_name']}, sandbox: {plan['sandbox_tier']}")
+print(f"Allowed tiers: {plan['allowed_deployment_tiers']}")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/user/current-plan",
+  {
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  },
+);
+const plan = await response.json();
+console.log(`Plan: ${plan.plan_name}, sandbox: ${plan.sandbox_tier}`);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 (free individual)
+{
+  "plan_name": "free",
+  "sandbox_tier": "base",
+  "max_sessions": 3,
+  "max_apps": 1,
+  "allowed_deployment_tiers": ["starter"],
+  "idle_timeout_minutes": 30,
+  "subscription_status": null,
+  "seats_purchased": null,
+  "seats_used": null
+}
+```
+
+```json 200 (teams org)
+{
+  "plan_name": "teams",
+  "sandbox_tier": "standard",
+  "max_sessions": 20,
+  "max_apps": 25,
+  "allowed_deployment_tiers": ["starter", "performance", "pro"],
+  "idle_timeout_minutes": 60,
+  "subscription_status": "active",
+  "seats_purchased": 10,
+  "seats_used": 7
+}
+```
+</ResponseExample>

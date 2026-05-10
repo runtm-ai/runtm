@@ -1,0 +1,128 @@
+---
+title: "Update Template Config"
+api: "PATCH /api/org-templates/{template_id}"
+description: "Partially update a template's configuration"
+---
+
+Updates one or more fields on a template. Only provided fields are changed; omitted fields remain untouched. Requires admin or owner role.
+
+**Required scope:** `templates:write`
+
+## Path Parameters
+
+<ParamField path="template_id" type="string" required>
+  The template ID (e.g. `tmpl_abc123`).
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  Organization ID.
+</ParamField>
+
+## Body
+
+<ParamField body="display_name" type="string">
+  Updated human-readable name.
+</ParamField>
+
+<ParamField body="description" type="string">
+  Updated description.
+</ParamField>
+
+<ParamField body="repo_patterns" type="array">
+  Updated list of repo glob patterns.
+</ParamField>
+
+<ParamField body="tier" type="string">
+  Updated default tier (`starter`, `performance`, `pro`).
+</ParamField>
+
+<ParamField body="agents" type="array">
+  Updated list of allowed agents.
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  Template ID.
+</ResponseField>
+
+<ResponseField name="display_name" type="string">
+  Updated display name.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  Timestamp of the update.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X PATCH "https://app.runtm.com/api/org-templates/tmpl_abc123" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "display_name": "Next.js Starter (v2)",
+    "tier": "performance"
+  }'
+```
+
+```python Python
+import requests
+
+response = requests.patch(
+    "https://app.runtm.com/api/org-templates/tmpl_abc123",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+        "Content-Type": "application/json",
+    },
+    json={
+        "display_name": "Next.js Starter (v2)",
+        "tier": "performance",
+    },
+)
+
+data = response.json()
+print(f"Updated: {data['display_name']}")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/org-templates/tmpl_abc123",
+  {
+    method: "PATCH",
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      display_name: "Next.js Starter (v2)",
+      tier: "performance",
+    }),
+  }
+);
+
+const data = await response.json();
+console.log(`Updated: ${data.display_name}`);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "id": "tmpl_abc123",
+  "name": "nextjs-starter",
+  "display_name": "Next.js Starter (v2)",
+  "description": "Pre-configured Next.js with Tailwind CSS",
+  "tier": "performance",
+  "updated_at": "2026-05-09T21:00:00Z"
+}
+```
+</ResponseExample>

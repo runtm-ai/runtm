@@ -1,0 +1,136 @@
+---
+title: "Get Integration"
+api: "GET /api/v1/slack/integration"
+description: "Get the Slack integration configuration and status."
+---
+
+Returns the current Slack integration status for the active organization, including connection type, team info, service account health, and configuration.
+
+**Required scope:** `integrations:read`
+
+<Note>Requires organization context via the `X-Organization-Id` header.</Note>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization to check.
+</ParamField>
+
+<ResponseField name="connected" type="boolean" required>
+  Whether a Slack integration exists.
+</ResponseField>
+
+<ResponseField name="connection_type" type="string" required>
+  `"oauth"` for managed app or `"manual"` for self-hosted.
+</ResponseField>
+
+<ResponseField name="managed_app_available" type="boolean" required>
+  Whether the managed OAuth app is configured.
+</ResponseField>
+
+<ResponseField name="team_name" type="string">
+  Slack workspace name.
+</ResponseField>
+
+<ResponseField name="bot_user_id" type="string">
+  Slack bot user ID.
+</ResponseField>
+
+<ResponseField name="service_user_id" type="string">
+  Runtime user ID used as the service account.
+</ResponseField>
+
+<ResponseField name="service_user_name" type="string">
+  Display name of the service account user.
+</ResponseField>
+
+<ResponseField name="default_template" type="string">
+  Default sandbox template.
+</ResponseField>
+
+<ResponseField name="default_github_repo" type="string">
+  Default GitHub repo for agent sessions.
+</ResponseField>
+
+<ResponseField name="default_agent" type="string" required>
+  Default coding agent.
+</ResponseField>
+
+<ResponseField name="rate_limit_per_hour" type="integer" required>
+  Maximum agent launches per hour.
+</ResponseField>
+
+<ResponseField name="enabled" type="boolean" required>
+  Whether the integration is enabled.
+</ResponseField>
+
+<ResponseField name="interactivity_confirmed" type="boolean" required>
+  Whether Slack interactivity has been verified.
+</ResponseField>
+
+<ResponseField name="channel_repo_map" type="object">
+  Channel ID to GitHub repo mapping.
+</ResponseField>
+
+<ResponseField name="service_account_health" type="object" required>
+  Health status with `healthy` boolean and `issues` array.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/v1/slack/integration" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+resp = requests.get(
+    "https://app.runtm.com/api/v1/slack/integration",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  "https://app.runtm.com/api/v1/slack/integration",
+  {
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "connected": true,
+  "connection_type": "oauth",
+  "managed_app_available": true,
+  "team_name": "Acme Corp",
+  "bot_user_id": "U01ABC123",
+  "service_user_id": "usr_xyz",
+  "service_user_name": "Alice",
+  "default_template": null,
+  "default_github_repo": "acme-corp/backend",
+  "default_agent": "claude-code",
+  "rate_limit_per_hour": 30,
+  "enabled": true,
+  "interactivity_confirmed": true,
+  "channel_repo_map": {
+    "C01ABC123": "acme-corp/frontend"
+  },
+  "service_account_health": {
+    "healthy": true,
+    "issues": []
+  }
+}
+```
+</ResponseExample>

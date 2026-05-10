@@ -1,0 +1,131 @@
+---
+title: "List Knowledge Integrations"
+api: "GET /knowledge/integrations"
+description: "Paginated list of connected knowledge integrations for the organization"
+---
+
+Returns a paginated list of knowledge integrations connected to the organization. Includes both org-shared connections (`user_id` is null) and the caller's personal-scope overrides.
+
+<Info>Required scope: `integrations:read`</Info>
+
+<Note>
+This endpoint is **organization-only**. The request must include `X-Organization-Id` (or use an org-scoped API key).
+</Note>
+
+## Query Parameters
+
+<ParamField query="scope" type="string" default="all">
+  Filter by scope: `org` (org-shared only), `personal` (user-only), or `all`.
+</ParamField>
+
+<ParamField query="provider" type="string">
+  Filter by provider id (e.g. `bigquery`, `notion`).
+</ParamField>
+
+<ParamField query="page_size" type="integer" default="20">
+  Page size. Range: 1-100.
+</ParamField>
+
+<ParamField query="page_token" type="string">
+  Opaque pagination token from a previous response's `next_page_token`.
+</ParamField>
+
+## Headers
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization context.
+</ParamField>
+
+## Response
+
+<ResponseField name="integrations" type="array">
+  Knowledge integration records. The shape is identical to the canonical resource described in [Get Integration](/cloud-api/integrations/knowledge/get).
+</ResponseField>
+
+<ResponseField name="next_page_token" type="string">
+  Token to pass as `page_token` for the next page. `null` when no more pages.
+</ResponseField>
+
+<ResponseField name="total_size" type="integer">
+  Total integrations matching the filter.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "https://app.runtm.com/api/knowledge/integrations?scope=org&page_size=20" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_456"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/knowledge/integrations",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_456",
+    },
+    params={"scope": "org", "page_size": 20},
+)
+
+for integration in response.json()["integrations"]:
+    print(f"{integration['provider']}: {integration['status']}")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/knowledge/integrations?scope=org&page_size=20",
+  {
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "X-Organization-Id": "org_456",
+    },
+  }
+);
+
+const data = await response.json();
+for (const i of data.integrations) {
+  console.log(`${i.provider}: ${i.status}`);
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "integrations": [
+    {
+      "id": "kint_aaa",
+      "organization_id": "org_456",
+      "user_id": null,
+      "provider": "bigquery",
+      "auth_method": "google-oauth",
+      "display_name": "Production BigQuery",
+      "status": "active",
+      "has_credentials": true,
+      "has_oauth_refresh": true,
+      "oauth_access_expires_at": "2026-05-09T23:48:00Z",
+      "provider_metadata": { "project_id": "acme-prod" },
+      "default_mode": "ask",
+      "tool_permissions": {},
+      "connected_by_user_id": "usr_001",
+      "last_used_at": "2026-05-09T18:00:00Z",
+      "created_at": "2026-04-01T00:00:00Z",
+      "updated_at": "2026-05-08T12:00:00Z"
+    }
+  ],
+  "next_page_token": null,
+  "total_size": 1
+}
+```
+
+```json 400
+{
+  "detail": {
+    "code": "ORGANIZATION_REQUIRED",
+    "message": "Knowledge integrations require an active organization."
+  }
+}
+```
+</ResponseExample>

@@ -1,0 +1,107 @@
+---
+title: "List Installations"
+api: "GET /api/github-app/installations"
+description: "List GitHub App installations accessible to the current user."
+---
+
+Returns all GitHub App installations accessible to the authenticated user. In organization context, includes org-shared installations (GitHub Organization accounts) plus the user's personal installations. In personal context, returns only the user's own installations.
+
+**Required scope:** `integrations:read`
+
+<ParamField header="X-Organization-Id" type="string">
+  Optional. When set, includes org-shared installations alongside personal ones.
+</ParamField>
+
+<ResponseField name="installations" type="InstallationInfo[]" required>
+  List of GitHub App installations.
+</ResponseField>
+
+<ResponseField name="installations[].id" type="string" required>
+  Internal installation ID.
+</ResponseField>
+
+<ResponseField name="installations[].installation_id" type="integer" required>
+  GitHub's installation ID.
+</ResponseField>
+
+<ResponseField name="installations[].account_type" type="string" required>
+  `"User"` or `"Organization"`.
+</ResponseField>
+
+<ResponseField name="installations[].account_login" type="string" required>
+  GitHub account login name.
+</ResponseField>
+
+<ResponseField name="installations[].avatar_url" type="string">
+  GitHub avatar URL.
+</ResponseField>
+
+<ResponseField name="installations[].created_at" type="string" required>
+  ISO 8601 creation timestamp.
+</ResponseField>
+
+<ResponseField name="installations[].configure_url" type="string" required>
+  URL to configure repository access on GitHub.
+</ResponseField>
+
+<ResponseField name="installations[].is_personal" type="boolean" required>
+  `true` if this is a personal installation visible only to the owner.
+</ResponseField>
+
+<ResponseField name="total" type="integer" required>
+  Total number of installations.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/github-app/installations" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+resp = requests.get(
+    "https://app.runtm.com/api/github-app/installations",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  "https://app.runtm.com/api/github-app/installations",
+  {
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "installations": [
+    {
+      "id": "inst_01J...",
+      "installation_id": 12345678,
+      "account_type": "Organization",
+      "account_login": "acme-corp",
+      "avatar_url": "https://avatars.githubusercontent.com/u/12345",
+      "created_at": "2026-04-15T10:00:00Z",
+      "configure_url": "https://github.com/organizations/acme-corp/settings/installations/12345678",
+      "is_personal": false
+    }
+  ],
+  "total": 1
+}
+```
+</ResponseExample>

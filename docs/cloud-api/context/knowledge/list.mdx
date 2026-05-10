@@ -1,0 +1,133 @@
+---
+title: "List Knowledge Integrations"
+api: "GET /api/knowledge/integrations"
+description: "List knowledge integrations for the current organization."
+---
+
+Returns a paginated list of knowledge integrations visible to the caller.
+Use `scope` to filter between org-shared and personal integrations.
+
+**Required scope:** `integrations:read`
+
+<Note>Requires organization context via the `X-Organization-Id` header.</Note>
+
+<ParamField query="scope" type="string" default="all">
+  Filter by integration scope. One of `org`, `personal`, or `all`.
+</ParamField>
+
+<ParamField query="provider" type="string">
+  Filter by provider identifier (e.g. `bigquery`).
+</ParamField>
+
+<ParamField query="page_size" type="integer" default="20">
+  Number of results per page. Range: 1–100.
+</ParamField>
+
+<ParamField query="page_token" type="string">
+  Opaque token from a previous response's `next_page_token` to fetch the next page.
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization to scope the request to.
+</ParamField>
+
+<ResponseField name="integrations" type="KnowledgeIntegrationResource[]" required>
+  List of integration resources. See [resource shape](#resource-shape) below.
+</ResponseField>
+
+<ResponseField name="next_page_token" type="string">
+  Token for the next page, or `null` if this is the last page.
+</ResponseField>
+
+<ResponseField name="total_size" type="integer" required>
+  Total number of integrations matching the query.
+</ResponseField>
+
+### Resource shape
+
+Each `KnowledgeIntegrationResource` contains:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string` | Integration ID |
+| `organization_id` | `string` | Owning organization |
+| `user_id` | `string \| null` | Owner for personal-scope integrations |
+| `provider` | `string` | Provider identifier |
+| `auth_method` | `string` | Auth method identifier |
+| `display_name` | `string \| null` | Optional display name |
+| `status` | `string` | `active`, `revoked`, `error`, or `pending` |
+| `has_credentials` | `boolean` | Whether credentials are stored |
+| `has_oauth_refresh` | `boolean` | Whether an OAuth refresh token is stored |
+| `oauth_access_expires_at` | `string \| null` | ISO 8601 expiry of the OAuth access token |
+| `provider_metadata` | `object` | Provider-specific configuration |
+| `default_mode` | `string` | `auto`, `allow`, or `ask` |
+| `tool_permissions` | `object` | Per-tool permission overrides |
+| `connected_by_user_id` | `string` | User who connected this integration |
+| `last_used_at` | `string \| null` | ISO 8601 timestamp of last use |
+| `created_at` | `string` | ISO 8601 creation timestamp |
+| `updated_at` | `string \| null` | ISO 8601 last update timestamp |
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/knowledge/integrations?scope=org&page_size=10" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+resp = requests.get(
+    "https://app.runtm.com/api/knowledge/integrations",
+    params={"scope": "org", "page_size": 10},
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  "https://app.runtm.com/api/knowledge/integrations?scope=org&page_size=10",
+  {
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "integrations": [
+    {
+      "id": "ki_01J...",
+      "organization_id": "org_abc123",
+      "user_id": null,
+      "provider": "bigquery",
+      "auth_method": "service_account",
+      "display_name": "Production warehouse",
+      "status": "active",
+      "has_credentials": true,
+      "has_oauth_refresh": false,
+      "oauth_access_expires_at": null,
+      "provider_metadata": { "project_id": "my-gcp-project" },
+      "default_mode": "ask",
+      "tool_permissions": {},
+      "connected_by_user_id": "usr_xyz",
+      "last_used_at": "2026-05-08T12:00:00Z",
+      "created_at": "2026-04-20T09:30:00Z",
+      "updated_at": "2026-05-08T12:00:00Z"
+    }
+  ],
+  "next_page_token": null,
+  "total_size": 1
+}
+```
+</ResponseExample>

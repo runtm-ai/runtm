@@ -1,0 +1,117 @@
+---
+title: Observability
+description: "Activity logs, metrics, and traces for every prompt, tool call, and deploy"
+---
+
+Runtime gives you session-level visibility into every interaction, down to the tool call and chain of thought. Track who is doing what, how much it costs, and where time is being spent.
+
+The dashboard exposes three observability views: **Activity**, **Metrics**, and **Traces**.
+
+## Activity
+
+Activity is the human-readable view of what happened in your org. It answers questions like "what has my team built today?" and "which agents are running right now?".
+
+<CardGroup cols={2}>
+  <Card title="Personal activity" icon="user" href="/cloud-api/activity/personal-activity">
+    Your own prompts, sessions, deploys, and agent runs.
+  </Card>
+  <Card title="Team activity" icon="users" href="/cloud-api/activity/team-activity">
+    Everything happening across the organization, with per-user breakdowns.
+  </Card>
+  <Card title="Recent prompts" icon="message" href="/cloud-api/activity/recent-prompts">
+    The latest prompts sent across all sessions, with links into the workspaces.
+  </Card>
+  <Card title="Per-session usage" icon="cube" href="/cloud-api/activity/session-usage">
+    Token, time, and cost breakdown for a specific session.
+  </Card>
+</CardGroup>
+
+Each activity event includes:
+
+- **Who** - user id, email, organization
+- **What** - prompt text, file changes, commands run, tool calls
+- **When** - timestamp in UTC
+- **How much** - tokens used, dollars spent, time elapsed
+- **Where** - which session, which template, which agent
+
+## Metrics
+
+Metrics aggregate activity into time-series data you can chart and alert on. Useful for tracking trends, capacity planning, and cost analysis.
+
+Available metrics include:
+
+- **Sessions created** per day / week / month
+- **Prompts sent** per user, per agent type, per template
+- **Token consumption** by model, by user, by org
+- **Deploy frequency and success rate**
+- **Agent run completion rate**
+- **Cost** in dollars, broken down by team member or project
+
+See [Team Deploy Metrics](/cloud-api/activity/team-deploy-metrics) and [Team Summary](/cloud-api/activity/team-summary) for the API surface.
+
+## Traces
+
+Traces give you the deepest level of detail: every step an agent took inside a session, in order, with timing and metadata.
+
+A single trace captures:
+
+- The original prompt
+- The agent's plan (if plan mode was used)
+- Every tool call (read file, write file, run command, search, etc.) with arguments and results
+- Every LLM round trip with token counts and latency
+- File changes with diffs
+- Errors and recovery attempts
+- Final output (commit, PR, deploy)
+
+Use traces for:
+
+- **Debugging** - figure out exactly where an agent went wrong
+- **Replaying** - reproduce a session step-by-step
+- **Audit** - prove what an agent did and why
+- **Optimization** - find slow tool calls or expensive prompt patterns
+
+See [Team Traces](/cloud-api/activity/team-traces) for the API surface.
+
+## Cost tracking
+
+Every prompt, tool call, and deploy is priced and attributed:
+
+- **Per session** - total cost for one session, broken down by component
+- **Per user** - daily and monthly spend per team member
+- **Per org** - aggregate spend with month-to-date and forecast
+- **Per template** - which templates drive the most cost
+
+Cost data flows into [activity events](/cloud-api/activity/personal-activity) and aggregates into [metrics](/cloud-api/activity/team-summary). [Guardrails](/concepts/guardrails) can cap spend at any level.
+
+## Real-time observability
+
+For live views into running sessions, use the [Collaboration WebSocket](/cloud-api/websockets/collaboration). It streams presence and prompt-status events as they happen, which is what powers the "X is prompting..." indicators in the dashboard.
+
+For watching an individual prompt run, the [Prompt WebSocket](/cloud-api/websockets/prompt) emits structured events for every tool call, file edit, and command in real time.
+
+## Exporting
+
+Activity, metrics, and traces are all exportable. Use the [Team Events](/cloud-api/activity/team-events) endpoint to pull a stream of structured events into your own data warehouse, SIEM, or BI tool.
+
+## Why observability matters
+
+Coding agents are powerful but they make a lot of decisions per minute. Without observability, you cannot:
+
+- **Verify** that agents are doing the right thing
+- **Diagnose** when something goes wrong
+- **Improve** prompts, templates, and skills based on what works
+- **Control** cost as agent usage scales across the team
+- **Audit** what happened for security or compliance
+
+Runtime treats observability as a first-class part of the platform, not something you bolt on later.
+
+## Related guides
+
+<CardGroup cols={2}>
+  <Card title="Pull activity and telemetry" icon="chart-line" href="/guides/pulling-activity-and-telemetry">
+    Read usage data, cost summaries, and traces from the API.
+  </Card>
+  <Card title="Webhooks and triggers" icon="webhook" href="/guides/webhooks-and-triggers">
+    Push notifications when prompts complete.
+  </Card>
+</CardGroup>

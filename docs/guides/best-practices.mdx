@@ -1,0 +1,120 @@
+---
+title: "Best practices"
+description: "Key hygiene, scope selection, lifecycle management, prompt design, and cost controls"
+---
+
+This page collects the operational practices that matter most when using the Runtime API in production. It covers API key management, session lifecycle, prompt design, and cost controls.
+
+## API key hygiene
+
+**One key per consumer.** Create a separate key for each script, coding agent, CI pipeline, or service that talks to the API. If one key is compromised, you only need to rotate one.
+
+**Use the narrowest scopes.** A script or agent that creates sessions and sends prompts needs `sessions:read`, `sessions:write`, and `sessions:prompt`. It does not need `sessions:delete`, `sessions:terminal`, or `integrations:write`. See [Scopes & Permissions](/cloud-api/scopes) for the full list.
+
+**Set expirations.** Production keys should expire in 90 days and be rotated before they lapse. One-off scripts should use shorter expirations (7-30 days). Keys without expirations live until manually revoked.
+
+**Never log or expose keys.** Do not put keys in URL query strings, log lines, analytics events, or client-side code. Store them in a secret manager and inject them as environment variables at runtime.
+
+**Rotate, don't share.** If a teammate needs access, they should create their own key. If a key is suspected to be exposed, revoke it immediately from the dashboard and create a new one.
+
+See [Authenticate and manage API keys](/guides/authentication-walkthrough) for the full key lifecycle walkthrough.
+
+## Personal vs organization keys
+
+Choose the right context when creating a key:
+
+| Scenario | Key type | Why |
+|----------|----------|-----|
+| Local scripts, personal coding agents, experiments | Personal | No org overhead, only your resources |
+| Team automation, shared agents, CI | Organization | Access to org templates, team secrets, shared sessions |
+| Monitoring dashboards | Organization | Can read team-wide activity and telemetry |
+| One-off debugging | Personal | Scoped to you, short expiration |
+
+A personal key cannot touch organization resources. An organization key cannot operate outside its org. To do both from one process, create one key per context.
+
+## Session lifecycle
+
+**Use `POST /sessions/{id}/start` instead of polling.** The start endpoint blocks until the session is running and the dev server is up. It is idempotent — calling it on an already-running session is a no-op.
+
+**Pause, don't destroy, if you might come back.** Paused sessions accrue no compute cost and resume in seconds with the filesystem intact. Destroyed sessions are permanently deleted.
+
+**Set `ttl_minutes` for unattended runs.** Agent sessions that run without supervision should have a hard time limit. This prevents runaway sessions from consuming resources indefinitely.
+
+**Use `on_complete` to automate cleanup.** Set `on_complete: "destroy"` for disposable agent runs, `on_complete: "pause"` to preserve the workspace for inspection, or `on_complete: "keep_alive"` for interactive sessions.
+
+**Send heartbeats during long gaps.** Running sessions auto-pause after 20 minutes of inactivity. If you have gaps between prompts (thinking, reviewing output, running local steps), send `POST /sessions/{id}/heartbeat` every 10-15 minutes.
+
+**Always destroy sessions when done.** Orphaned running sessions consume resources. Your cleanup code should run in a `finally` block or equivalent.
+
+See [Manage sessions at scale](/guides/managing-sessions-at-scale) for detailed patterns.
+
+## Prompt design
+
+**Be specific and constrained.** Vague prompts produce vague results. Tell the agent exactly what to do, what constraints to follow, and what "done" looks like:
+
+```
+Add a /health endpoint to the Express server.
+- Return 200 with {"status": "ok"}
+- Add a test in tests/health.test.ts
+- Do not modify existing routes
+```
+
+**Use plan mode for large changes.** Set `plan_mode: true` to have the agent produce a plan without applying changes. Review the plan, then re-prompt with `plan_mode: false` to execute.
+
+**Continue conversations with `resume: true`.** When sending follow-up prompts, reuse the same `tab_id` and set `resume: true` to keep the agent's context. Starting fresh on every prompt loses valuable conversation history.
+
+**Provide context through files, not just text.** Write config files, `.env` files, or seed data into the session before the first prompt. The agent reads the workspace, so physical files are stronger context than descriptions in the prompt text.
+
+## Cost controls
+
+**Monitor with the Activity API.** Poll `GET /sessions/telemetry/team/summary` to track daily and weekly spend. Set up alerts when spend exceeds your budget. See [Pull activity and telemetry](/guides/pulling-activity-and-telemetry).
+
+**Use organization guardrails.** Org admins can set:
+
+- Per-org spend limits (daily and monthly caps)
+- Per-user budgets
+- Model allowlists (restrict which LLMs agents can use)
+- Deployment gates (require human approval for production deploys)
+
+See [Guardrails](/concepts/guardrails) for configuration details.
+
+**Pick the right model.** `sonnet` is the default and strikes the best balance of quality and cost. Use `haiku` for simple, fast tasks. Reserve `opus` for complex tasks that require deeper reasoning.
+
+**Set `ttl_minutes` to cap session lifetime.** This prevents forgotten sessions from running indefinitely.
+
+## Error handling
+
+**Retry on 5xx.** Server errors are transient. Retry with exponential backoff (2s, 4s, 8s) up to 3 attempts.
+
+**Do not retry on 4xx.** Client errors (400, 401, 403, 404, 422, 429) indicate a problem with the request. Fix the issue before retrying.
+
+**Handle 429 gracefully.** Rate limit responses include a `Retry-After` header. Wait the indicated time before retrying. See [Rate Limits](/cloud-api/rate-limits) for the per-endpoint limits.
+
+**Catch 410 for expired sessions.** Paused sessions can expire. When you get `410 Gone`, create a new session.
+
+## Security
+
+**Use HTTPS only.** All API endpoints use TLS. Never downgrade to HTTP.
+
+**Scope org keys to the minimum role.** Member-role keys cannot mutate templates, secrets, guardrails, or integrations — even if those scopes are requested. Only admin or owner keys can.
+
+**Audit with the Activity API.** The traces endpoint shows every prompt, tool call, and file change per session. Use it to audit what agents are doing in your organization.
+
+**Revoke compromised keys immediately.** Revocation is instant — any in-flight request using the old key fails with `401`.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Authenticate and manage API keys" icon="key" href="/guides/authentication-walkthrough">
+    Full key lifecycle walkthrough.
+  </Card>
+  <Card title="Teach the agent your codebase" icon="brain" href="/guides/teach-the-agent-your-codebase">
+    AGENTS.md, skills, and instructions — context that makes agents effective.
+  </Card>
+  <Card title="Scopes & Permissions" icon="shield" href="/cloud-api/scopes">
+    Full scope catalog and role ceiling matrix.
+  </Card>
+  <Card title="Guardrails" icon="lock" href="/concepts/guardrails">
+    Org-level policies, allowlists, and deployment gates.
+  </Card>
+</CardGroup>

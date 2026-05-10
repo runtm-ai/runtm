@@ -1,0 +1,84 @@
+---
+title: "Team Traces"
+api: "GET /api/v0/telemetry/team/traces"
+description: "Distributed traces across organization sessions."
+---
+
+Returns distributed traces for the organization, proxied from the OSS telemetry API. Includes trace metadata with spans and timing data.
+
+**Required scope:** `activity:read`
+
+<Note>Requires organization context via the `X-Organization-Id` header.</Note>
+
+<ParamField query="limit" type="integer" default="50">
+  Maximum number of traces to return. Range: 1–100.
+</ParamField>
+
+<ParamField query="service" type="string">
+  Filter by service name.
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization to get traces for.
+</ParamField>
+
+<ResponseField name="traces" type="object[]">
+  Array of trace objects. Each contains `trace_id`, `root_span`, `span_count`, `duration_ns`, `service_name`, and `start_time`.
+</ResponseField>
+
+<ResponseField name="total" type="integer">
+  Total number of traces returned.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/v0/telemetry/team/traces?limit=10" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+resp = requests.get(
+    "https://app.runtm.com/api/v0/telemetry/team/traces",
+    params={"limit": 10},
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  "https://app.runtm.com/api/v0/telemetry/team/traces?limit=10",
+  {
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "traces": [
+    {
+      "trace_id": "abc123def456",
+      "root_span": "deployment.build",
+      "span_count": 8,
+      "duration_ns": 42000000000,
+      "service_name": "runtm-worker",
+      "start_time": "2026-05-09T17:00:00Z"
+    }
+  ],
+  "total": 1
+}
+```
+</ResponseExample>

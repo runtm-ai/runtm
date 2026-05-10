@@ -1,0 +1,125 @@
+---
+title: "Test Knowledge Integration"
+api: "POST /api/knowledge/integrations/{integration_id}:test"
+description: "Run a connectivity check against a knowledge integration."
+---
+
+Tests the stored credentials for a knowledge integration by making a lightweight call to the upstream provider.
+Returns the integration resource along with a health check result.
+
+**Required scope:** `integrations:read`
+
+<Note>Requires organization context via the `X-Organization-Id` header.</Note>
+
+<ParamField path="integration_id" type="string" required>
+  The integration to test.
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization the integration belongs to.
+</ParamField>
+
+<ResponseField name="integration" type="KnowledgeIntegrationResource" required>
+  The integration resource. See [List](/cloud-api/context/knowledge/list) for the full resource shape.
+</ResponseField>
+
+<ResponseField name="ok" type="boolean" required>
+  `true` if the connectivity check succeeded.
+</ResponseField>
+
+<ResponseField name="detail" type="string">
+  Human-readable explanation when `ok` is `false`, or `null` on success.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST https://app.runtm.com/api/knowledge/integrations/ki_01J...:test \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+integration_id = "ki_01J..."
+
+resp = requests.post(
+    f"https://app.runtm.com/api/knowledge/integrations/{integration_id}:test",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const integrationId = "ki_01J...";
+
+const resp = await fetch(
+  `https://app.runtm.com/api/knowledge/integrations/${integrationId}:test`,
+  {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "integration": {
+    "id": "ki_01J...",
+    "organization_id": "org_abc123",
+    "user_id": null,
+    "provider": "bigquery",
+    "auth_method": "service_account",
+    "display_name": "Production warehouse",
+    "status": "active",
+    "has_credentials": true,
+    "has_oauth_refresh": false,
+    "oauth_access_expires_at": null,
+    "provider_metadata": { "project_id": "my-gcp-project" },
+    "default_mode": "ask",
+    "tool_permissions": {},
+    "connected_by_user_id": "usr_xyz",
+    "last_used_at": "2026-05-09T19:05:00Z",
+    "created_at": "2026-04-20T09:30:00Z",
+    "updated_at": "2026-05-09T19:05:00Z"
+  },
+  "ok": true,
+  "detail": null
+}
+```
+
+```json 200 (failure)
+{
+  "integration": {
+    "id": "ki_01J...",
+    "organization_id": "org_abc123",
+    "user_id": null,
+    "provider": "bigquery",
+    "auth_method": "service_account",
+    "display_name": "Production warehouse",
+    "status": "error",
+    "has_credentials": true,
+    "has_oauth_refresh": false,
+    "oauth_access_expires_at": null,
+    "provider_metadata": { "project_id": "my-gcp-project" },
+    "default_mode": "ask",
+    "tool_permissions": {},
+    "connected_by_user_id": "usr_xyz",
+    "last_used_at": null,
+    "created_at": "2026-04-20T09:30:00Z",
+    "updated_at": "2026-05-09T19:05:00Z"
+  },
+  "ok": false,
+  "detail": "Service account does not have bigquery.jobs.create permission on project my-gcp-project."
+}
+```
+</ResponseExample>

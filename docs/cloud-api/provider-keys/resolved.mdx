@@ -1,0 +1,127 @@
+---
+title: "Resolved Key"
+api: "GET /api/user/provider-keys/{provider}/resolved"
+description: "Get the resolved provider key after applying the org → user fallback chain"
+---
+
+Returns the effective provider key for the authenticated user after applying the resolution chain. The platform resolves keys in this order:
+
+1. **Org enforced key** — if the user's organization has set a key with `enforced` policy, it wins
+2. **User org key** — a personal key the user stored while in an org context
+3. **User personal key** — the user's own key outside any org
+
+This endpoint tells you which source won and whether a key is available, without revealing the key itself.
+
+## Path Parameters
+
+<ParamField path="provider" type="string" required>
+  The provider name. One of: `anthropic`, `openai`, `cursor`, `devin`, `gemini`, `copilot`
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. `Authorization: Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string">
+  Include to resolve within an organization context. Omit for personal resolution only.
+</ParamField>
+
+## Response
+
+<ResponseField name="provider" type="string">
+  The provider name
+</ResponseField>
+
+<ResponseField name="has_key" type="boolean">
+  Whether a key was resolved from any source
+</ResponseField>
+
+<ResponseField name="source" type="string">
+  Where the key came from: `org_enforced`, `user_org`, `user_personal`, or `none`
+</ResponseField>
+
+<ResponseField name="key_preview" type="string">
+  Masked key preview. Null if no key resolved.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/user/provider-keys/anthropic/resolved" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/user/provider-keys/anthropic/resolved",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+
+data = response.json()
+if data["has_key"]:
+    print(f"Using {data['source']} key: {data['key_preview']}")
+else:
+    print("No key available — configure one in settings")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/user/provider-keys/anthropic/resolved",
+  {
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  }
+);
+
+const data = await response.json();
+if (data.has_key) {
+  console.log(`Using ${data.source} key: ${data.key_preview}`);
+} else {
+  console.log("No key available");
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "provider": "anthropic",
+  "has_key": true,
+  "source": "org_enforced",
+  "key_preview": "sk-ant-...org1"
+}
+```
+
+```json 200
+{
+  "provider": "anthropic",
+  "has_key": true,
+  "source": "user_personal",
+  "key_preview": "sk-ant-...x7f2"
+}
+```
+
+```json 200
+{
+  "provider": "openai",
+  "has_key": false,
+  "source": "none",
+  "key_preview": null
+}
+```
+</ResponseExample>
+
+## Scopes
+
+| Method | Required scope |
+|--------|---------------|
+| GET    | `integrations:read` |

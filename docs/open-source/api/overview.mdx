@@ -1,0 +1,134 @@
+---
+title: "API Overview"
+description: "Runtime REST API for programmatic access"
+---
+
+The Runtime API lets you programmatically spin up sandboxes, deploy, and manage applications. Use it to integrate Runtime into your agent workflows or automation pipelines.
+
+## Base URL
+
+```
+https://app.runtm.com/api
+```
+
+For self-hosted instances, use your own API URL.
+
+## Authentication
+
+All API requests require a Bearer token in the `Authorization` header:
+
+```bash
+curl -H "Authorization: Bearer runtm_xxx" https://app.runtm.com/api/v0/deployments
+```
+
+Get your API key from [app.runtm.com](https://app.runtm.com) or create one via CLI:
+
+```bash
+runtm login
+```
+
+## API Scopes
+
+API keys have specific permissions:
+
+| Scope | Permissions |
+|-------|-------------|
+| `read` | List deployments, view logs, check status |
+| `deploy` | Create/update deployments (includes `read`) |
+| `delete` | Destroy deployments (includes `read`) |
+| `admin` | Full access including token management |
+
+## Endpoints
+
+### Deployments
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/v0/deployments` | [List deployments](/api/deployments/list) |
+| `POST` | `/v0/deployments` | [Create deployment](/api/deployments/create) |
+| `GET` | `/v0/deployments/{id}` | [Get deployment](/api/deployments/get) |
+| `DELETE` | `/v0/deployments/{id}` | [Delete deployment](/api/deployments/delete) |
+| `GET` | `/v0/deployments/search` | [Search deployments](/api/deployments/search) |
+
+### Logs
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/v0/deployments/{id}/logs` | [Get logs](/api/logs) |
+
+### Domains
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/v0/deployments/{id}/domains` | [Add domain](/api/domains/add) |
+| `GET` | `/v0/deployments/{id}/domains/{hostname}` | [Get domain status](/api/domains/get) |
+| `DELETE` | `/v0/deployments/{id}/domains/{hostname}` | [Remove domain](/api/domains/remove) |
+
+### User
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/v1/me` | [Get current user](/api/user/me) |
+
+## Rate Limits
+
+| Limit | Value |
+|-------|-------|
+| Deployments per hour | 10 |
+| Max artifact size | 20 MB |
+| Build timeout | 10 minutes |
+| Deploy timeout | 5 minutes |
+
+## Error Responses
+
+Errors return JSON with an `error` field:
+
+```json
+{
+  "detail": {
+    "error": "Deployment not found",
+    "deployment_id": "dep_invalid"
+  }
+}
+```
+
+Common HTTP status codes:
+
+| Code | Meaning |
+|------|---------|
+| `400` | Invalid request (bad parameters) |
+| `401` | Invalid or missing API key |
+| `403` | Insufficient permissions |
+| `404` | Resource not found |
+| `409` | Conflict (e.g., invalid state) |
+| `413` | Artifact too large |
+| `429` | Rate limit exceeded |
+| `500` | Server error |
+
+## Idempotency
+
+For `POST` requests, use the `Idempotency-Key` header to ensure safe retries:
+
+```bash
+curl -X POST "https://app.runtm.com/api/v0/deployments" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Idempotency-Key: unique-request-id-123" \
+  -F "manifest=@runtm.yaml" \
+  -F "artifact=@artifact.zip"
+```
+
+If the same key is used again, the API returns the existing deployment instead of creating a new one.
+
+## SDKs
+
+<CardGroup cols={2}>
+  <Card title="Python" icon="python">
+    ```bash
+    pip install runtm
+    ```
+    Use the CLI module programmatically
+  </Card>
+  <Card title="HTTP Client" icon="globe">
+    Use any HTTP client with the REST API
+  </Card>
+</CardGroup>

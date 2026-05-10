@@ -1,0 +1,77 @@
+---
+title: "Set User Instructions"
+api: "PUT /api/user/instructions"
+description: "Set or clear the custom instructions for the authenticated user."
+---
+
+Sets the user's custom instructions. Pass `null` to clear existing instructions. When an organization context is provided, updates the user's instructions scoped to that organization.
+
+**Required scope:** `context:write`
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. `Authorization: Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string">
+  Include to update instructions scoped to an organization context. Omit for personal instructions.
+</ParamField>
+
+<ParamField body="instructions" type="string" required>
+  The custom instructions text. Pass `null` to clear.
+</ParamField>
+
+<ResponseField name="instructions" type="string">
+  The updated instructions text. Null if cleared.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  ISO 8601 timestamp of the update.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X PUT "https://app.runtm.com/api/user/instructions" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "instructions": "Always use TypeScript. Prefer functional components with hooks."
+  }'
+```
+
+```python Python
+import requests
+
+resp = requests.put(
+    "https://app.runtm.com/api/user/instructions",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "Content-Type": "application/json",
+    },
+    json={"instructions": "Always use TypeScript. Prefer functional components with hooks."},
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const resp = await fetch("https://app.runtm.com/api/user/instructions", {
+  method: "PUT",
+  headers: {
+    Authorization: "Bearer runtm_xxx",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    instructions: "Always use TypeScript. Prefer functional components with hooks.",
+  }),
+});
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "instructions": "Always use TypeScript. Prefer functional components with hooks.",
+  "updated_at": "2026-05-09T18:00:00Z"
+}
+```
+</ResponseExample>

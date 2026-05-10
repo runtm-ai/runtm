@@ -1,0 +1,129 @@
+---
+title: "Update Integration"
+api: "POST /api/v1/linear/integration"
+description: "Update the Linear integration configuration."
+---
+
+Updates settings for an existing Linear integration. Supports partial updates — only provided fields are changed. Requires org admin role.
+
+**Required scope:** `integrations:write`
+
+<Note>Requires organization context via the `X-Organization-Id` header.</Note>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization owning the integration.
+</ParamField>
+
+<ParamField body="default_github_repo" type="string">
+  Default GitHub repo for agent sessions (`owner/repo`). Set to `""` to clear.
+</ParamField>
+
+<ParamField body="default_template" type="string">
+  Default sandbox template. Set to `""` to clear.
+</ParamField>
+
+<ParamField body="default_agent" type="string">
+  Default coding agent (e.g. `"claude-code"`, `"codex"`).
+</ParamField>
+
+<ParamField body="rate_limit_per_hour" type="integer">
+  Maximum agent launches per hour. Range: 1–100.
+</ParamField>
+
+<ParamField body="project_repo_map" type="object">
+  Mapping of Linear project IDs to GitHub repos.
+</ParamField>
+
+<ResponseField name="connected" type="boolean" required>
+  Always `true` for a successful update.
+</ResponseField>
+
+<ResponseField name="workspace_name" type="string">
+  Linear workspace name.
+</ResponseField>
+
+<ResponseField name="default_github_repo" type="string">
+  Updated default repo.
+</ResponseField>
+
+<ResponseField name="default_agent" type="string" required>
+  Updated default agent.
+</ResponseField>
+
+<ResponseField name="rate_limit_per_hour" type="integer" required>
+  Updated rate limit.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/v1/linear/integration" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "default_github_repo": "acme-corp/backend",
+    "rate_limit_per_hour": 20,
+    "project_repo_map": {
+      "proj_123": "acme-corp/frontend"
+    }
+  }'
+```
+
+```python Python
+import requests
+
+resp = requests.post(
+    "https://app.runtm.com/api/v1/linear/integration",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+        "Content-Type": "application/json",
+    },
+    json={
+        "default_github_repo": "acme-corp/backend",
+        "rate_limit_per_hour": 20,
+        "project_repo_map": {"proj_123": "acme-corp/frontend"},
+    },
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  "https://app.runtm.com/api/v1/linear/integration",
+  {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      default_github_repo: "acme-corp/backend",
+      rate_limit_per_hour: 20,
+      project_repo_map: { proj_123: "acme-corp/frontend" },
+    }),
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "connected": true,
+  "workspace_name": "Acme Engineering",
+  "actor_name": "Runtime Bot",
+  "service_user_id": "usr_xyz",
+  "default_github_repo": "acme-corp/backend",
+  "default_template": null,
+  "default_agent": "claude-code",
+  "rate_limit_per_hour": 20,
+  "enabled": true,
+  "webhook_active": true,
+  "bot_linear_user_id": "lin_usr_abc",
+  "project_repo_map": { "proj_123": "acme-corp/frontend" }
+}
+```
+</ResponseExample>

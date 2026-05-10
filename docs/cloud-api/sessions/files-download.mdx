@@ -1,0 +1,80 @@
+---
+title: "Download File"
+api: "GET /api/sessions/{session_id}/file/download"
+description: "Download raw file content from the sandbox"
+---
+
+Downloads the raw content of a file from the sandbox. Returns the file as a binary stream with the appropriate content type.
+
+**Required scope:** `sessions:read`
+
+## Path Parameters
+
+<ParamField path="session_id" type="string" required>
+  The session ID (e.g. `ses_abc123`).
+</ParamField>
+
+## Query Parameters
+
+<ParamField query="path" type="string" required>
+  Path of the file to download (e.g. `/src/index.ts`).
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+## Response
+
+Returns the raw file content with `Content-Type` and `Content-Disposition` headers.
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/sessions/ses_abc123/file/download?path=/src/index.ts" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -o index.ts
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/sessions/ses_abc123/file/download",
+    headers={"Authorization": "Bearer runtm_xxx"},
+    params={"path": "/src/index.ts"},
+)
+
+with open("index.ts", "wb") as f:
+    f.write(response.content)
+
+print(f"Downloaded {len(response.content)} bytes")
+```
+
+```javascript JavaScript
+const params = new URLSearchParams({ path: "/src/index.ts" });
+
+const response = await fetch(
+  `https://app.runtm.com/api/sessions/ses_abc123/file/download?${params}`,
+  {
+    headers: { "Authorization": "Bearer runtm_xxx" },
+  }
+);
+
+const blob = await response.blob();
+console.log(`Downloaded ${blob.size} bytes`);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+Raw file content (binary stream)
+```
+
+```json 404
+{
+  "detail": "File not found"
+}
+```
+</ResponseExample>

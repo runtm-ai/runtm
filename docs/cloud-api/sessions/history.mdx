@@ -1,0 +1,87 @@
+---
+title: "Get History"
+api: "GET /api/sessions/{session_id}/history"
+description: "Retrieve prompt history for a session"
+---
+
+Returns the parsed conversation history for a session, including all events from the agent's JSONL log.
+
+**Required scope:** `sessions:read`
+
+## Path Parameters
+
+<ParamField path="session_id" type="string" required>
+  The session ID (e.g. `ses_abc123`).
+</ParamField>
+
+## Query Parameters
+
+<ParamField query="agent_session_id" type="string">
+  The Claude CLI session UUID. If omitted, falls back to the session's stored `agent_session_id`. Returns an empty list if neither is available.
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+## Response
+
+<ResponseField name="events" type="array">
+  Array of parsed conversation events from the agent's JSONL log.
+</ResponseField>
+
+<ResponseField name="count" type="integer">
+  Total number of events returned.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+# Uses the session's stored agent_session_id automatically
+curl "https://app.runtm.com/api/sessions/ses_abc123/history" \
+  -H "Authorization: Bearer runtm_xxx"
+
+# Or specify a specific agent session
+curl "https://app.runtm.com/api/sessions/ses_abc123/history?agent_session_id=abc-def-123" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/sessions/ses_abc123/history",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+
+for event in response.json()["events"]:
+    print(event)
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/sessions/ses_abc123/history",
+  {
+    headers: { "Authorization": "Bearer runtm_xxx" },
+  }
+);
+
+const { events, count } = await response.json();
+console.log(`${count} events`);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "events": [
+    {
+      "type": "assistant",
+      "message": "I'll set up an Express API with the following structure..."
+    }
+  ],
+  "count": 1
+}
+```
+</ResponseExample>

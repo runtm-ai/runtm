@@ -1,0 +1,118 @@
+---
+title: "Resync Directive"
+api: "POST /agent-directives/{directive_id}:resync"
+description: "Re-fetch a directive from its upstream source"
+---
+
+Re-fetches the directive's content from the upstream source (`github_repo`, `github_url`, or `url`). When the upstream is unchanged, the call updates only the directive's provenance timestamps. When the upstream has changed, a new version row is created.
+
+When `auto_publish=true` and the previous version was already published, the new version is published atomically and inherits the previous version's attachments - so already-running sessions are not affected, but new sessions immediately use the refreshed content.
+
+<Info>Required scope: `context:write`</Info>
+
+<Note>
+Agent directives are **organization-scoped**. The request must include `X-Organization-Id` (or use an org-scoped API key).
+</Note>
+
+## Path Parameters
+
+<ParamField path="directive_id" type="string" required>
+  Directive id. The directive's `source.kind` must be one of `github_repo`, `github_url`, or `url`.
+</ParamField>
+
+## Body Parameters
+
+<ParamField body="auto_publish" type="boolean" default="false">
+  If `true` and the previous version was published and the upstream changed, publish the new version atomically.
+</ParamField>
+
+## Headers
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization context.
+</ParamField>
+
+## Response
+
+<ResponseField name="directive" type="object">
+  The current directive after resync.
+</ResponseField>
+
+<ResponseField name="no_changes" type="boolean">
+  True if the upstream content was identical to the existing version (no new version was created).
+</ResponseField>
+
+<ResponseField name="previous_version" type="integer">
+  The version number prior to the resync.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/agent-directives/dir_aaa:resync" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_456" \
+  -H "Content-Type: application/json" \
+  -d '{"auto_publish": true}'
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://app.runtm.com/api/agent-directives/dir_aaa:resync",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_456",
+    },
+    json={"auto_publish": True},
+)
+
+result = response.json()
+print(f"No changes: {result['no_changes']}, prev v{result['previous_version']}")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/agent-directives/dir_aaa:resync",
+  {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "X-Organization-Id": "org_456",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ auto_publish: true }),
+  }
+);
+
+console.log(await response.json());
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "directive": {
+    "id": "dir_aaa",
+    "type": "skill_v0",
+    "version": 5,
+    "is_published": true
+  },
+  "no_changes": false,
+  "previous_version": 4
+}
+```
+
+```json 200
+{
+  "directive": {
+    "id": "dir_aaa",
+    "type": "skill_v0",
+    "version": 4,
+    "is_published": true
+  },
+  "no_changes": true,
+  "previous_version": 4
+}
+```
+</ResponseExample>

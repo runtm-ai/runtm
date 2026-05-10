@@ -1,0 +1,187 @@
+---
+title: "Set Org Limits"
+api: "PUT /api/organizations/{org_id}/limits"
+description: "Set the usage limits and deployment policy for an organization."
+---
+
+Updates the organization's usage limits. All fields in the `limits` object are optional — omitted fields retain their current values.
+
+**Required scope:** `guardrails:write`
+
+<ParamField path="org_id" type="string" required>
+  The organization ID.
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. `Authorization: Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  Must match the `org_id` path parameter.
+</ParamField>
+
+<ParamField body="limits" type="object" required>
+  The limits configuration object.
+
+  <Expandable title="limits properties">
+    <ParamField body="max_sessions_per_user" type="integer">
+      Maximum concurrent sessions per user. Null for unlimited.
+    </ParamField>
+
+    <ParamField body="max_cost_per_session" type="number">
+      Maximum cost in USD per individual session. Null for unlimited.
+    </ParamField>
+
+    <ParamField body="max_daily_spend_per_user" type="number">
+      Maximum daily spend in USD per user. Null for unlimited.
+    </ParamField>
+
+    <ParamField body="max_monthly_spend_per_user" type="number">
+      Maximum monthly spend in USD per user. Null for unlimited.
+    </ParamField>
+
+    <ParamField body="allowed_templates" type="array">
+      List of template IDs users are allowed to use. Null for all templates.
+    </ParamField>
+
+    <ParamField body="enforcement" type="string">
+      Enforcement mode: `soft` (warn only) or `hard` (block).
+    </ParamField>
+
+    <ParamField body="deployment" type="object">
+      Deployment permission settings.
+
+      <Expandable title="deployment properties">
+        <ParamField body="mode" type="string">
+          Deployment permission mode.
+        </ParamField>
+
+        <ParamField body="roles" type="array">
+          Roles allowed to deploy.
+        </ParamField>
+
+        <ParamField body="user_grants" type="array">
+          Individual user IDs granted deploy access.
+        </ParamField>
+      </Expandable>
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ResponseField name="organization_id" type="string">
+  The organization ID.
+</ResponseField>
+
+<ResponseField name="limits" type="object">
+  The updated limits configuration. See [Get Org Limits](/cloud-api/guardrails/org-limits-get) for the full shape.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  ISO 8601 timestamp of the update.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X PUT "https://app.runtm.com/api/organizations/org_abc123/limits" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "limits": {
+      "max_sessions_per_user": 3,
+      "max_cost_per_session": 5.00,
+      "max_daily_spend_per_user": 25.00,
+      "max_monthly_spend_per_user": 250.00,
+      "enforcement": "hard",
+      "deployment": {
+        "mode": "role_based",
+        "roles": ["admin", "owner"],
+        "user_grants": []
+      }
+    }
+  }'
+```
+
+```python Python
+import requests
+
+org_id = "org_abc123"
+
+resp = requests.put(
+    f"https://app.runtm.com/api/organizations/{org_id}/limits",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": org_id,
+        "Content-Type": "application/json",
+    },
+    json={
+        "limits": {
+            "max_sessions_per_user": 3,
+            "max_cost_per_session": 5.00,
+            "max_daily_spend_per_user": 25.00,
+            "max_monthly_spend_per_user": 250.00,
+            "enforcement": "hard",
+            "deployment": {
+                "mode": "role_based",
+                "roles": ["admin", "owner"],
+                "user_grants": [],
+            },
+        }
+    },
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const orgId = "org_abc123";
+
+const resp = await fetch(
+  `https://app.runtm.com/api/organizations/${orgId}/limits`,
+  {
+    method: "PUT",
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": orgId,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      limits: {
+        max_sessions_per_user: 3,
+        max_cost_per_session: 5.0,
+        max_daily_spend_per_user: 25.0,
+        max_monthly_spend_per_user: 250.0,
+        enforcement: "hard",
+        deployment: {
+          mode: "role_based",
+          roles: ["admin", "owner"],
+          user_grants: [],
+        },
+      },
+    }),
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "organization_id": "org_abc123",
+  "limits": {
+    "max_sessions_per_user": 3,
+    "max_cost_per_session": 5.00,
+    "max_daily_spend_per_user": 25.00,
+    "max_monthly_spend_per_user": 250.00,
+    "allowed_templates": null,
+    "enforcement": "hard",
+    "deployment": {
+      "mode": "role_based",
+      "roles": ["admin", "owner"],
+      "user_grants": []
+    }
+  },
+  "updated_at": "2026-05-09T18:00:00Z"
+}
+```
+</ResponseExample>

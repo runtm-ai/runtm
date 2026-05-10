@@ -1,0 +1,62 @@
+---
+title: "Delete Integration"
+api: "DELETE /api/v1/slack/integration"
+description: "Disconnect the Slack integration for the organization."
+---
+
+Disconnects the Slack integration by removing the integration record. Requires org admin role.
+
+**Required scope:** `integrations:write`
+
+<Note>Requires organization context via the `X-Organization-Id` header.</Note>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization to disconnect.
+</ParamField>
+
+<ResponseField name="success" type="boolean" required>
+  Whether the disconnection succeeded.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE "https://app.runtm.com/api/v1/slack/integration" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+resp = requests.delete(
+    "https://app.runtm.com/api/v1/slack/integration",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  "https://app.runtm.com/api/v1/slack/integration",
+  {
+    method: "DELETE",
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "success": true
+}
+```
+</ResponseExample>

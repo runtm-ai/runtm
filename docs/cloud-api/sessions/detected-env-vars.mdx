@@ -1,0 +1,90 @@
+---
+title: "Get Detected Env Vars"
+api: "GET /api/sessions/{session_id}/detected-env-vars"
+description: "Retrieve env vars detected from project files"
+---
+
+Returns environment variables that were detected from project configuration files (e.g. `.env.example`, `docker-compose.yml`, framework config files).
+
+**Required scope:** `secrets:read`
+
+## Path Parameters
+
+<ParamField path="session_id" type="string" required>
+  The session ID (e.g. `ses_abc123`).
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+## Response
+
+<ResponseField name="detected_vars" type="array">
+  Array of detected environment variable descriptors.
+</ResponseField>
+
+<ResponseField name="detected_vars[].key" type="string">
+  Variable name.
+</ResponseField>
+
+<ResponseField name="detected_vars[].source" type="string">
+  File where the variable was detected.
+</ResponseField>
+
+<ResponseField name="detected_vars[].required" type="boolean">
+  Whether the variable appears to be required.
+</ResponseField>
+
+<ResponseField name="detected_vars[].has_value" type="boolean">
+  Whether a value is currently set.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/sessions/ses_abc123/detected-env-vars" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/sessions/ses_abc123/detected-env-vars",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+
+for v in response.json()["detected_vars"]:
+    status = "set" if v["has_value"] else "missing"
+    print(f"{v['key']} ({v['source']}) — {status}")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/sessions/ses_abc123/detected-env-vars",
+  {
+    headers: { "Authorization": "Bearer runtm_xxx" },
+  }
+);
+
+const { detected_vars } = await response.json();
+detected_vars.forEach((v) => {
+  const status = v.has_value ? "set" : "missing";
+  console.log(`${v.key} (${v.source}) — ${status}`);
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "detected_vars": [
+    { "key": "DATABASE_URL", "source": ".env.example", "required": true, "has_value": true },
+    { "key": "REDIS_URL", "source": ".env.example", "required": true, "has_value": false },
+    { "key": "SENTRY_DSN", "source": "next.config.js", "required": false, "has_value": false }
+  ]
+}
+```
+</ResponseExample>

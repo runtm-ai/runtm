@@ -1,0 +1,64 @@
+---
+title: "Delete Installation"
+api: "DELETE /api/github-app/installations/{installation_id}"
+description: "Remove a GitHub App installation record."
+---
+
+Removes a GitHub App installation from the database. This does not uninstall the app from GitHub — it only removes the record from Runtime.
+
+**Required scope:** `integrations:write`
+
+<ParamField path="installation_id" type="string" required>
+  Internal installation ID to delete.
+</ParamField>
+
+<ResponseField name="message" type="string" required>
+  Confirmation message.
+</ResponseField>
+
+<ResponseField name="id" type="string" required>
+  The deleted installation ID.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE "https://app.runtm.com/api/github-app/installations/inst_01J..." \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+installation_id = "inst_01J..."
+
+resp = requests.delete(
+    f"https://app.runtm.com/api/github-app/installations/{installation_id}",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const installationId = "inst_01J...";
+
+const resp = await fetch(
+  `https://app.runtm.com/api/github-app/installations/${installationId}`,
+  {
+    method: "DELETE",
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+    },
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "message": "Installation removed",
+  "id": "inst_01J..."
+}
+```
+</ResponseExample>

@@ -1,0 +1,103 @@
+---
+title: "Get Deploy Limits"
+api: "GET /api/deploy/limits"
+description: "Lightweight pre-flight check returning the deploy quota and allowed tiers for the caller."
+---
+
+<Info>
+  Required scope: `deployments:read`
+</Info>
+
+Returns the deployment app quota, current usage, and allowed machine tiers
+for the caller in the current personal or organization context. Designed for
+fast pre-flight checks: it queries the database and the deployments API only,
+with no sandbox I/O, so it typically returns in 100-200 ms.
+
+Use this before showing a "Deploy" button or gating CI workflows that
+provision new apps. For a more detailed plan summary (sandbox tier, idle
+timeout, seat counts), use [Get Current Plan](/cloud-api/configuration/current-plan).
+
+<Note>
+  Without `X-Organization-Id`, the response reflects the caller's personal
+  quota. With `X-Organization-Id` set (or with an org-scoped key), it
+  reflects the organization's quota.
+</Note>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  `Bearer <your_api_key>`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string">
+  Optional. Resolves limits against the org plan instead of the personal plan.
+</ParamField>
+
+## Response
+
+<ResponseField name="max_apps" type="integer">
+  Maximum number of active deployments allowed by the plan.
+</ResponseField>
+
+<ResponseField name="user_app_count" type="integer">
+  Current count of active deployments owned by the caller (or the org). Counts
+  the latest version of each deployment that is not in `destroyed` or `failed`
+  state.
+</ResponseField>
+
+<ResponseField name="allowed_tiers" type="array">
+  Fly machine tiers the caller is permitted to deploy to. A subset of
+  `starter`, `performance`, `pro`.
+</ResponseField>
+
+<ResponseField name="plan_name" type="string">
+  Plan tier currently applied. One of `"free"`, `"builder"`, or `"teams"`.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "https://app.runtm.com/api/deploy/limits" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/deploy/limits",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+limits = response.json()
+remaining = limits["max_apps"] - limits["user_app_count"]
+print(f"{remaining} of {limits['max_apps']} apps available on the {limits['plan_name']} plan")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/deploy/limits",
+  {
+    headers: { Authorization: "Bearer runtm_xxx" },
+  },
+);
+const limits = await response.json();
+const remaining = limits.max_apps - limits.user_app_count;
+console.log(`${remaining} of ${limits.max_apps} apps available`);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "max_apps": 5,
+  "user_app_count": 2,
+  "allowed_tiers": ["starter", "performance"],
+  "plan_name": "builder"
+}
+```
+
+```json 401
+{
+  "detail": "Invalid or expired API key"
+}
+```
+</ResponseExample>

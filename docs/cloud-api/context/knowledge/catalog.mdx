@@ -1,0 +1,116 @@
+---
+title: "Knowledge Catalog"
+api: "GET /api/knowledge/catalog"
+description: "List every available knowledge provider and its capabilities."
+---
+
+Returns the full catalog of knowledge providers with their auth methods, tools, and display metadata.
+The catalog is resolved from code at import time — no database queries are involved.
+
+**Required scope:** `integrations:read`
+
+<ResponseField name="providers" type="CatalogProviderResource[]" required>
+  List of available knowledge providers.
+
+  <Expandable title="CatalogProviderResource">
+    <ResponseField name="id" type="string" required>Provider identifier (e.g. `"bigquery"`).</ResponseField>
+    <ResponseField name="display_name" type="string" required>Human-readable name.</ResponseField>
+    <ResponseField name="tagline" type="string" required>Short tagline for the provider picker.</ResponseField>
+    <ResponseField name="description" type="string" required>Full description.</ResponseField>
+    <ResponseField name="category" type="string" required>Grouping category.</ResponseField>
+    <ResponseField name="icon" type="string" required>Icon identifier.</ResponseField>
+    <ResponseField name="accent_color" type="string" required>CSS color value.</ResponseField>
+    <ResponseField name="docs_url" type="string">Link to provider documentation.</ResponseField>
+    <ResponseField name="auth_methods" type="CatalogAuthMethodResource[]" required>
+      Supported authentication methods.
+
+      <Expandable title="CatalogAuthMethodResource">
+        <ResponseField name="id" type="string" required>Method identifier.</ResponseField>
+        <ResponseField name="display_name" type="string" required>Human-readable name.</ResponseField>
+        <ResponseField name="description" type="string" required>Short description.</ResponseField>
+        <ResponseField name="auth_kind" type="string" required>`"oauth"` or `"static"`.</ResponseField>
+        <ResponseField name="oauth_scopes" type="string[]">OAuth scopes requested (OAuth methods only).</ResponseField>
+        <ResponseField name="credential_schema" type="object">JSON Schema for static credentials.</ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="tools" type="CatalogToolResource[]" required>
+      Tools the provider exposes.
+
+      <Expandable title="CatalogToolResource">
+        <ResponseField name="id" type="string" required>Tool identifier.</ResponseField>
+        <ResponseField name="name" type="string" required>Human-readable tool name.</ResponseField>
+        <ResponseField name="description" type="string" required>What the tool does.</ResponseField>
+        <ResponseField name="kind" type="string" required>`"read"` or `"write"`.</ResponseField>
+        <ResponseField name="default_permission" type="string" required>`"auto"`, `"allow"`, or `"ask"`.</ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl https://app.runtm.com/api/knowledge/catalog \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+resp = requests.get(
+    "https://app.runtm.com/api/knowledge/catalog",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const resp = await fetch("https://app.runtm.com/api/knowledge/catalog", {
+  headers: { Authorization: "Bearer runtm_xxx" },
+});
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "providers": [
+    {
+      "id": "bigquery",
+      "display_name": "BigQuery",
+      "tagline": "Query Google BigQuery datasets",
+      "description": "Connect BigQuery to let agents query your data warehouse.",
+      "category": "data",
+      "icon": "bigquery",
+      "accent_color": "#4285F4",
+      "docs_url": "https://cloud.google.com/bigquery/docs",
+      "auth_methods": [
+        {
+          "id": "service_account",
+          "display_name": "Service Account",
+          "description": "Authenticate with a GCP service account key.",
+          "auth_kind": "static",
+          "oauth_scopes": [],
+          "credential_schema": {
+            "type": "object",
+            "properties": {
+              "service_account_json": { "type": "string" }
+            },
+            "required": ["service_account_json"]
+          }
+        }
+      ],
+      "tools": [
+        {
+          "id": "query",
+          "name": "Run SQL Query",
+          "description": "Execute a read-only SQL query against BigQuery.",
+          "kind": "read",
+          "default_permission": "ask"
+        }
+      ]
+    }
+  ]
+}
+```
+</ResponseExample>

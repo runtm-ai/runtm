@@ -1,0 +1,96 @@
+---
+title: "Current Plan"
+api: "GET /api/user/current-plan"
+description: "Get the current billing plan for the authenticated user"
+---
+
+Returns the authenticated user's current billing plan. Useful for checking plan-level feature availability, deployment limits, and tier access before making other API calls.
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. `Authorization: Bearer runtm_xxx`
+</ParamField>
+
+## Response
+
+<ResponseField name="plan_name" type="string">
+  Name of the current plan (e.g. `free`, `pro`, `team`, `enterprise`)
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Plan status (e.g. `active`, `trialing`, `past_due`)
+</ResponseField>
+
+<ResponseField name="features" type="object">
+  Plan feature flags and limits
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/user/current-plan" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/user/current-plan",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+
+data = response.json()
+print(f"Plan: {data['plan_name']}")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/user/current-plan",
+  {
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+    },
+  }
+);
+
+const data = await response.json();
+console.log(`Plan: ${data.plan_name}`);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "plan_name": "pro",
+  "status": "active",
+  "features": {
+    "max_apps": 10,
+    "max_sessions": 20,
+    "allowed_tiers": ["starter", "standard", "performance"],
+    "collaboration": true,
+    "custom_domains": true
+  }
+}
+```
+
+```json 200
+{
+  "plan_name": "free",
+  "status": "active",
+  "features": {
+    "max_apps": 2,
+    "max_sessions": 5,
+    "allowed_tiers": ["starter"],
+    "collaboration": false,
+    "custom_domains": false
+  }
+}
+```
+</ResponseExample>
+
+## Scopes
+
+| Method | Required scope |
+|--------|---------------|
+| GET    | `activity:read` |

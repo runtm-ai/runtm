@@ -1,0 +1,100 @@
+---
+title: "Deploy Permission"
+api: "GET /api/organizations/{org_id}/can-deploy"
+description: "Check whether the current user is allowed to deploy within an organization"
+---
+
+Returns whether the authenticated user has permission to deploy applications within the specified organization. Organization owners are always allowed. For other members, the result depends on the organization's deployment limits configuration (see [Org Limits](/cloud-api/guardrails/org-limits)).
+
+## Path Parameters
+
+<ParamField path="org_id" type="string" required>
+  The organization ID
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. `Authorization: Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  Must match the `org_id` path parameter
+</ParamField>
+
+## Response
+
+<ResponseField name="allowed" type="boolean">
+  Whether the user is permitted to deploy
+</ResponseField>
+
+<ResponseField name="reason" type="string">
+  Human-readable explanation of the decision
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/organizations/org_abc123/can-deploy" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/organizations/org_abc123/can-deploy",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+
+data = response.json()
+if data["allowed"]:
+    print("Deploy permitted")
+else:
+    print(f"Deploy blocked: {data['reason']}")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/organizations/org_abc123/can-deploy",
+  {
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  }
+);
+
+const data = await response.json();
+if (data.allowed) {
+  console.log("Deploy permitted");
+} else {
+  console.log(`Deploy blocked: ${data.reason}`);
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "allowed": true,
+  "reason": "Organization owner"
+}
+```
+
+```json 200
+{
+  "allowed": false,
+  "reason": "Deployment disabled for member role"
+}
+```
+</ResponseExample>
+
+## Scopes
+
+| Method | Required scope |
+|--------|---------------|
+| GET    | `deployments:read` |

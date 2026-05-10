@@ -1,0 +1,119 @@
+---
+title: "Get Integration"
+api: "GET /api/v1/linear/integration"
+description: "Get the current Linear integration status and configuration."
+---
+
+Returns the Linear integration status for the active organization, including workspace info, webhook status, and configuration settings.
+
+**Required scope:** `integrations:read`
+
+<Note>Requires organization context via the `X-Organization-Id` header.</Note>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization to check.
+</ParamField>
+
+<ResponseField name="connected" type="boolean" required>
+  Whether a Linear integration exists.
+</ResponseField>
+
+<ResponseField name="workspace_name" type="string">
+  Linear workspace name.
+</ResponseField>
+
+<ResponseField name="actor_name" type="string">
+  Name of the authorized actor.
+</ResponseField>
+
+<ResponseField name="service_user_id" type="string">
+  Runtime user ID used as the service account.
+</ResponseField>
+
+<ResponseField name="default_github_repo" type="string">
+  Default GitHub repo for agent sessions.
+</ResponseField>
+
+<ResponseField name="default_template" type="string">
+  Default sandbox template.
+</ResponseField>
+
+<ResponseField name="default_agent" type="string" required>
+  Default coding agent (e.g. `"claude-code"`).
+</ResponseField>
+
+<ResponseField name="rate_limit_per_hour" type="integer" required>
+  Maximum agent launches per hour.
+</ResponseField>
+
+<ResponseField name="enabled" type="boolean" required>
+  Whether the integration is enabled.
+</ResponseField>
+
+<ResponseField name="webhook_active" type="boolean" required>
+  Whether the webhook is registered.
+</ResponseField>
+
+<ResponseField name="bot_linear_user_id" type="string">
+  The app's user ID in the Linear workspace.
+</ResponseField>
+
+<ResponseField name="project_repo_map" type="object">
+  Mapping of Linear project IDs to GitHub repos.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/v1/linear/integration" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+resp = requests.get(
+    "https://app.runtm.com/api/v1/linear/integration",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  "https://app.runtm.com/api/v1/linear/integration",
+  {
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "connected": true,
+  "workspace_name": "Acme Engineering",
+  "actor_name": "Runtime Bot",
+  "service_user_id": "usr_xyz",
+  "default_github_repo": "acme-corp/backend",
+  "default_template": null,
+  "default_agent": "claude-code",
+  "rate_limit_per_hour": 15,
+  "enabled": true,
+  "webhook_active": true,
+  "bot_linear_user_id": "lin_usr_abc",
+  "project_repo_map": {
+    "proj_123": "acme-corp/frontend",
+    "proj_456": "acme-corp/backend"
+  }
+}
+```
+</ResponseExample>

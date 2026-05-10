@@ -1,0 +1,65 @@
+---
+title: "Token Status"
+api: "GET /api/github-app/user-token-status"
+description: "Quick check if a GitHub user token is connected and valid."
+---
+
+Returns the connection status of the user's GitHub token without exposing the actual token. Also indicates whether a GitHub App installation exists for this user.
+
+**Required scope:** `integrations:read`
+
+<ResponseField name="connected" type="boolean" required>
+  Whether a GitHub token is stored for this user.
+</ResponseField>
+
+<ResponseField name="username" type="string">
+  GitHub username (only when connected).
+</ResponseField>
+
+<ResponseField name="scopes" type="string">
+  Token scopes (e.g. `"repo,read:user,read:org"`).
+</ResponseField>
+
+<ResponseField name="has_installation" type="boolean" required>
+  Whether a GitHub App installation exists for this user.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/github-app/user-token-status" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+resp = requests.get(
+    "https://app.runtm.com/api/github-app/user-token-status",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  "https://app.runtm.com/api/github-app/user-token-status",
+  {
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+    },
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "connected": true,
+  "username": "octocat",
+  "scopes": "repo,read:user,read:org",
+  "has_installation": true
+}
+```
+</ResponseExample>

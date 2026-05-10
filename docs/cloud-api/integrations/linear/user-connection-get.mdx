@@ -1,0 +1,81 @@
+---
+title: "Get User Connection"
+api: "GET /api/v1/linear/user-connection"
+description: "Get the current user's Linear identity link status."
+---
+
+Returns the per-user Linear connection status. This links a Runtime user to their Linear identity for attribution when Linear agent sessions are triggered.
+
+**Required scope:** `integrations:read`
+
+<Note>Requires organization context via the `X-Organization-Id` header.</Note>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization context.
+</ParamField>
+
+<ResponseField name="connected" type="boolean" required>
+  Whether the user has a Linear connection.
+</ResponseField>
+
+<ResponseField name="linear_user_id" type="string">
+  Linear user ID.
+</ResponseField>
+
+<ResponseField name="linear_email" type="string">
+  Linear email address.
+</ResponseField>
+
+<ResponseField name="linear_name" type="string">
+  Linear display name.
+</ResponseField>
+
+<ResponseField name="workspace_id" type="string">
+  Linear workspace ID.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/v1/linear/user-connection" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+resp = requests.get(
+    "https://app.runtm.com/api/v1/linear/user-connection",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  "https://app.runtm.com/api/v1/linear/user-connection",
+  {
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "connected": true,
+  "linear_user_id": "lin_usr_abc",
+  "linear_email": "alice@example.com",
+  "linear_name": "Alice",
+  "workspace_id": "ws_xyz"
+}
+```
+</ResponseExample>

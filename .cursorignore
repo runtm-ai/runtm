@@ -6,8 +6,9 @@ local.env
 
 # Credentials and tokens
 **/credentials*
-**/*secret*
-**/*token*
+# **/*secret*  -- too broad; blocks docs. Specific patterns below cover real risks.
+# **/*token*  -- too broad; blocks docs. Specific patterns below cover real risks.
+
 
 # Private keys
 *.pem

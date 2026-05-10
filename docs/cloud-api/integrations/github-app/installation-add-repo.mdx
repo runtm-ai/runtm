@@ -1,0 +1,96 @@
+---
+title: "Add Repo to Installation"
+api: "POST /api/github-app/installations/{installation_id}/add-repo"
+description: "Add a repository to a GitHub App installation's access list."
+---
+
+Adds a repository to a GitHub App installation so subsequent operations can use the installation token instead of a user OAuth token. Requires the user's OAuth token with `repo` scope.
+
+**Required scope:** `integrations:write`
+
+<ParamField path="installation_id" type="string" required>
+  Internal installation ID.
+</ParamField>
+
+<ParamField body="repo_id" type="integer" required>
+  GitHub repository ID.
+</ParamField>
+
+<ParamField body="repo_full_name" type="string" required>
+  Full repository name (`owner/repo`).
+</ParamField>
+
+<ParamField body="oauth_token" type="string" required>
+  User OAuth token with `repo` scope.
+</ParamField>
+
+<ResponseField name="success" type="boolean" required>
+  Whether the operation succeeded.
+</ResponseField>
+
+<ResponseField name="message" type="string" required>
+  Human-readable result message.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/github-app/installations/inst_01J.../add-repo" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "repo_id": 987654,
+    "repo_full_name": "acme-corp/new-repo",
+    "oauth_token": "ghu_xxxx"
+  }'
+```
+
+```python Python
+import requests
+
+installation_id = "inst_01J..."
+
+resp = requests.post(
+    f"https://app.runtm.com/api/github-app/installations/{installation_id}/add-repo",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "Content-Type": "application/json",
+    },
+    json={
+        "repo_id": 987654,
+        "repo_full_name": "acme-corp/new-repo",
+        "oauth_token": "ghu_xxxx",
+    },
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const installationId = "inst_01J...";
+
+const resp = await fetch(
+  `https://app.runtm.com/api/github-app/installations/${installationId}/add-repo`,
+  {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      repo_id: 987654,
+      repo_full_name: "acme-corp/new-repo",
+      oauth_token: "ghu_xxxx",
+    }),
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "success": true,
+  "message": "Repository 'acme-corp/new-repo' added to GitHub App"
+}
+```
+</ResponseExample>

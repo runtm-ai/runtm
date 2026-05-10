@@ -1,0 +1,115 @@
+---
+title: Integrations
+description: "Connect GitHub, Linear, Slack, and knowledge sources to your Runtime sessions"
+---
+
+Integrations connect Runtime to the tools your team already uses. Sessions and agents can clone repos, respond to tickets, post to Slack, and read your team's docs without any custom plumbing. Integrations are configured at the organization level by admins.
+
+## Available integrations
+
+<CardGroup cols={2}>
+  <Card title="GitHub App" icon="github">
+    Clone repositories, push commits, create pull requests, and manage branches from inside sessions.
+  </Card>
+  <Card title="GitHub User Tokens" icon="key">
+    Per-user GitHub credentials that let sessions act as the individual developer for git operations.
+  </Card>
+  <Card title="Linear" icon="circle-dot">
+    Trigger agent sessions from Linear issues. The agent picks up the ticket, writes code, and reports back.
+  </Card>
+  <Card title="Slack" icon="hashtag">
+    Trigger agent sessions from Slack messages. Users mention the bot, and it spins up a session to handle the request.
+  </Card>
+  <Card title="Knowledge Sources" icon="book">
+    Give agents access to documentation, wikis, Notion pages, Confluence spaces, and other knowledge bases via OAuth or API keys.
+  </Card>
+  <Card title="Skills" icon="scroll" href="/concepts/skills">
+    Reusable instruction bundles that extend agent capabilities. Manage MCP servers, reference docs, and custom workflows centrally.
+  </Card>
+</CardGroup>
+
+## GitHub App
+
+The GitHub App integration connects your GitHub repositories to Runtime. Once installed:
+
+- **Clone repos** into sessions with `POST /api/sessions/{id}/git/clone`
+- **Push changes** back to GitHub with `POST /api/sessions/{id}/git/operation`
+- **Create branches and PRs** directly from the session
+- **Access tokens** are managed automatically; you never handle raw GitHub tokens
+
+The integration works through a GitHub App installed on your GitHub organization. Runtime caches and auto-refreshes installation tokens.
+
+### Setup
+
+1. Install the Runtime GitHub App on your GitHub org
+2. Select which repositories it can access
+3. The integration appears in Runtime's [installations list](/cloud-api/integrations/github-app/installations-list)
+
+See the [GitHub App API reference](/cloud-api/integrations/github-app/installations-list) for all endpoints.
+
+### User tokens
+
+In addition to the org-level App, individual users can link their GitHub identity. This lets sessions attribute commits to the right person and access repositories the App does not cover.
+
+See [GitHub User Tokens](/cloud-api/integrations/github-user-tokens/user-token).
+
+## Linear
+
+The Linear integration lets agents respond to issues automatically:
+
+1. A team member creates a Linear issue (or tags the Runtime bot on one)
+2. Runtime spins up a session, clones the relevant repo, and sends the issue description as a prompt
+3. The agent writes code, creates a PR, and updates the issue with progress
+
+Admins configure which Linear workspace to connect and set rate limits on how many agent sessions can be launched per hour.
+
+See the [Linear API reference](/cloud-api/integrations/linear/integration-get).
+
+## Slack
+
+Similar to Linear, the Slack integration listens for messages in channels:
+
+1. A user mentions the Runtime bot in Slack
+2. Runtime creates a session and sends the message as a prompt
+3. The agent works on the task and can report back to the Slack thread
+
+Two connection methods are available:
+
+- **Managed app** - use Runtime's hosted Slack app (OAuth install)
+- **Self-hosted app** - bring your own Slack app with a custom bot token and signing secret
+
+See the [Slack API reference](/cloud-api/integrations/slack/integration-get).
+
+## Knowledge sources
+
+Knowledge integrations give agents access to your documentation and internal knowledge bases. Supported providers include:
+
+- Documentation sites
+- Notion workspaces
+- Confluence spaces
+- Custom API-backed sources
+
+Each provider defines the tools it exposes to agents (search, read page, list articles, etc.). The [catalog endpoint](/cloud-api/context/knowledge/catalog) lists all available providers and their capabilities.
+
+Connections are established via OAuth or static API keys, depending on the provider.
+
+## Skills
+
+Skills are reusable instruction bundles that extend what agents can do. They include markdown instructions, reference files, MCP server configurations, and required tooling. Skills can be authored directly through the API, imported from Git repositories, or discovered from connected repos.
+
+See [Skills](/concepts/skills) for the full skill format and the [Skills API reference](/cloud-api/context/skills/list) for the endpoints.
+
+## Permissions
+
+All integration endpoints require the `integrations:read` or `integrations:write` scope, and only org admins/owners can create or modify integrations. Members can read integration status.
+
+## Related guides
+
+<CardGroup cols={2}>
+  <Card title="Webhooks and triggers" icon="webhook" href="/guides/webhooks-and-triggers">
+    Outbound webhook events and built-in trigger patterns.
+  </Card>
+  <Card title="Teach the agent your codebase" icon="brain" href="/guides/teach-the-agent-your-codebase">
+    Skills, knowledge sources, and how context layers compose.
+  </Card>
+</CardGroup>

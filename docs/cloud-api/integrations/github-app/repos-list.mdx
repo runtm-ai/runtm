@@ -1,0 +1,124 @@
+---
+title: "List Repos"
+api: "GET /api/github-app/repos"
+description: "All repos accessible via installed GitHub Apps, fetched in parallel."
+---
+
+Returns repositories from all accessible GitHub App installations in a single call. Repos are grouped by installation and fetched in parallel for fast loading.
+
+**Required scope:** `integrations:read`
+
+<ParamField query="per_page" type="integer" default="100">
+  Number of repos per installation. Range: 1–100.
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string">
+  Optional. When set, includes repos from org-shared installations.
+</ParamField>
+
+<ResponseField name="installations" type="InstallationRepos[]" required>
+  List of installations with their repos.
+</ResponseField>
+
+<ResponseField name="installations[].installation" type="InstallationInfo" required>
+  Installation metadata (see [List Installations](/cloud-api/integrations/github-app/installations-list)).
+</ResponseField>
+
+<ResponseField name="installations[].repos" type="RepoInfo[]" required>
+  Repositories accessible to this installation.
+</ResponseField>
+
+<ResponseField name="installations[].repos[].id" type="integer" required>
+  GitHub repository ID.
+</ResponseField>
+
+<ResponseField name="installations[].repos[].full_name" type="string" required>
+  Full repository name (`owner/repo`).
+</ResponseField>
+
+<ResponseField name="installations[].repos[].private" type="boolean" required>
+  Whether the repo is private.
+</ResponseField>
+
+<ResponseField name="installations[].repos[].default_branch" type="string" required>
+  Default branch name.
+</ResponseField>
+
+<ResponseField name="installations[].repos[].language" type="string">
+  Primary language.
+</ResponseField>
+
+<ResponseField name="installations[].total_count" type="integer" required>
+  Total number of repos in this installation.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/github-app/repos?per_page=50" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+resp = requests.get(
+    "https://app.runtm.com/api/github-app/repos",
+    params={"per_page": 50},
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  "https://app.runtm.com/api/github-app/repos?per_page=50",
+  {
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "installations": [
+    {
+      "installation": {
+        "id": "inst_01J...",
+        "installation_id": 12345678,
+        "account_type": "Organization",
+        "account_login": "acme-corp",
+        "avatar_url": "https://avatars.githubusercontent.com/u/12345",
+        "created_at": "2026-04-15T10:00:00Z",
+        "configure_url": "https://github.com/organizations/acme-corp/settings/installations/12345678",
+        "is_personal": false
+      },
+      "repos": [
+        {
+          "id": 987654,
+          "name": "backend",
+          "full_name": "acme-corp/backend",
+          "private": true,
+          "description": "Main backend API",
+          "default_branch": "main",
+          "html_url": "https://github.com/acme-corp/backend",
+          "language": "Python",
+          "updated_at": "2026-05-09T12:00:00Z",
+          "size": 15400
+        }
+      ],
+      "total_count": 1
+    }
+  ]
+}
+```
+</ResponseExample>

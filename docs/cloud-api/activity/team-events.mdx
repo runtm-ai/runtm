@@ -1,0 +1,87 @@
+---
+title: "Team Events"
+api: "GET /api/v0/telemetry/team/events"
+description: "Structured event log for the organization (audit/export)."
+---
+
+Returns telemetry events for the organization, proxied from the OSS telemetry API. Useful for audit trails and data export.
+
+**Required scope:** `activity:read`
+
+<Note>Requires organization context via the `X-Organization-Id` header.</Note>
+
+<ParamField query="limit" type="integer" default="100">
+  Maximum number of events to return. Range: 1–500.
+</ParamField>
+
+<ParamField query="name" type="string">
+  Filter by event name.
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization to get events for.
+</ParamField>
+
+<ResponseField name="events" type="object[]">
+  Array of telemetry events. Each contains `name`, `timestamp_ns`, `attributes`, and optional `trace_id` and `span_id`.
+</ResponseField>
+
+<ResponseField name="total" type="integer">
+  Total number of events returned.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/v0/telemetry/team/events?limit=10" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+resp = requests.get(
+    "https://app.runtm.com/api/v0/telemetry/team/events",
+    params={"limit": 10},
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  "https://app.runtm.com/api/v0/telemetry/team/events?limit=10",
+  {
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "events": [
+    {
+      "name": "deployment.completed",
+      "timestamp_ns": 1715280000000000000,
+      "attributes": {
+        "deployment_id": "dep_xyz",
+        "status": "ready",
+        "duration_ms": 42000
+      },
+      "trace_id": "abc123def456",
+      "span_id": "span_789"
+    }
+  ],
+  "total": 1
+}
+```
+</ResponseExample>

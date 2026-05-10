@@ -1,0 +1,137 @@
+---
+title: "Create Knowledge Integration"
+api: "POST /api/knowledge/integrations"
+description: "Connect a new knowledge provider with static credentials."
+---
+
+Creates a knowledge integration for the current organization using a static auth method.
+For OAuth-based providers, use the [OAuth Install](/cloud-api/context/knowledge/oauth-install) endpoint instead.
+
+**Required scope:** `integrations:write`
+
+<Note>Requires organization context via the `X-Organization-Id` header.</Note>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization to create the integration in.
+</ParamField>
+
+<ParamField body="provider" type="string" required>
+  Provider identifier from the [catalog](/cloud-api/context/knowledge/catalog) (e.g. `"bigquery"`).
+</ParamField>
+
+<ParamField body="auth_method" type="string" required>
+  Auth method identifier from the provider's catalog entry (e.g. `"service_account"`).
+</ParamField>
+
+<ParamField body="scope" type="string" default="org">
+  `"org"` for a shared integration or `"personal"` for a user-scoped one.
+</ParamField>
+
+<ParamField body="display_name" type="string">
+  Optional human-readable name (max 200 characters).
+</ParamField>
+
+<ParamField body="credentials" type="object" required>
+  Credential payload matching the auth method's `credential_schema`. Never returned in responses.
+</ParamField>
+
+<ParamField body="provider_metadata" type="object" default="{}">
+  Provider-specific configuration (e.g. `{ "project_id": "my-gcp-project" }`).
+</ParamField>
+
+<ParamField body="default_mode" type="string">
+  Default tool permission mode: `"auto"`, `"allow"`, or `"ask"`.
+</ParamField>
+
+<ResponseField name="integration" type="KnowledgeIntegrationResource" required>
+  The newly created integration. See [List](/cloud-api/context/knowledge/list) for the full resource shape.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST https://app.runtm.com/api/knowledge/integrations \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider": "bigquery",
+    "auth_method": "service_account",
+    "scope": "org",
+    "display_name": "Production warehouse",
+    "credentials": {
+      "service_account_json": "{...}"
+    },
+    "provider_metadata": {
+      "project_id": "my-gcp-project"
+    }
+  }'
+```
+
+```python Python
+import requests
+
+resp = requests.post(
+    "https://app.runtm.com/api/knowledge/integrations",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+        "Content-Type": "application/json",
+    },
+    json={
+        "provider": "bigquery",
+        "auth_method": "service_account",
+        "scope": "org",
+        "display_name": "Production warehouse",
+        "credentials": {"service_account_json": "{...}"},
+        "provider_metadata": {"project_id": "my-gcp-project"},
+    },
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const resp = await fetch("https://app.runtm.com/api/knowledge/integrations", {
+  method: "POST",
+  headers: {
+    Authorization: "Bearer runtm_xxx",
+    "X-Organization-Id": "org_abc123",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    provider: "bigquery",
+    auth_method: "service_account",
+    scope: "org",
+    display_name: "Production warehouse",
+    credentials: { service_account_json: "{...}" },
+    provider_metadata: { project_id: "my-gcp-project" },
+  }),
+});
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 201
+{
+  "integration": {
+    "id": "ki_01J...",
+    "organization_id": "org_abc123",
+    "user_id": null,
+    "provider": "bigquery",
+    "auth_method": "service_account",
+    "display_name": "Production warehouse",
+    "status": "active",
+    "has_credentials": true,
+    "has_oauth_refresh": false,
+    "oauth_access_expires_at": null,
+    "provider_metadata": { "project_id": "my-gcp-project" },
+    "default_mode": "ask",
+    "tool_permissions": {},
+    "connected_by_user_id": "usr_xyz",
+    "last_used_at": null,
+    "created_at": "2026-05-09T18:00:00Z",
+    "updated_at": null
+  }
+}
+```
+</ResponseExample>

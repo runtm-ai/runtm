@@ -1,0 +1,170 @@
+---
+title: Templates
+description: "Snapshots of fully configured environments that new sessions boot from instantly"
+---
+
+A template is a snapshot of a sandboxed environment. Instead of starting a new [session](/concepts/sessions) from a blank VM, a session created from a template boots from a pre-built filesystem image with the entire stack, dependencies, secrets, instructions, and skills already in place.
+
+Templates are the unit of standardization. Import any repo and get a production replica in seconds. Agents set up services, secrets, allowlists, and system instructions automatically. Monorepos, microservices, and complex stacks are all supported.
+
+## What gets baked into a template
+
+When you build a template, Runtime captures a snapshot of the environment with all of the following pre-configured:
+
+- **Repositories** - one Git repo or many cloned together, each at its own workdir
+- **Tooling** - language runtimes, package managers, system packages installed
+- **Dependencies** - `npm install`, `pip install`, `bundle install` already run
+- **Services** - named processes the session should run (web server, API server, workers)
+- **Databases and queues** - Postgres, Redis, MySQL, or any service your stack needs, started and ready
+- **Multiple ports** - every service exposed on its own port with its own preview tab
+- **Instructions** - default agent system prompt, including org and template-specific guidance
+- **Skills** - reusable [skills](/concepts/skills) attached to the template (workflows, MCP servers, reference docs)
+- **Required secrets** - environment variable names the template expects (values resolved per-session)
+- **Tier** - compute size (starter, standard, performance) for sessions created from this template
+- **Agents** - one or many agent runtimes the template is built for (Claude Code, Codex, etc.)
+
+The result is an environment snapshot that boots in seconds with everything ready, instead of waiting on dependency installs and setup commands every time.
+
+## Monorepos and microservices
+
+Templates handle the full range of project shapes, from a single backend service to a complex monorepo with multiple repos, services, databases, and queues running side by side.
+
+### Multi-repo templates
+
+A single template can clone multiple linked repositories together. Each repo gets its own workdir, branch, and one is designated as the primary entry point for the agent.
+
+```yaml
+# Example multi-repo template
+repos:
+  - full_name: acme-corp/api
+    branch: main
+    workdir: /home/user/api
+    is_primary: true
+  - full_name: acme-corp/web
+    branch: main
+    workdir: /home/user/web
+    is_primary: false
+  - full_name: acme-corp/shared-lib
+    branch: main
+    workdir: /home/user/shared-lib
+    is_primary: false
+```
+
+When a session boots, all three repos are cloned to their workdirs. The agent can edit code across repos, and changes to each are tracked separately so commits and PRs land in the right place.
+
+### Multiple services
+
+A template can declare multiple long-running services, each on its own port. Sessions expose every service on a separate live preview URL so you can see the frontend, the API, and any admin tools all at once.
+
+| Service | Example port | Use case |
+|---------|-------------|----------|
+| `web` | 3000 | Next.js or React frontend |
+| `api` | 8080 | FastAPI, Express, or Rails API |
+| `admin` | 3001 | Internal admin panel |
+| `worker` | - | Background job processor |
+| `postgres` | 5432 | Application database |
+| `redis` | 6379 | Cache or job queue backend |
+| `mysql` | 3306 | Alternative database |
+| `clickhouse` | 8123 | Analytics database |
+
+Services with HTTP ports get their own preview tab in the dashboard. Background services (workers, queue consumers) just run in the background.
+
+### Bring your own image
+
+For complex stacks that don't fit the auto-build path, you can bring your own Docker image. Runtime treats the image as the source of truth, runs whatever services your image already starts, and skips project auto-detection.
+
+This is the right choice when:
+
+- You have a tuned dev environment image you maintain elsewhere
+- Your stack uses unusual languages or runtimes
+- You need exact reproducibility against a known image
+- You want to layer on top of an internal base image
+
+The template just declares the image reference and the workdir; Runtime handles the rest.
+
+### Multi-agent templates
+
+A single template can be built for multiple agent runtimes. The same source environment gets snapshotted once per agent (Claude Code, Codex, etc.), so a member can pick which agent they want when creating a session and the right snapshot boots.
+
+This avoids maintaining a separate template per agent for the same project.
+
+## Why templates
+
+Without templates, every new session starts empty. The agent has to set up the project structure, install frameworks, and configure tooling from scratch every time. Templates skip that:
+
+- **Consistency** - every session for "Internal API" starts identically
+- **Speed** - the agent jumps straight into building features instead of scaffolding
+- **Production parity** - mirror your real stack so what works locally works in production
+- **Guardrails** - required secrets and default instructions are baked in
+- **Knowledge** - templates encode org-specific patterns, coding standards, and architecture decisions
+- **Reusability** - one template, hundreds of sessions across the team
+
+## Creating a template
+
+Templates are created and managed by org admins. The flow:
+
+<Steps>
+  <Step title="Define the template">
+    Set the name, description, repo (or multiple repos), services, and tier.
+  </Step>
+  <Step title="Attach context">
+    Add default agent instructions and reference [skills](/concepts/skills) the template needs.
+  </Step>
+  <Step title="Declare required secrets">
+    List the environment variable names the template depends on. Values are not stored on the template; they resolve from team secrets at session boot.
+  </Step>
+  <Step title="Pick agent runtimes">
+    Choose which coding agents to build the snapshot for (one or many).
+  </Step>
+  <Step title="Build the snapshot">
+    Trigger a build. Runtime spins up a temporary environment, clones every repo, installs dependencies, starts every service, and saves the resulting filesystem as a snapshot per agent.
+  </Step>
+  <Step title="Use it">
+    Members create sessions from the template. Sessions boot from the snapshot with the entire workspace, all services, and all preview ports ready.
+  </Step>
+</Steps>
+
+See [Create Template](/cloud-api/templates/create) for the full configuration schema and [Build Template](/cloud-api/templates/build) for the build endpoint.
+
+## Building and rebuilding
+
+Builds run as a background job. Progress streams via SSE so you can show real-time logs in your UI:
+
+- `POST /api/org-templates/{id}/build` triggers a build
+- `GET /api/org-templates/{id}/build/logs` streams live build output
+- `GET /api/org-templates/{id}/build/logs-history` returns the last completed build's logs
+
+Rebuild any time you change instructions, skills, or the underlying repos. Existing sessions keep using their original snapshot until they are destroyed.
+
+Runtime can also fast-rebuild when only [skills](/concepts/skills) or instructions changed, skipping the expensive dependency-install step.
+
+## Snapshots from sessions
+
+If you have an existing session whose state you want to capture as a new template (or update an existing one), use [Save Snapshot](/cloud-api/templates/save-snapshot). This is useful when an agent has set up an environment exactly right and you want every future session to start from there.
+
+## Template secrets
+
+Templates declare which secrets they need without storing the actual values:
+
+- The template lists the secret names it depends on (e.g. `DATABASE_URL`, `STRIPE_KEY`)
+- Team secrets stored at the org level are automatically resolved when a session boots
+- Members can list secret names but cannot read or write team secret values
+- Admins manage values via the dashboard or [Team Secrets API](/cloud-api/secrets/team-list)
+
+This way, sensitive values never appear in template configuration or version control, but the template still knows what it needs.
+
+## Permissions
+
+| Action | Required role |
+|--------|--------------|
+| List and view templates | Member |
+| Create sessions from templates | Member |
+| Create, update, delete templates | Admin or Owner |
+| Build templates | Admin or Owner |
+| Manage template secrets | Admin or Owner |
+
+API keys need the matching `templates:*` scopes. See [Scopes](/cloud-api/scopes#templates) for details.
+
+## Recovery
+
+If a build session gets stuck or fails to boot, use [Fix Session](/cloud-api/templates/fix-session) to reset it. This is a fast path for unblocking a template without rebuilding from scratch.

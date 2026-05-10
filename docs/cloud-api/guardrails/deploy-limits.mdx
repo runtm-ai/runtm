@@ -1,0 +1,97 @@
+---
+title: "Deploy Limits"
+api: "GET /api/deploy/limits"
+description: "Get plan-based deployment limits for the current user"
+---
+
+Returns the deployment limits for the authenticated user based on their billing plan. Includes the maximum number of apps allowed, current usage, permitted machine tiers, and plan name.
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. `Authorization: Bearer runtm_xxx`
+</ParamField>
+
+## Response
+
+<ResponseField name="max_apps" type="integer">
+  Maximum number of deployed apps allowed on the current plan
+</ResponseField>
+
+<ResponseField name="user_app_count" type="integer">
+  Number of apps the user currently has deployed
+</ResponseField>
+
+<ResponseField name="allowed_tiers" type="array">
+  Machine tiers available on the current plan (e.g. `["starter", "standard"]`)
+</ResponseField>
+
+<ResponseField name="plan_name" type="string">
+  Name of the user's current billing plan
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/deploy/limits" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/deploy/limits",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+
+data = response.json()
+remaining = data["max_apps"] - data["user_app_count"]
+print(f"Plan: {data['plan_name']}")
+print(f"Deployed: {data['user_app_count']}/{data['max_apps']}")
+print(f"Remaining slots: {remaining}")
+print(f"Allowed tiers: {', '.join(data['allowed_tiers'])}")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/deploy/limits",
+  {
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+    },
+  }
+);
+
+const data = await response.json();
+const remaining = data.max_apps - data.user_app_count;
+console.log(`Plan: ${data.plan_name}`);
+console.log(`Deployed: ${data.user_app_count}/${data.max_apps}`);
+console.log(`Remaining slots: ${remaining}`);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "max_apps": 10,
+  "user_app_count": 3,
+  "allowed_tiers": ["starter", "standard", "performance"],
+  "plan_name": "pro"
+}
+```
+
+```json 200
+{
+  "max_apps": 2,
+  "user_app_count": 2,
+  "allowed_tiers": ["starter"],
+  "plan_name": "free"
+}
+```
+</ResponseExample>
+
+## Scopes
+
+| Method | Required scope |
+|--------|---------------|
+| GET    | `deployments:read` |

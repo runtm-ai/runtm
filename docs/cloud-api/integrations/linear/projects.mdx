@@ -1,0 +1,71 @@
+---
+title: "List Projects"
+api: "GET /api/v1/linear/projects"
+description: "List Linear projects in the connected workspace."
+---
+
+Returns all projects from the connected Linear workspace. Useful for configuring the project-to-repo mapping.
+
+**Required scope:** `integrations:read`
+
+<Note>Requires organization context via the `X-Organization-Id` header.</Note>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization with the Linear integration.
+</ParamField>
+
+<ResponseField name="projects" type="object[]" required>
+  Array of Linear projects. Each contains `id`, `name`, `description`, `state`, and `teams`.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/v1/linear/projects" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+resp = requests.get(
+    "https://app.runtm.com/api/v1/linear/projects",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const resp = await fetch("https://app.runtm.com/api/v1/linear/projects", {
+  headers: {
+    Authorization: "Bearer runtm_xxx",
+    "X-Organization-Id": "org_abc123",
+  },
+});
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "projects": [
+    {
+      "id": "proj_123",
+      "name": "Frontend Redesign",
+      "description": "UI/UX overhaul",
+      "state": "started"
+    },
+    {
+      "id": "proj_456",
+      "name": "API v2",
+      "description": "Backend API modernization",
+      "state": "planned"
+    }
+  ]
+}
+```
+</ResponseExample>

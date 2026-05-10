@@ -1,0 +1,124 @@
+---
+title: "Team Summary"
+api: "GET /api/sessions/telemetry/team/summary"
+description: "Org-wide aggregated usage summary (sessions, prompts, tokens, cost)."
+---
+
+Returns an aggregated activity summary across all members of the organization. Includes total sessions, prompts, cost, token counts, per-model breakdown, and averages.
+
+**Required scope:** `activity:read`
+
+<Note>Requires organization context via the `X-Organization-Id` header.</Note>
+
+<ParamField query="days" type="integer" default="30">
+  Number of days to look back. Range: 1–365.
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization to get team summary for.
+</ParamField>
+
+<ResponseField name="total_sessions" type="integer" required>
+  Total sessions created by all members.
+</ResponseField>
+
+<ResponseField name="total_prompts" type="integer" required>
+  Total prompts sent by all members.
+</ResponseField>
+
+<ResponseField name="total_cost_usd" type="number" required>
+  Total cost in USD across the org.
+</ResponseField>
+
+<ResponseField name="total_members" type="integer" required>
+  Number of active members in the period.
+</ResponseField>
+
+<ResponseField name="avg_cost_per_session" type="number" required>
+  Average cost per session.
+</ResponseField>
+
+<ResponseField name="avg_cost_per_member" type="number" required>
+  Average cost per member.
+</ResponseField>
+
+<ResponseField name="avg_cost_per_prompt" type="number" required>
+  Average cost per prompt.
+</ResponseField>
+
+<ResponseField name="avg_prompt_duration_ms" type="number" required>
+  Average prompt duration in milliseconds.
+</ResponseField>
+
+<ResponseField name="total_tokens" type="integer" required>
+  Total tokens consumed.
+</ResponseField>
+
+<ResponseField name="model_breakdown" type="object">
+  Per-model usage stats. Keys are model names, values contain `count`, `cost_usd`, `input_tokens`, `output_tokens`.
+</ResponseField>
+
+<ResponseField name="period_days" type="integer" required>
+  Number of days covered.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/sessions/telemetry/team/summary?days=7" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+resp = requests.get(
+    "https://app.runtm.com/api/sessions/telemetry/team/summary",
+    params={"days": 7},
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  "https://app.runtm.com/api/sessions/telemetry/team/summary?days=7",
+  {
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "total_sessions": 42,
+  "total_prompts": 310,
+  "total_cost_usd": 12.85,
+  "total_members": 5,
+  "avg_cost_per_session": 0.31,
+  "avg_cost_per_member": 2.57,
+  "avg_cost_per_prompt": 0.04,
+  "avg_prompt_duration_ms": 14200,
+  "total_tokens": 980000,
+  "total_input_tokens": 750000,
+  "total_output_tokens": 230000,
+  "avg_tokens_per_prompt": 3161.3,
+  "avg_tokens_per_session": 23333.3,
+  "model_breakdown": {
+    "sonnet": { "count": 280, "cost_usd": 8.40, "input_tokens": 650000, "output_tokens": 180000 },
+    "opus": { "count": 30, "cost_usd": 4.45, "input_tokens": 100000, "output_tokens": 50000 }
+  },
+  "plan_mode_prompts": 25,
+  "period_days": 7
+}
+```
+</ResponseExample>

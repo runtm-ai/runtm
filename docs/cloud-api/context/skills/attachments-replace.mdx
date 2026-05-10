@@ -1,0 +1,122 @@
+---
+title: "Replace Attachments"
+api: "PUT /api/agent-directives/{directive_id}/attachments"
+description: "Replace all repository attachments for a directive"
+---
+
+Replaces the full set of repository attachments for a directive. Existing attachments are removed and replaced with the provided list. Use `applies_to_all: true` to make the directive active in every repository.
+
+**Required scope:** `context:write`
+
+## Path Parameters
+
+<ParamField path="directive_id" type="string" required>
+  The directive ID (e.g. `dir_abc123`).
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string">
+  Scope to an organization.
+</ParamField>
+
+## Body
+
+<ParamField body="repo_full_names" type="array" default="[]">
+  List of repositories in `owner/repo` format to attach to. Ignored when `applies_to_all` is `true`.
+</ParamField>
+
+<ParamField body="applies_to_all" type="boolean" default="false">
+  When `true`, the directive is active in all repositories. `repo_full_names` is ignored.
+</ParamField>
+
+## Response
+
+<ResponseField name="attachments" type="array">
+  The new set of attachment resources after replacement.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X PUT "https://app.runtm.com/api/agent-directives/dir_abc123/attachments" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "repo_full_names": ["acme/web-app", "acme/api-service"],
+    "applies_to_all": false
+  }'
+```
+
+```python Python
+import requests
+
+response = requests.put(
+    "https://app.runtm.com/api/agent-directives/dir_abc123/attachments",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+        "Content-Type": "application/json",
+    },
+    json={
+        "repo_full_names": ["acme/web-app", "acme/api-service"],
+        "applies_to_all": False,
+    },
+)
+
+data = response.json()
+print(f"Attached to {len(data['attachments'])} repos")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/agent-directives/dir_abc123/attachments",
+  {
+    method: "PUT",
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      repo_full_names: ["acme/web-app", "acme/api-service"],
+      applies_to_all: false,
+    }),
+  }
+);
+
+const data = await response.json();
+console.log(`Attached to ${data.attachments.length} repos`);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "attachments": [
+    {
+      "id": "att_new001",
+      "directive_id": "dir_abc123",
+      "directive_version": 2,
+      "repo_full_name": "acme/web-app",
+      "applies_to_all": false,
+      "position": 0,
+      "created_at": "2026-05-09T21:00:00Z"
+    },
+    {
+      "id": "att_new002",
+      "directive_id": "dir_abc123",
+      "directive_version": 2,
+      "repo_full_name": "acme/api-service",
+      "applies_to_all": false,
+      "position": 1,
+      "created_at": "2026-05-09T21:00:00Z"
+    }
+  ]
+}
+```
+</ResponseExample>

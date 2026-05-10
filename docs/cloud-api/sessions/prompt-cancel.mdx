@@ -1,0 +1,71 @@
+---
+title: "Cancel Prompt"
+api: "POST /api/sessions/{session_id}/prompt/cancel"
+description: "Cancel a running prompt"
+---
+
+Cancels a prompt that is currently being processed by the coding agent. The agent stops immediately and no further output is produced.
+
+**Required scope:** `sessions:prompt`
+
+## Path Parameters
+
+<ParamField path="session_id" type="string" required>
+  The session ID (e.g. `ses_abc123`).
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+## Response
+
+<ResponseField name="session_id" type="string">
+  Session ID.
+</ResponseField>
+
+<ResponseField name="cancelled" type="boolean">
+  Whether a running prompt was cancelled.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/sessions/ses_abc123/prompt/cancel" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://app.runtm.com/api/sessions/ses_abc123/prompt/cancel",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+
+print(response.json()["cancelled"])  # True
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/sessions/ses_abc123/prompt/cancel",
+  {
+    method: "POST",
+    headers: { "Authorization": "Bearer runtm_xxx" },
+  }
+);
+
+const data = await response.json();
+console.log(data.cancelled); // true
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "session_id": "ses_abc123",
+  "cancelled": true
+}
+```
+</ResponseExample>

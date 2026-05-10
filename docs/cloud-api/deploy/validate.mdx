@@ -1,0 +1,106 @@
+---
+title: "Validate Deploy"
+api: "POST /api/sessions/{session_id}/deploy/validate"
+description: "Validate deployment configuration before deploying"
+---
+
+Runs `runtm validate` inside the session sandbox and returns structured validation results. Use this before deploying to catch configuration errors early.
+
+**Required scope:** `deployments:write`
+
+## Path Parameters
+
+<ParamField path="session_id" type="string" required>
+  The session ID (UUID).
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string">
+  Scope to an organization.
+</ParamField>
+
+## Response
+
+<ResponseField name="valid" type="boolean">
+  Whether the configuration passed validation.
+</ResponseField>
+
+<ResponseField name="errors" type="array">
+  List of validation error messages.
+</ResponseField>
+
+<ResponseField name="warnings" type="array">
+  List of validation warning messages.
+</ResponseField>
+
+<ResponseField name="has_discovery_file" type="boolean">
+  Whether a `runtm.discovery.yaml` file exists.
+</ResponseField>
+
+<ResponseField name="needs_discovery_metadata" type="boolean">
+  Whether discovery metadata needs to be filled in.
+</ResponseField>
+
+<ResponseField name="discovery_content" type="string | null">
+  Current content of `runtm.discovery.yaml` if it exists.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/sessions/550e8400-e29b-41d4-a716-446655440000/deploy/validate" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://app.runtm.com/api/sessions/550e8400-e29b-41d4-a716-446655440000/deploy/validate",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+
+data = response.json()
+if data["valid"]:
+    print("Validation passed!")
+else:
+    for error in data["errors"]:
+        print(f"Error: {error}")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/sessions/550e8400-e29b-41d4-a716-446655440000/deploy/validate",
+  {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+    },
+  }
+);
+
+const data = await response.json();
+if (data.valid) {
+  console.log("Validation passed!");
+} else {
+  data.errors.forEach((e) => console.error(`Error: ${e}`));
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "valid": true,
+  "errors": [],
+  "warnings": ["Consider adding a health check endpoint"],
+  "has_discovery_file": true,
+  "needs_discovery_metadata": false,
+  "discovery_content": "description: My app\nsummary: A web application"
+}
+```
+</ResponseExample>

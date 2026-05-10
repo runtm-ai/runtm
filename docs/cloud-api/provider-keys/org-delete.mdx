@@ -1,0 +1,95 @@
+---
+title: "Delete Org Provider Key"
+api: "DELETE /api/organizations/{org_id}/provider-keys/{provider}"
+description: "Remove a stored provider API key from an organization."
+---
+
+Deletes the provider API key at the organization level. After deletion, members will fall back to their personal keys.
+
+**Required scope:** `integrations:write`
+
+<Note>The `X-Organization-Id` header must match the `org_id` path parameter.</Note>
+
+<ParamField path="org_id" type="string" required>
+  The organization ID.
+</ParamField>
+
+<ParamField path="provider" type="string" required>
+  The provider name. One of: `anthropic`, `openai`, `cursor`, `devin`, `gemini`, `copilot`.
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. `Authorization: Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  Must match the `org_id` path parameter.
+</ParamField>
+
+<ResponseField name="provider" type="string">
+  The provider name.
+</ResponseField>
+
+<ResponseField name="connected" type="boolean">
+  Always `false` after deletion.
+</ResponseField>
+
+<ResponseField name="key_preview" type="string">
+  Always `null` after deletion.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  Always `null` after deletion.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE "https://app.runtm.com/api/organizations/org_abc123/provider-keys/anthropic" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+org_id = "org_abc123"
+provider = "anthropic"
+
+resp = requests.delete(
+    f"https://app.runtm.com/api/organizations/{org_id}/provider-keys/{provider}",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": org_id,
+    },
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const orgId = "org_abc123";
+const provider = "anthropic";
+
+const resp = await fetch(
+  `https://app.runtm.com/api/organizations/${orgId}/provider-keys/${provider}`,
+  {
+    method: "DELETE",
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": orgId,
+    },
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "provider": "anthropic",
+  "connected": false,
+  "key_preview": null,
+  "updated_at": null
+}
+```
+</ResponseExample>

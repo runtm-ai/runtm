@@ -1,0 +1,77 @@
+---
+title: Organizations
+description: "Team workspaces, roles, and how resources are scoped to personal or org context"
+---
+
+Runtime supports two operating modes: **personal** (just you) and **organization** (a team). Most features work in both modes, but some resources like templates, team secrets, guardrails, and integrations only exist within an organization.
+
+## Personal vs organization
+
+When you sign up, you start in personal mode. Everything you create (sessions, secrets, API keys) belongs to you alone.
+
+When you create or join an organization, you can switch context. Resources you create while in an org context are owned by the org and visible to other members.
+
+| | Personal | Organization |
+|---|----------|--------------|
+| Sessions | Private to you | Visible to team (configurable) |
+| Secrets | Your personal store | Shared team store + your personal store |
+| Templates | Not available | Org-wide blueprints |
+| Integrations | Not available | GitHub, Linear, Slack, knowledge |
+| API keys | Scoped to your account | Scoped to the org |
+| Instructions | User-level only | User-level + org-level |
+
+## Roles
+
+Organization members have one of three roles:
+
+| Role | Can do |
+|------|--------|
+| **Member** | Create sessions, use templates, read team secrets (names only), read integrations |
+| **Admin** | Everything members can do, plus: create/edit/delete templates, manage team secrets, configure guardrails, manage integrations |
+| **Owner** | Everything admins can do, plus: manage members, transfer ownership, delete the org |
+
+Roles affect two things:
+
+1. **What you can do in the dashboard** - the UI hides actions you don't have access to
+2. **What scopes your API keys can carry** - a member cannot create an API key with `templates:write` even if they try. See [Scopes](/cloud-api/scopes#role-ceilings) for the full ceiling matrix.
+
+## API keys and org context
+
+API keys are bound to one context at creation time:
+
+- **Personal keys** operate as you without any organization. They can manage your sessions, personal secrets, and user instructions.
+- **Org keys** operate as you within a specific organization. They can access org-scoped resources up to your role's ceiling.
+
+The organization is encoded on the key itself. You do not pick it on every request. If you need to work in both contexts from one process, create one key per context.
+
+See [Authentication](/cloud-api/authentication) for how the `X-Organization-Id` header interacts with API keys.
+
+## Creating an organization
+
+Organizations are created from the dashboard. Once created, invite members by email. Each invited user gets a role (member, admin, or owner) and can create org-scoped API keys.
+
+## Org-scoped resources
+
+### Templates
+
+Templates are project blueprints owned by the org. Admins define the stack, default instructions, and required secrets. Members can create sessions from templates but cannot modify them.
+
+See [Templates](/concepts/templates).
+
+### Team secrets
+
+Secrets set at the org level are available to all sessions created within that org. Individual values are write-only and never returned via the API. Members can see secret names but cannot read or write values.
+
+See [Secrets](/cloud-api/secrets/team-list).
+
+### Org instructions
+
+System-level instructions that apply to every session in the org. Useful for coding standards, naming conventions, or security rules the agent should always follow. Org instructions combine with user instructions at prompt time.
+
+See [Org Instructions](/cloud-api/context/org-instructions).
+
+### Guardrails
+
+Org-wide limits and allowlist policies. Admins can restrict which models agents use, cap session durations, and define allowlists for deployments.
+
+See [Org Limits](/cloud-api/guardrails/org-limits) and [Allowlist Policy](/cloud-api/guardrails/allowlist-policy).

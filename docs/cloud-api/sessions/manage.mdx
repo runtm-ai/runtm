@@ -1,0 +1,495 @@
+---
+title: "Manage Sessions"
+description: "List, create, retrieve, and destroy cloud development sessions"
+---
+
+A **session** is an isolated cloud sandbox where coding agents (Claude Code, Codex, Cursor CLI, and others) run, edit files, execute commands, and ship code with live preview URLs. The endpoints on this page cover the full lifecycle of a session resource.
+
+For pause/resume/start, see [Lifecycle](/cloud-api/sessions/lifecycle). For long-running prompts, see [Prompts](/cloud-api/sessions/prompt). For real-time streaming, see [WebSockets](/cloud-api/websockets/overview).
+
+<Info>
+  Required scopes per operation:
+  - `sessions:read` - list, get
+  - `sessions:write` - create
+  - `sessions:delete` - destroy
+
+  See [Scopes & Permissions](/cloud-api/scopes) for the full catalog.
+</Info>
+
+<Note>
+  All session endpoints honor `X-Organization-Id`. Personal keys may omit the
+  header to operate on personal sessions; org keys must use the header that
+  matches the key's organization.
+</Note>
+
+---
+
+## List Sessions
+
+`GET /api/sessions`
+
+Returns a paginated list of sessions visible to the caller. Personal keys see only `organization_id = NULL` sessions; org keys see sessions in the active organization. Pass `team_mode=true` with an org key to see sessions other org members have explicitly shared with the team (`visibility = "team"`).
+
+### Query Parameters
+
+<ParamField query="include_destroyed" type="boolean" default="false">
+  Include sessions in `destroyed` or `error` states.
+</ParamField>
+
+<ParamField query="limit" type="integer" default="20">
+  Page size (1-100).
+</ParamField>
+
+<ParamField query="offset" type="integer" default="0">
+  Pagination offset.
+</ParamField>
+
+<ParamField query="team_mode" type="boolean" default="false">
+  When `true` and an org context is set, return sessions other members shared
+  with the team. Your own private sessions appear under the default "you"
+  view, not here.
+</ParamField>
+
+<ParamField query="exclude_sources" type="string">
+  Comma-separated list of `source` values to exclude (e.g. `agents,api`).
+</ParamField>
+
+<ParamField query="exclude_states" type="string">
+  Comma-separated session states to exclude (e.g. `destroyed,destroying`).
+</ParamField>
+
+### Response
+
+<ResponseField name="sessions" type="array">
+  Paginated session objects.
+  <Expandable title="Session object">
+    <ResponseField name="id" type="string">UUID identifier.</ResponseField>
+    <ResponseField name="state" type="string">
+      One of: `creating`, `running`, `paused`, `destroying`, `destroyed`, `error`.
+    </ResponseField>
+    <ResponseField name="agent" type="string">
+      Agent identifier (e.g. `claude-code`, `codex`, `cursor-cli`).
+    </ResponseField>
+    <ResponseField name="template" type="string">Optional project template name.</ResponseField>
+    <ResponseField name="preview_url" type="string">Live preview URL when a dev server is running.</ResponseField>
+    <ResponseField name="name" type="string">Human-readable name (auto-generated when unset).</ResponseField>
+    <ResponseField name="created_at" type="string">ISO 8601 timestamp.</ResponseField>
+    <ResponseField name="updated_at" type="string">ISO 8601 timestamp.</ResponseField>
+    <ResponseField name="paused_at" type="string">When the session was last paused.</ResponseField>
+    <ResponseField name="expires_at" type="string">When a paused session will be cleaned up.</ResponseField>
+    <ResponseField name="last_activity_at" type="string">Most recent prompt/edit timestamp.</ResponseField>
+    <ResponseField name="error_message" type="string">Populated when `state = "error"`.</ResponseField>
+    <ResponseField name="initial_prompt" type="string">First prompt for context in lists.</ResponseField>
+    <ResponseField name="github_repo" type="string">Linked repo as `owner/repo`, if any.</ResponseField>
+    <ResponseField name="total_cost_usd" type="number">Cumulative LLM cost.</ResponseField>
+    <ResponseField name="prompt_count" type="integer">Number of prompts run.</ResponseField>
+    <ResponseField name="visibility" type="string">`private` or `team`.</ResponseField>
+    <ResponseField name="organization_id" type="string">Owning org, or `null`.</ResponseField>
+    <ResponseField name="workspace_path" type="string">Working directory inside the sandbox.</ResponseField>
+    <ResponseField name="source" type="string">
+      Origin tag (e.g. `api` for keys, `agents` for background workers). Internal
+      values are not part of the public contract.
+    </ResponseField>
+    <ResponseField name="last_prompt" type="object">
+      Status of the most recent prompt for polling: `status` (`idle`, `running`,
+      `completed`, `error`, `timed_out`), `prompt_preview`, `model`, `started_at`,
+      `completed_at`, `cost_usd`, `summary`, `error`, `plan_mode`.
+    </ResponseField>
+    <ResponseField name="idle_timeout_minutes" type="integer">Auto-pause threshold.</ResponseField>
+    <ResponseField name="paused_expiry_days" type="integer">Paused retention; `null` when indefinite.</ResponseField>
+    <ResponseField name="last_deployment_id" type="string">Last successful deploy ID.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="total" type="integer">Total sessions matching the filters.</ResponseField>
+<ResponseField name="limit" type="integer">Echo of the request limit.</ResponseField>
+<ResponseField name="offset" type="integer">Echo of the request offset.</ResponseField>
+<ResponseField name="has_more" type="boolean">`true` when `offset + limit < total`.</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "https://app.runtm.com/api/sessions?limit=20&offset=0" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/sessions",
+    headers={"Authorization": "Bearer runtm_xxx"},
+    params={"limit": 20, "offset": 0},
+)
+
+data = response.json()
+for s in data["sessions"]:
+    print(f"{s['id']} {s['state']} {s.get('name')}")
+```
+
+```javascript JavaScript
+const res = await fetch(
+  "https://app.runtm.com/api/sessions?limit=20&offset=0",
+  { headers: { Authorization: "Bearer runtm_xxx" } },
+);
+const data = await res.json();
+data.sessions.forEach((s) => console.log(s.id, s.state, s.name));
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "sessions": [
+    {
+      "id": "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11",
+      "state": "running",
+      "agent": "claude-code",
+      "template": "web-app",
+      "preview_url": "https://3000-9f3a3f22.proxy.runtm.com",
+      "name": "Refactor checkout page",
+      "created_at": "2026-05-09T15:03:11Z",
+      "updated_at": "2026-05-09T15:18:54Z",
+      "paused_at": null,
+      "expires_at": null,
+      "last_activity_at": "2026-05-09T15:18:54Z",
+      "error_message": null,
+      "github_repo": "acme/store",
+      "total_cost_usd": 0.42,
+      "prompt_count": 6,
+      "visibility": "private",
+      "organization_id": "org_01HZX...",
+      "workspace_path": "/home/user/project",
+      "source": "api",
+      "idle_timeout_minutes": 30,
+      "paused_expiry_days": null
+    }
+  ],
+  "total": 1,
+  "limit": 20,
+  "offset": 0,
+  "has_more": false
+}
+```
+
+```json 401
+{ "detail": "Invalid or expired API key" }
+```
+</ResponseExample>
+
+---
+
+## Create Session
+
+`POST /api/sessions`
+
+Provisions a new sandbox. The response returns immediately with state
+`creating`; poll `GET /api/sessions/{id}` (or call `POST /api/sessions/{id}/start`)
+until `state = "running"`.
+
+<Note>
+  Background-agent sessions (e.g. `source = "api"`) require a stored Anthropic
+  API key. Configure one in the dashboard under
+  Settings → Integrations → Anthropic, or set it via
+  [Provider Keys](/cloud-api/configuration/provider-keys-anthropic).
+  Without a stored key, this endpoint returns `400`.
+</Note>
+
+### Body Parameters
+
+<ParamField body="template" type="string">
+  Project scaffold to use (`web-app`, `backend-service`, `static-site`).
+  Optional - sessions can also start blank or attach to a GitHub repo.
+</ParamField>
+
+<ParamField body="agent" type="string" default="claude-code">
+  One of: `claude-code`, `codex`, `opencode`, `github-copilot`,
+  `cursor-cli`, `devin-cli`, `gemini-cli`.
+</ParamField>
+
+<ParamField body="mode" type="string" default="autopilot">
+  `autopilot` (auto-approve actions) or `interactive` (allows the agent to
+  ask for confirmation).
+</ParamField>
+
+<ParamField body="github_repo" type="object">
+  Single GitHub repo metadata for tier selection and auto-clone.
+  <Expandable title="github_repo">
+    <ParamField body="full_name" type="string" required>`owner/repo` identifier.</ParamField>
+    <ParamField body="branch" type="string">Branch to check out.</ParamField>
+    <ParamField body="size_kb" type="integer">Repo size for tier selection.</ParamField>
+    <ParamField body="requires_docker" type="boolean">Project only runs via Docker.</ParamField>
+    <ParamField body="has_docker_compose" type="boolean">Multi-service project.</ParamField>
+    <ParamField body="is_monorepo" type="boolean">Workspace/monorepo layout.</ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="github_repos" type="array">
+  Up to 5 repos for multi-repo sessions. Takes precedence over `github_repo`.
+  First entry is treated as the primary repo. Each entry mirrors the
+  `github_repo` schema.
+</ParamField>
+
+<ParamField body="source" type="string">
+  Free-form attribution string. Customers calling from automation typically use
+  `api`. Internal source values (used by Slack/Linear bots and the dashboard)
+  are not part of the public contract and must not be relied on.
+</ParamField>
+
+<ParamField body="on_complete" type="string">
+  Lifecycle action after a prompt finishes: `pause`, `destroy`, or
+  `keep_alive`. Defaults to `keep_alive` for interactive sessions.
+</ParamField>
+
+<ParamField body="ttl_minutes" type="integer">
+  Hard maximum lifetime in minutes (1-1440). Sessions exceeding this are
+  destroyed regardless of activity. Recommended for unattended agent runs.
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="string">Session UUID.</ResponseField>
+<ResponseField name="state" type="string">Initial state, usually `creating`.</ResponseField>
+<ResponseField name="agent" type="string">Agent identifier.</ResponseField>
+<ResponseField name="template" type="string">Resolved template name.</ResponseField>
+<ResponseField name="created_at" type="string">ISO 8601 timestamp.</ResponseField>
+<ResponseField name="expires_at" type="string">When the session will expire.</ResponseField>
+<ResponseField name="workspace_path" type="string">
+  Working directory inside the sandbox. Non-`/home/user` values indicate an
+  org template with code already baked into the image.
+</ResponseField>
+<ResponseField name="linked_repos" type="array">
+  Additional repos to clone after the session starts (when not baked into a
+  template image).
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/sessions" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent": "claude-code",
+    "mode": "autopilot",
+    "github_repo": { "full_name": "acme/store", "branch": "main" },
+    "source": "api",
+    "ttl_minutes": 60
+  }'
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://app.runtm.com/api/sessions",
+    headers={"Authorization": "Bearer runtm_xxx"},
+    json={
+        "agent": "claude-code",
+        "mode": "autopilot",
+        "github_repo": {"full_name": "acme/store", "branch": "main"},
+        "source": "api",
+        "ttl_minutes": 60,
+    },
+)
+data = response.json()
+print(f"Created session {data['id']} (state: {data['state']})")
+```
+
+```javascript JavaScript
+const res = await fetch("https://app.runtm.com/api/sessions", {
+  method: "POST",
+  headers: {
+    Authorization: "Bearer runtm_xxx",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    agent: "claude-code",
+    mode: "autopilot",
+    github_repo: { full_name: "acme/store", branch: "main" },
+    source: "api",
+    ttl_minutes: 60,
+  }),
+});
+const data = await res.json();
+console.log(`Created session ${data.id} (state: ${data.state})`);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 201
+{
+  "id": "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11",
+  "state": "creating",
+  "agent": "claude-code",
+  "template": null,
+  "created_at": "2026-05-09T15:03:11Z",
+  "expires_at": "2026-05-09T16:03:11Z",
+  "message": "Session created successfully",
+  "workspace_path": "/home/user/project",
+  "linked_repos": null
+}
+```
+
+```json 400
+{ "detail": "Invalid mode: foo. Must be 'autopilot' or 'interactive'" }
+```
+
+```json 400
+{ "detail": "Anthropic API key required. Background agents need a configured API key to run." }
+```
+</ResponseExample>
+
+---
+
+## Get Session
+
+`GET /api/sessions/{session_id}`
+
+Returns the full session object. By default (`refresh=true`), the backend
+reconciles the cached state with the actual sandbox before responding, which
+catches sandboxes that were destroyed externally.
+
+### Path Parameters
+
+<ParamField path="session_id" type="string" required>Session UUID.</ParamField>
+
+### Query Parameters
+
+<ParamField query="refresh" type="boolean" default="true">
+  When `true`, verify the sandbox exists in the provider before responding.
+  Pass `false` for snappier reads when staleness is acceptable.
+</ParamField>
+
+### Response
+
+Same shape as the items in [List Sessions](#list-sessions).
+
+<RequestExample>
+```bash cURL
+curl -X GET "https://app.runtm.com/api/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+session_id = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11"
+response = requests.get(
+    f"https://app.runtm.com/api/sessions/{session_id}",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+print(response.json())
+```
+
+```javascript JavaScript
+const sessionId = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11";
+const res = await fetch(
+  `https://app.runtm.com/api/sessions/${sessionId}`,
+  { headers: { Authorization: "Bearer runtm_xxx" } },
+);
+console.log(await res.json());
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "id": "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11",
+  "state": "running",
+  "agent": "claude-code",
+  "template": "web-app",
+  "preview_url": "https://3000-9f3a3f22.proxy.runtm.com",
+  "name": "Refactor checkout page",
+  "created_at": "2026-05-09T15:03:11Z",
+  "updated_at": "2026-05-09T15:18:54Z",
+  "paused_at": null,
+  "last_activity_at": "2026-05-09T15:18:54Z",
+  "github_repo": "acme/store",
+  "total_cost_usd": 0.42,
+  "prompt_count": 6,
+  "visibility": "private",
+  "organization_id": "org_01HZX...",
+  "workspace_path": "/home/user/project",
+  "idle_timeout_minutes": 30,
+  "last_prompt": {
+    "status": "completed",
+    "model": "sonnet",
+    "started_at": "2026-05-09T15:18:31Z",
+    "completed_at": "2026-05-09T15:18:54Z",
+    "cost_usd": 0.07
+  }
+}
+```
+
+```json 404
+{ "detail": "Session not found" }
+```
+</ResponseExample>
+
+---
+
+## Destroy Session
+
+`DELETE /api/sessions/{session_id}`
+
+Marks the session as `destroying` and returns immediately. The sandbox
+teardown and any session-scoped key revocation finish in the background, so
+the session may briefly remain visible in `destroying` state before flipping
+to `destroyed`.
+
+This action is **permanent** - destroyed sessions cannot be resumed. To
+preserve filesystem and memory state, use [Pause](/cloud-api/sessions/lifecycle#pause-session) instead.
+
+### Path Parameters
+
+<ParamField path="session_id" type="string" required>Session UUID.</ParamField>
+
+### Response
+
+<ResponseField name="id" type="string">Session UUID.</ResponseField>
+<ResponseField name="destroyed_at" type="string">ISO 8601 timestamp of when destruction was initiated.</ResponseField>
+<ResponseField name="message" type="string">Human-readable confirmation.</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE "https://app.runtm.com/api/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+session_id = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11"
+response = requests.delete(
+    f"https://app.runtm.com/api/sessions/{session_id}",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+print(response.json())
+```
+
+```javascript JavaScript
+const sessionId = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11";
+const res = await fetch(
+  `https://app.runtm.com/api/sessions/${sessionId}`,
+  { method: "DELETE", headers: { Authorization: "Bearer runtm_xxx" } },
+);
+console.log(await res.json());
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "id": "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11",
+  "destroyed_at": "2026-05-09T16:00:01Z",
+  "message": "Session destroyed successfully"
+}
+```
+
+```json 403
+{ "detail": "You do not have permission to destroy this session" }
+```
+
+```json 404
+{ "detail": "Session not found" }
+```
+</ResponseExample>

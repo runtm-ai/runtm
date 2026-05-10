@@ -6,5 +6,5 @@
     <path d="M26 8.5L14 15V26L26 19.5V8.5Z" fill="#18181b" stroke="#18181b" stroke-width="1.5" stroke-linejoin="round"/>
   </g>
   <!-- Text -->
-  <text x="34" y="22" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="600" fill="#18181b">runtm</text>
+  <text x="34" y="22" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="600" fill="#18181b">Runtime</text>
 </svg>

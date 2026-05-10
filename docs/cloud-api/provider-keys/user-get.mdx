@@ -1,0 +1,82 @@
+---
+title: "Get User Provider Key"
+api: "GET /api/user/provider-keys/{provider}"
+description: "Check whether the authenticated user has a provider key configured."
+---
+
+Returns the connection status and masked preview for a specific provider key belonging to the authenticated user.
+
+**Required scope:** `integrations:read`
+
+<ParamField path="provider" type="string" required>
+  The provider name. One of: `anthropic`, `openai`, `cursor`, `devin`, `gemini`, `copilot`.
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. `Authorization: Bearer runtm_xxx`
+</ParamField>
+
+<ResponseField name="provider" type="string">
+  The provider name.
+</ResponseField>
+
+<ResponseField name="connected" type="boolean">
+  Whether a key is currently configured.
+</ResponseField>
+
+<ResponseField name="key_preview" type="string">
+  Masked key preview (e.g. `sk-ant-...x7f2`). Null if no key is set.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  ISO 8601 timestamp of the last update. Null if no key is set.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/user/provider-keys/anthropic" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+provider = "anthropic"
+
+resp = requests.get(
+    f"https://app.runtm.com/api/user/provider-keys/{provider}",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+data = resp.json()
+if data["connected"]:
+    print(f"Key configured: {data['key_preview']}")
+```
+
+```javascript JavaScript
+const provider = "anthropic";
+
+const resp = await fetch(
+  `https://app.runtm.com/api/user/provider-keys/${provider}`,
+  {
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+    },
+  }
+);
+const data = await resp.json();
+if (data.connected) {
+  console.log(`Key configured: ${data.key_preview}`);
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "provider": "anthropic",
+  "connected": true,
+  "key_preview": "sk-ant-...x7f2",
+  "updated_at": "2026-05-08T12:00:00Z"
+}
+```
+</ResponseExample>

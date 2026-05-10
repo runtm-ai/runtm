@@ -1,0 +1,48 @@
+---
+title: "Get User Token"
+api: "GET /api/github-app/user-token"
+description: "Get a valid GitHub user access token, auto-refreshing if expired."
+---
+
+Returns a valid GitHub user access token. If the stored token has expired, it is automatically refreshed using the refresh token before returning.
+
+**Required scope:** `integrations:read`
+
+<ResponseField name="access_token" type="string" required>
+  Valid GitHub user access token.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/github-app/user-token" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+resp = requests.get(
+    "https://app.runtm.com/api/github-app/user-token",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+data = resp.json()
+github_token = data["access_token"]
+```
+
+```javascript JavaScript
+const resp = await fetch("https://app.runtm.com/api/github-app/user-token", {
+  headers: {
+    Authorization: "Bearer runtm_xxx",
+  },
+});
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "access_token": "ghu_xxxxxxxxxxxxxxxxxxxx"
+}
+```
+</ResponseExample>

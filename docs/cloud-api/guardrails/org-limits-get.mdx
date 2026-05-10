@@ -1,0 +1,142 @@
+---
+title: "Get Org Limits"
+api: "GET /api/organizations/{org_id}/limits"
+description: "Retrieve the usage limits and deployment policy for an organization."
+---
+
+Returns the organization's usage limits including session caps, spending controls, template restrictions, enforcement mode, and deployment permissions.
+
+**Required scope:** `guardrails:read`
+
+<ParamField path="org_id" type="string" required>
+  The organization ID.
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. `Authorization: Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  Must match the `org_id` path parameter.
+</ParamField>
+
+<ResponseField name="organization_id" type="string">
+  The organization ID.
+</ResponseField>
+
+<ResponseField name="limits" type="object">
+  The limits configuration object.
+
+  <Expandable title="limits properties">
+    <ResponseField name="max_sessions_per_user" type="integer">
+      Maximum concurrent sessions per user. Null for unlimited.
+    </ResponseField>
+
+    <ResponseField name="max_cost_per_session" type="number">
+      Maximum cost in USD per individual session. Null for unlimited.
+    </ResponseField>
+
+    <ResponseField name="max_daily_spend_per_user" type="number">
+      Maximum daily spend in USD per user. Null for unlimited.
+    </ResponseField>
+
+    <ResponseField name="max_monthly_spend_per_user" type="number">
+      Maximum monthly spend in USD per user. Null for unlimited.
+    </ResponseField>
+
+    <ResponseField name="allowed_templates" type="array">
+      List of template IDs users are allowed to use. Null for all templates.
+    </ResponseField>
+
+    <ResponseField name="enforcement" type="string">
+      Enforcement mode: `soft` (warn only) or `hard` (block).
+    </ResponseField>
+
+    <ResponseField name="deployment" type="object">
+      Deployment permission settings.
+
+      <Expandable title="deployment properties">
+        <ResponseField name="mode" type="string">
+          Deployment permission mode.
+        </ResponseField>
+
+        <ResponseField name="roles" type="array">
+          Roles allowed to deploy.
+        </ResponseField>
+
+        <ResponseField name="user_grants" type="array">
+          Individual user IDs granted deploy access.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  ISO 8601 timestamp of the last update. Null if never set.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/organizations/org_abc123/limits" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+org_id = "org_abc123"
+
+resp = requests.get(
+    f"https://app.runtm.com/api/organizations/{org_id}/limits",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": org_id,
+    },
+)
+data = resp.json()
+limits = data["limits"]
+print(f"Max sessions per user: {limits['max_sessions_per_user']}")
+print(f"Enforcement: {limits['enforcement']}")
+```
+
+```javascript JavaScript
+const orgId = "org_abc123";
+
+const resp = await fetch(
+  `https://app.runtm.com/api/organizations/${orgId}/limits`,
+  {
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": orgId,
+    },
+  }
+);
+const data = await resp.json();
+console.log(`Max sessions per user: ${data.limits.max_sessions_per_user}`);
+console.log(`Enforcement: ${data.limits.enforcement}`);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "organization_id": "org_abc123",
+  "limits": {
+    "max_sessions_per_user": 5,
+    "max_cost_per_session": 10.00,
+    "max_daily_spend_per_user": 50.00,
+    "max_monthly_spend_per_user": 500.00,
+    "allowed_templates": null,
+    "enforcement": "hard",
+    "deployment": {
+      "mode": "role_based",
+      "roles": ["admin", "owner"],
+      "user_grants": ["usr_xyz"]
+    }
+  },
+  "updated_at": "2026-05-05T16:30:00Z"
+}
+```
+</ResponseExample>

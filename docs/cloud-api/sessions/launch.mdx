@@ -1,0 +1,155 @@
+---
+title: "Launch Agent"
+api: "POST /api/v0/sessions/launch"
+description: "Create a session and fire a prompt in one call"
+---
+
+Creates a new cloud session, configures lifecycle policy, and fires the prompt as a background task. Returns immediately with the session ID — poll `GET /api/v0/sessions/{id}` for status via the `last_prompt` field.
+
+This is the core "fire and forget" endpoint for programmatic agent workflows.
+
+**Required scopes:** `sessions:write` **and** `sessions:prompt`
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+## Body
+
+<ParamField body="prompt" type="string" required>
+  The task/prompt for the agent (1–100,000 characters).
+</ParamField>
+
+<ParamField body="agent" type="string" default="claude-code">
+  Coding agent: `claude-code`, `codex`, `github-copilot`, or `opencode`.
+</ParamField>
+
+<ParamField body="template" type="string">
+  Project template: `web-app`, `backend-service`, `static-site`.
+</ParamField>
+
+<ParamField body="model" type="string">
+  Model to use: `sonnet`, `opus`, `haiku`, `opusplan`.
+</ParamField>
+
+<ParamField body="mode" type="string" default="autopilot">
+  Session mode: `autopilot` or `interactive`.
+</ParamField>
+
+<ParamField body="plan_mode" type="boolean" default={false}>
+  Enable plan mode (read-only analysis without making changes).
+</ParamField>
+
+<ParamField body="on_complete" type="string" default="pause">
+  Lifecycle action when the prompt completes: `pause`, `destroy`, or `keep_alive`.
+</ParamField>
+
+<ParamField body="ttl_minutes" type="integer">
+  Max session lifetime in minutes (1–1440, default 60).
+</ParamField>
+
+<ParamField body="prompt_timeout_minutes" type="integer" default={15}>
+  Max minutes for prompt execution before timeout (1–120).
+</ParamField>
+
+<ParamField body="github_repo" type="object">
+  GitHub repo metadata: `{"full_name": "owner/repo", "size_kb": 1024}`.
+</ParamField>
+
+## Response
+
+Returns `201` with the session ID and initial state.
+
+<ResponseField name="id" type="string">
+  Session ID. Use this to poll status.
+</ResponseField>
+
+<ResponseField name="state" type="string">
+  Initial state (`creating`).
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Human-readable status message.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/v0/sessions/launch" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Build a REST API with FastAPI that manages TODO items",
+    "agent": "claude-code",
+    "template": "backend-service",
+    "on_complete": "pause",
+    "ttl_minutes": 60
+  }'
+```
+
+```python Python
+import requests
+import time
+
+# Launch the agent
+response = requests.post(
+    "https://app.runtm.com/api/v0/sessions/launch",
+    headers={"Authorization": "Bearer runtm_xxx"},
+    json={
+        "prompt": "Build a REST API with FastAPI that manages TODO items",
+        "agent": "claude-code",
+        "template": "backend-service",
+        "on_complete": "pause",
+    },
+)
+
+session_id = response.json()["id"]
+
+# Poll for completion
+while True:
+    status = requests.get(
+        f"https://app.runtm.com/api/v0/sessions/{session_id}",
+        headers={"Authorization": "Bearer runtm_xxx"},
+    ).json()
+
+    prompt_status = (status.get("last_prompt") or {}).get("status", "idle")
+    if prompt_status in ("completed", "error", "timed_out"):
+        print(f"Done: {prompt_status}")
+        break
+
+    time.sleep(5)
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/v0/sessions/launch",
+  {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      prompt: "Build a REST API with FastAPI that manages TODO items",
+      agent: "claude-code",
+      template: "backend-service",
+      on_complete: "pause",
+    }),
+  }
+);
+
+const { id } = await response.json();
+console.log(`Launched session: ${id}. Poll GET /api/v0/sessions/${id} for status.`);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 201
+{
+  "id": "86e11104-cdbb-42c9-bdc3-5212024ddb7b",
+  "state": "creating",
+  "message": "Agent launched. Poll GET /api/v0/sessions/{id} for status."
+}
+```
+</ResponseExample>

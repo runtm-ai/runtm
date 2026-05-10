@@ -1,0 +1,77 @@
+---
+title: "Delete Template"
+api: "DELETE /api/org-templates/{template_id}"
+description: "Delete an organization template"
+---
+
+Deletes an organization template and its associated secrets. The underlying E2B template image is not removed. Requires admin or owner role.
+
+**Required scope:** `templates:delete`
+
+## Path Parameters
+
+<ParamField path="template_id" type="string" required>
+  The template ID (e.g. `tmpl_abc123`).
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  Organization ID.
+</ParamField>
+
+## Response
+
+Returns `204 No Content` on success.
+
+<RequestExample>
+```bash cURL
+curl -X DELETE "https://app.runtm.com/api/org-templates/tmpl_abc123" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+response = requests.delete(
+    "https://app.runtm.com/api/org-templates/tmpl_abc123",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+
+assert response.status_code == 204
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/org-templates/tmpl_abc123",
+  {
+    method: "DELETE",
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  }
+);
+
+console.log(response.status); // 204
+```
+</RequestExample>
+
+<ResponseExample>
+```json 204
+```
+
+```json 404
+{
+  "detail": "Template not found"
+}
+```
+</ResponseExample>
