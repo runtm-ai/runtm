@@ -601,17 +601,11 @@ async def create_deployment(
         from runtm_shared.types import MachineTier
 
         try:
-            # Validate the tier
             MachineTier(tier)
-            # Create new manifest with overridden tier
-            parsed_manifest = Manifest(
-                name=parsed_manifest.name,
-                template=parsed_manifest.template,
-                runtime=parsed_manifest.runtime,
-                health_path=parsed_manifest.health_path,
-                port=parsed_manifest.port,
-                tier=tier,
-            )
+            # Re-validate with overridden tier while preserving all other fields
+            manifest_data = parsed_manifest.model_dump()
+            manifest_data["tier"] = tier
+            parsed_manifest = Manifest.model_validate(manifest_data)
         except ValueError:
             valid_tiers = ", ".join(t.value for t in MachineTier)
             raise HTTPException(

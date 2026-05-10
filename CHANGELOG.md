@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.21] - 2026-05-10
+
+### Fixed
+
+- **API**: Fixed tier override in `create_deployment` silently dropping `volumes`, `env_schema`, `connections`, `policy`, and `features` from the manifest
+  - When `--tier` query param was provided, the route reconstructed a new `Manifest` from scratch with only basic fields (`name`, `template`, `runtime`, `health_path`, `port`, `tier`), discarding all other fields
+  - This caused persistent volumes configured in the UI (`deploy_volumes`) to never reach the worker, so Fly volumes and `[[mounts]]` were never created
+  - Fix uses `model_dump()` + `model_validate()` to override only the tier while preserving the full manifest
+  - Affects all session deploys (which always pass `--tier`), `env_schema`, `features.database`, and volume mounts
+
 ## [0.2.20] - 2026-05-09
 
 ### Fixed
