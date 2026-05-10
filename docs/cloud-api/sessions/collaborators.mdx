@@ -1,0 +1,105 @@
+---
+title: "List Collaborators"
+api: "GET /api/sessions/{session_id}/collaborators"
+description: "List users collaborating on a session"
+---
+
+Returns the list of users who have access to or are currently collaborating on a session.
+
+**Required scope:** `sessions:read`
+
+## Path Parameters
+
+<ParamField path="session_id" type="string" required>
+  The session ID (e.g. `ses_abc123`).
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string">
+  Scope to an organization.
+</ParamField>
+
+## Response
+
+<ResponseField name="collaborators" type="array">
+  Array of collaborator objects.
+</ResponseField>
+
+<ResponseField name="collaborators[].user_id" type="string">
+  User ID of the collaborator.
+</ResponseField>
+
+<ResponseField name="collaborators[].email" type="string">
+  Email address.
+</ResponseField>
+
+<ResponseField name="collaborators[].name" type="string">
+  Display name.
+</ResponseField>
+
+<ResponseField name="collaborators[].role" type="string">
+  Role in the session: `owner` or `collaborator`.
+</ResponseField>
+
+<ResponseField name="collaborators[].joined_at" type="string">
+  ISO 8601 timestamp of when the user joined.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/sessions/ses_abc123/collaborators" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/sessions/ses_abc123/collaborators",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+
+for c in response.json()["collaborators"]:
+    print(f"{c['name']} ({c['role']})")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/sessions/ses_abc123/collaborators",
+  {
+    headers: { "Authorization": "Bearer runtm_xxx" },
+  }
+);
+
+const { collaborators } = await response.json();
+collaborators.forEach((c) => console.log(`${c.name} (${c.role})`));
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "collaborators": [
+    {
+      "user_id": "user_xyz",
+      "email": "alice@example.com",
+      "name": "Alice",
+      "role": "owner",
+      "joined_at": "2026-05-09T10:00:00Z"
+    },
+    {
+      "user_id": "user_456",
+      "email": "bob@example.com",
+      "name": "Bob",
+      "role": "collaborator",
+      "joined_at": "2026-05-09T11:00:00Z"
+    }
+  ]
+}
+```
+</ResponseExample>

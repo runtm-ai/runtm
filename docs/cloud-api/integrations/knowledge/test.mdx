@@ -1,0 +1,104 @@
+---
+title: "Test Knowledge Integration"
+api: "POST /knowledge/integrations/{integration_id}:test"
+description: "Run a provider-specific health check against a knowledge integration"
+---
+
+Runs a provider-specific health probe against a knowledge integration to confirm that the stored credential still works (e.g. for BigQuery, executes a tiny `SELECT 1` query). Use this for connection-troubleshooting UI.
+
+<Info>Required scope: `integrations:read`</Info>
+
+<Note>
+This endpoint is **organization-only**. The request must include `X-Organization-Id` (or use an org-scoped API key).
+</Note>
+
+## Path Parameters
+
+<ParamField path="integration_id" type="string" required>
+  Knowledge integration id.
+</ParamField>
+
+## Headers
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization context.
+</ParamField>
+
+## Response
+
+<ResponseField name="integration" type="object">
+  The integration record (status may be updated as a side effect of testing).
+</ResponseField>
+
+<ResponseField name="ok" type="boolean">
+  True if the health probe succeeded.
+</ResponseField>
+
+<ResponseField name="detail" type="string">
+  Human-readable failure detail when `ok` is false.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/knowledge/integrations/kint_aaa:test" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_456"
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://app.runtm.com/api/knowledge/integrations/kint_aaa:test",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_456",
+    },
+)
+
+result = response.json()
+print(f"ok={result['ok']}, detail={result.get('detail')}")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/knowledge/integrations/kint_aaa:test",
+  {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "X-Organization-Id": "org_456",
+    },
+  }
+);
+
+const result = await response.json();
+console.log(`ok=${result.ok}, detail=${result.detail}`);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "integration": {
+    "id": "kint_aaa",
+    "status": "active",
+    "has_credentials": true
+  },
+  "ok": true,
+  "detail": null
+}
+```
+
+```json 200
+{
+  "integration": {
+    "id": "kint_aaa",
+    "status": "error",
+    "has_credentials": true
+  },
+  "ok": false,
+  "detail": "Provider returned 401 Unauthorized"
+}
+```
+</ResponseExample>

@@ -1,0 +1,148 @@
+---
+title: "Discover Skills in Repo"
+api: "POST /agent-directives:discover-in-repo"
+description: "Scan a GitHub repo for SKILL.md files and return importable candidates"
+---
+
+Scans a GitHub repository tree at the given ref for every `SKILL.md` file and returns the candidate skills as a list. Read-only - no directives are created.
+
+The frontend uses this endpoint to render a "select skills to import" UI before calling [Import Directives](/cloud-api/integrations/agent-directives/import).
+
+<Info>Required scope: `context:read`</Info>
+
+<Note>
+Agent directives are **organization-scoped**. The request must include `X-Organization-Id` (or use an org-scoped API key). The organization must have an active GitHub App installation that can read the target repo.
+</Note>
+
+## Body Parameters
+
+<ParamField body="repo" type="string" required>
+  Repository full name (`owner/name`). 3-256 chars.
+</ParamField>
+
+<ParamField body="ref" type="string">
+  Optional git ref (branch or tag). Defaults to the repo's default branch.
+</ParamField>
+
+## Headers
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization context.
+</ParamField>
+
+## Response
+
+<ResponseField name="repo" type="string">
+  Echoes the repository scanned.
+</ResponseField>
+
+<ResponseField name="ref" type="string">
+  Echoes the ref used (or the default branch if none was provided).
+</ResponseField>
+
+<ResponseField name="commit_sha" type="string">
+  Commit SHA the scan resolved to.
+</ResponseField>
+
+<ResponseField name="candidates" type="array">
+  One entry per discovered `SKILL.md` file.
+  <Expandable title="SkillCandidate">
+    <ResponseField name="path" type="string">
+      Full path to the `SKILL.md` file in the repo.
+    </ResponseField>
+    <ResponseField name="dir" type="string">
+      First path segment of `path` - useful as a grouping key.
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Suggested directive name derived from the file's frontmatter or its directory.
+    </ResponseField>
+    <ResponseField name="display_name" type="string">
+      Suggested display name from the file's frontmatter.
+    </ResponseField>
+    <ResponseField name="description" type="string">
+      Suggested description from the file's frontmatter.
+    </ResponseField>
+    <ResponseField name="size_bytes" type="integer">
+      Size of the `SKILL.md` file in bytes.
+    </ResponseField>
+    <ResponseField name="frontmatter" type="object">
+      Parsed YAML frontmatter (raw).
+    </ResponseField>
+    <ResponseField name="already_imported" type="boolean">
+      True if the org already has a directive imported from this same upstream path.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="truncated" type="boolean">
+  True if the scan hit a tree limit and may not contain every match.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/agent-directives:discover-in-repo" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_456" \
+  -H "Content-Type: application/json" \
+  -d '{"repo": "acme-corp/skills", "ref": "main"}'
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://app.runtm.com/api/agent-directives:discover-in-repo",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_456",
+    },
+    json={"repo": "acme-corp/skills", "ref": "main"},
+)
+
+for c in response.json()["candidates"]:
+    print(f"{c['path']}: {c['name']}")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/agent-directives:discover-in-repo",
+  {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "X-Organization-Id": "org_456",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ repo: "acme-corp/skills", ref: "main" }),
+  }
+);
+
+const data = await response.json();
+for (const c of data.candidates) {
+  console.log(`${c.path}: ${c.name}`);
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "repo": "acme-corp/skills",
+  "ref": "main",
+  "commit_sha": "deadbeef",
+  "candidates": [
+    {
+      "path": ".claude/skills/deploy-checks/SKILL.md",
+      "dir": ".claude",
+      "name": "deploy-checks",
+      "display_name": "Pre-deploy checks",
+      "description": "Run lint, typecheck, tests.",
+      "size_bytes": 482,
+      "frontmatter": { "name": "deploy-checks" },
+      "already_imported": false
+    }
+  ],
+  "truncated": false
+}
+```
+</ResponseExample>

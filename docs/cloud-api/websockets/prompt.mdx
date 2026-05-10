@@ -1,0 +1,173 @@
+---
+title: "Prompt WebSocket"
+description: "Stream prompts and agent output in real-time"
+---
+
+The prompt WebSocket lets you send prompts to the coding agent and receive streaming output — tokens, tool calls, results, and completion signals — in real time.
+
+## Connection
+
+```
+wss://app.runtm.com/api/sessions/{session_id}/tabs/{tab_id}/prompt?token={ws_token}
+```
+
+Obtain `ws_token` from the [Token Exchange](/cloud-api/websockets/token-exchange) endpoint with `capability: "prompt"`.
+
+**Required scope:** `sessions:prompt`
+
+Each prompt tab has its own WebSocket. The `tab_id` identifies which agent tab to connect to — sessions can run multiple agents in parallel across tabs.
+
+## Authentication
+
+The `token` query parameter authenticates the connection. Invalid or expired tokens result in an immediate close with code `4001`.
+
+## Sending a prompt
+
+Send a JSON message to start a prompt:
+
+```json
+{
+  "type": "prompt_start",
+  "content": "Add input validation to the login form",
+  "attachments": []
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | string | Must be `"prompt_start"`. |
+| `content` | string | The prompt text. |
+| `attachments` | array | Optional file references or images to include. |
+
+## Receiving output
+
+The server streams output as a sequence of JSON messages:
+
+### `token`
+
+A chunk of the agent's text response:
+
+```json
+{
+  "type": "token",
+  "content": "I'll add validation to"
+}
+```
+
+### `tool_use`
+
+The agent is invoking a tool (e.g. editing a file, running a command):
+
+```json
+{
+  "type": "tool_use",
+  "tool": "edit_file",
+  "input": {
+    "path": "src/login.tsx",
+    "content": "..."
+  }
+}
+```
+
+### `tool_result`
+
+The result of a tool invocation:
+
+```json
+{
+  "type": "tool_result",
+  "tool": "edit_file",
+  "output": "File updated successfully"
+}
+```
+
+### `prompt_end`
+
+The agent has finished responding:
+
+```json
+{
+  "type": "prompt_end",
+  "usage": {
+    "input_tokens": 1200,
+    "output_tokens": 450
+  }
+}
+```
+
+### `error`
+
+An error occurred during prompt execution:
+
+```json
+{
+  "type": "error",
+  "message": "Agent timed out after 300 seconds"
+}
+```
+
+## Cancelling a prompt
+
+Send a cancel message to stop the agent mid-response:
+
+```json
+{
+  "type": "prompt_cancel"
+}
+```
+
+The server sends a final `prompt_end` message after cancellation.
+
+## Example: streaming output
+
+```javascript
+const tokenResponse = await fetch(
+  "https://app.runtm.com/api/sessions/ses_abc123/ws-token",
+  {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer runtm_sk_live_abc123...",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ capability: "prompt" }),
+  }
+);
+const { token } = await tokenResponse.json();
+
+const ws = new WebSocket(
+  `wss://app.runtm.com/api/sessions/ses_abc123/tabs/tab_0/prompt?token=${token}`
+);
+
+ws.onopen = () => {
+  ws.send(JSON.stringify({
+    type: "prompt_start",
+    content: "Add input validation to the login form",
+  }));
+};
+
+ws.onmessage = (event) => {
+  const msg = JSON.parse(event.data);
+
+  switch (msg.type) {
+    case "token":
+      process.stdout.write(msg.content);
+      break;
+    case "tool_use":
+      console.log(`\n[Tool: ${msg.tool}]`);
+      break;
+    case "tool_result":
+      console.log(`[Result: ${msg.output}]`);
+      break;
+    case "prompt_end":
+      console.log(`\n[Done — ${msg.usage.output_tokens} tokens]`);
+      break;
+    case "error":
+      console.error(`\n[Error: ${msg.message}]`);
+      break;
+  }
+};
+```
+
+## Tab scoping
+
+Each tab operates independently. You can open multiple WebSocket connections to different tabs to run parallel agents. Tab IDs are returned when listing session workspace state via the REST API.

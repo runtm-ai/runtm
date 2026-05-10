@@ -1,0 +1,95 @@
+---
+title: "Session Events"
+api: "GET /api/sessions/{session_id}/events"
+description: "Subscribe to real-time session events via SSE"
+---
+
+Opens a Server-Sent Events (SSE) stream of real-time session events. Events include prompt progress, file changes, process output, and state transitions.
+
+**Required scope:** `sessions:prompt`
+
+## Path Parameters
+
+<ParamField path="session_id" type="string" required>
+  The session ID (e.g. `ses_abc123`).
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+## Response
+
+Returns a `text/event-stream` with events in SSE format.
+
+<ResponseField name="event" type="string">
+  Event type: `prompt_progress`, `file_changed`, `process_output`, `state_changed`, `heartbeat`.
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Event-specific payload.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -N "https://app.runtm.com/api/sessions/ses_abc123/events" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Accept: text/event-stream"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/sessions/ses_abc123/events",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "Accept": "text/event-stream",
+    },
+    stream=True,
+)
+
+for line in response.iter_lines():
+    if line:
+        print(line.decode())
+```
+
+```javascript JavaScript
+const eventSource = new EventSource(
+  "https://app.runtm.com/api/sessions/ses_abc123/events",
+  {
+    headers: { "Authorization": "Bearer runtm_xxx" },
+  }
+);
+
+eventSource.addEventListener("prompt_progress", (e) => {
+  console.log("Progress:", JSON.parse(e.data));
+});
+
+eventSource.addEventListener("file_changed", (e) => {
+  console.log("File changed:", JSON.parse(e.data));
+});
+
+eventSource.addEventListener("state_changed", (e) => {
+  console.log("State:", JSON.parse(e.data));
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+event: prompt_progress
+data: {"type": "text", "content": "Creating the API route..."}
+
+event: file_changed
+data: {"path": "/src/routes/users.ts", "action": "created"}
+
+event: state_changed
+data: {"state": "active", "previous_state": "paused"}
+
+event: heartbeat
+data: {"timestamp": "2026-05-09T21:00:00Z"}
+```
+</ResponseExample>

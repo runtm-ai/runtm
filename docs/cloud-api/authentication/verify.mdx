@@ -1,0 +1,118 @@
+---
+title: "Verify API Key"
+api: "GET /auth/verify"
+description: "Verify an API key and inspect its scopes"
+---
+
+Validates the provided API key and returns its metadata, including the scopes it was granted and the user and organization it belongs to. Any valid key can call this endpoint — no specific scope is required.
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_sk_live_abc123...`
+</ParamField>
+
+## Response
+
+<ResponseField name="valid" type="boolean">
+  Whether the key is valid.
+</ResponseField>
+
+<ResponseField name="key_id" type="string">
+  Unique identifier of the API key.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Display name given to the key at creation.
+</ResponseField>
+
+<ResponseField name="user_id" type="string">
+  The user ID the key belongs to.
+</ResponseField>
+
+<ResponseField name="organization_id" type="string | null">
+  Organization the key is scoped to, or `null` for personal keys.
+</ResponseField>
+
+<ResponseField name="tenant_id" type="string | null">
+  Tenant ID used for deployment and telemetry scoping. Matches `organization_id` for org keys, or `user_id` for personal keys.
+</ResponseField>
+
+<ResponseField name="role" type="string | null">
+  Current role of the key owner in the organization (`owner`, `admin`, `member`), or `null` for personal keys.
+</ResponseField>
+
+<ResponseField name="scopes" type="string[]">
+  Scopes stored on the key at creation time (e.g. `["sessions:read", "sessions:write"]`).
+</ResponseField>
+
+<ResponseField name="effective_scopes" type="string[]">
+  Scopes actually enforced at request time. This is the intersection of stored scopes (expanded from any legacy names) and the current role ceiling. If the key owner has been demoted, `effective_scopes` will be narrower than `scopes`.
+</ResponseField>
+
+<ResponseField name="expires_at" type="string | null">
+  ISO 8601 expiration timestamp, or `null` for non-expiring keys.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl https://app.runtm.com/auth/verify \
+  -H "Authorization: Bearer runtm_sk_live_abc123..."
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/auth/verify",
+    headers={"Authorization": "Bearer runtm_sk_live_abc123..."},
+)
+
+data = response.json()
+print(f"User: {data['email']}, Scopes: {data['scopes']}")
+```
+
+```javascript JavaScript
+const response = await fetch("https://app.runtm.com/auth/verify", {
+  headers: {
+    "Authorization": "Bearer runtm_sk_live_abc123...",
+  },
+});
+
+const data = await response.json();
+console.log(`User: ${data.email}, Scopes: ${data.scopes}`);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "valid": true,
+  "key_id": "263f6324-b6f4-4628-b455-d12330648e87",
+  "name": "Session automation",
+  "user_id": "user_xyz",
+  "organization_id": "org_abc123",
+  "tenant_id": "org_abc123",
+  "role": "admin",
+  "scopes": [
+    "sessions:read",
+    "sessions:write",
+    "sessions:prompt",
+    "sessions:terminal"
+  ],
+  "effective_scopes": [
+    "sessions:read",
+    "sessions:write",
+    "sessions:prompt",
+    "sessions:terminal"
+  ],
+  "expires_at": "2026-06-09T02:34:49.998427+00:00"
+}
+```
+
+```json 401
+{
+  "detail": "Invalid or expired API key"
+}
+```
+</ResponseExample>

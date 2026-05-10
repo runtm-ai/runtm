@@ -1,0 +1,225 @@
+---
+title: "Organization Instructions"
+api: "GET/PUT /api/organizations/{org_id}/instructions"
+description: "Read and write the organization-wide Claude instructions applied to every session created by org members."
+---
+
+Organization instructions are appended to the `CLAUDE.md` of every session
+created by any member of the organization. They sit between **system
+instructions** and **user instructions** in the resolution order:
+
+```
+System  →  Org Instructions  →  User Instructions  →  Session Instructions
+```
+
+The maximum length is **20,000 characters**.
+
+<Warning>
+  Updating organization instructions is restricted to organization **owners**
+  and **admins**. Members with `context:write` on their key will still
+  receive `403`.
+</Warning>
+
+<Note>
+  Organization context is required. Set `X-Organization-Id` to the same value
+  as `org_id` in the path, or use an org-scoped API key whose org ID matches.
+</Note>
+
+## GET /api/organizations/{org_id}/instructions
+
+<Info>
+  Required scope: `context:read`
+</Info>
+
+Returns the org's custom instructions. All organization members can read.
+
+### Path Parameters
+
+<ParamField path="org_id" type="string" required>
+  Organization ID. Must match `X-Organization-Id` (or the API key's org).
+</ParamField>
+
+### Headers
+
+<ParamField header="Authorization" type="string" required>
+  `Bearer <your_api_key>`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  Required when using a personal API key. Must match `org_id`.
+</ParamField>
+
+### Response
+
+<ResponseField name="organization_id" type="string">
+  Echo of the path `org_id`.
+</ResponseField>
+
+<ResponseField name="instructions" type="string">
+  The organization's instructions, or `null` when none are set.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  ISO 8601 timestamp of the last update, or `null` when never set.
+</ResponseField>
+
+<RequestExample>
+```bash cURL (read)
+curl -X GET "https://app.runtm.com/api/organizations/org_abc123/instructions" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python (read)
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/organizations/org_abc123/instructions",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+print(response.json()["instructions"])
+```
+
+```javascript JavaScript (read)
+const response = await fetch(
+  "https://app.runtm.com/api/organizations/org_abc123/instructions",
+  {
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  },
+);
+console.log((await response.json()).instructions);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "organization_id": "org_abc123",
+  "instructions": "All commits must follow the conventional-commits spec.\nNever push secrets to source control.",
+  "updated_at": "2026-04-12T18:30:11Z"
+}
+```
+
+```json 403
+{
+  "detail": "Organization context mismatch. Set X-Organization-Id header to match."
+}
+```
+</ResponseExample>
+
+## PUT /api/organizations/{org_id}/instructions
+
+<Info>
+  Required scope: `context:write`
+</Info>
+
+<Warning>
+  Org owner or admin role required. Members will receive `403`.
+</Warning>
+
+Replace (or clear) the organization's custom instructions. Pass `null` or an
+empty string to remove them.
+
+### Path Parameters
+
+<ParamField path="org_id" type="string" required>
+  Organization ID. Must match `X-Organization-Id` (or the API key's org).
+</ParamField>
+
+### Headers
+
+<ParamField header="Authorization" type="string" required>
+  `Bearer <your_api_key>`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  Required when using a personal API key. Must match `org_id`.
+</ParamField>
+
+### Request Body
+
+<ParamField body="instructions" type="string">
+  Markdown instruction text (max 20,000 characters). Pass `null` or an empty
+  string to clear.
+</ParamField>
+
+### Response
+
+Same shape as the GET response, reflecting the updated value.
+
+<RequestExample>
+```bash cURL (write)
+curl -X PUT "https://app.runtm.com/api/organizations/org_abc123/instructions" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{"instructions": "All commits must follow the conventional-commits spec."}'
+```
+
+```python Python (write)
+import requests
+
+response = requests.put(
+    "https://app.runtm.com/api/organizations/org_abc123/instructions",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+    json={"instructions": "All commits must follow the conventional-commits spec."},
+)
+print(response.json())
+```
+
+```javascript JavaScript (write)
+const response = await fetch(
+  "https://app.runtm.com/api/organizations/org_abc123/instructions",
+  {
+    method: "PUT",
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      instructions: "All commits must follow the conventional-commits spec.",
+    }),
+  },
+);
+console.log(await response.json());
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "organization_id": "org_abc123",
+  "instructions": "All commits must follow the conventional-commits spec.",
+  "updated_at": "2026-05-09T22:14:00Z"
+}
+```
+
+```json 403
+{
+  "detail": "Organization context mismatch. Set X-Organization-Id header to match."
+}
+```
+
+```json 422
+{
+  "detail": [
+    {
+      "type": "string_too_long",
+      "loc": ["body", "instructions"],
+      "msg": "String should have at most 20000 characters",
+      "input": "..."
+    }
+  ]
+}
+```
+</ResponseExample>

@@ -1,0 +1,69 @@
+---
+title: "Token for Repo"
+api: "GET /api/github-app/token-for-repo"
+description: "Get an installation access token scoped to a specific repo owner."
+---
+
+Finds the GitHub App installation that has access to repos owned by the specified user or organization, and returns its access token. Searches org-shared installations first, then personal ones.
+
+**Required scope:** `integrations:read`
+
+<ParamField query="repo_owner" type="string" required>
+  GitHub username or organization that owns the repository.
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string">
+  Optional. Check org-shared installations first.
+</ParamField>
+
+<ResponseField name="access_token" type="string" required>
+  GitHub App installation access token.
+</ResponseField>
+
+<ResponseField name="expires_at" type="string" required>
+  ISO 8601 token expiry timestamp.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/github-app/token-for-repo?repo_owner=acme-corp" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+resp = requests.get(
+    "https://app.runtm.com/api/github-app/token-for-repo",
+    params={"repo_owner": "acme-corp"},
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  "https://app.runtm.com/api/github-app/token-for-repo?repo_owner=acme-corp",
+  {
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "access_token": "ghs_xxxxxxxxxxxxxxxxxxxx",
+  "expires_at": "2026-05-09T19:00:00Z"
+}
+```
+</ResponseExample>

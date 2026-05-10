@@ -1,0 +1,165 @@
+---
+title: Skills
+description: "Reusable instruction bundles with files, MCP servers, and tooling that extend agent capabilities"
+---
+
+A skill is a versioned, reusable bundle that teaches an agent how to do something. It can include a markdown instruction document, reference files (code samples, schemas, examples), MCP servers the agent can call, and tooling that gets installed into the sandbox at build time.
+
+Skills are the unit of agent extension in Runtime. You define a workflow once as a skill, then attach it to [templates](/concepts/templates) or individual sessions. Every agent that runs in those environments inherits the skill automatically.
+
+## What's in a skill
+
+A skill bundle has four parts:
+
+| Part | Purpose |
+|------|---------|
+| **Entry markdown** (`SKILL.md`) | The main instruction document the agent reads |
+| **Files** | Code samples, schemas, examples, or other reference material |
+| **MCP servers** | Configured tools the agent can call (HTTP, SSE, or local stdio) |
+| **Required tooling** | System packages or language tools installed at template build time |
+
+When a skill is attached to a session, all four are made available to the agent as part of its working context.
+
+## SKILL.md format
+
+The entry markdown is where you write the actual instructions. It uses YAML frontmatter to declare metadata, followed by the markdown content the agent reads.
+
+```markdown SKILL.md
+---
+name: stripe-integration
+description: Patterns and helpers for adding Stripe payment flows
+version: 1.2.0
+---
+
+# Stripe Integration
+
+When adding Stripe payments to an app:
+
+1. Use `stripe` Python SDK or `stripe-node` for JS/TS
+2. All amounts in cents, never floats
+3. Verify webhook signatures with `STRIPE_WEBHOOK_SECRET`
+4. Use idempotency keys for every charge
+
+See `examples/checkout.py` for a reference implementation.
+
+## Common patterns
+
+...
+```
+
+The agent treats this as authoritative guidance whenever the skill is active.
+
+## Reference files
+
+A skill can ship with files that get mounted into the sandbox alongside the markdown. These can be:
+
+- **Code samples** the agent can read or copy from
+- **Schemas** (OpenAPI, JSON Schema, GraphQL)
+- **Diagrams** (mermaid, ASCII)
+- **Configuration templates**
+
+Files appear in the sandbox at predictable paths so the agent can reference them by name. Larger files are stored in object storage and referenced by hash; smaller files are inlined into the directive payload.
+
+## MCP servers
+
+Skills can declare [Model Context Protocol](https://modelcontextprotocol.io) servers that give the agent additional tools. Three transports are supported:
+
+| Transport | When to use |
+|-----------|------------|
+| **stdio** | Local executable launched in the sandbox (e.g. `npx -y @scope/server`) |
+| **http** | Remote MCP server reached over HTTPS |
+| **sse** | Remote MCP server with server-sent events |
+
+Example MCP configuration in a skill:
+
+```yaml
+mcp_servers:
+  github:
+    transport: stdio
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-github"]
+    env:
+      GITHUB_TOKEN: "${GITHUB_TOKEN}"
+  weather:
+    transport: http
+    url: https://weather.example.com/mcp
+    headers:
+      Authorization: "Bearer ${WEATHER_KEY}"
+```
+
+When a session boots with this skill attached, Runtime merges these entries into the agent's MCP configuration so the new tools are immediately available.
+
+## Required tooling
+
+Skills can declare system or language tooling the sandbox needs to install at template build time. Tooling is resolved through [mise](https://mise.jdx.dev), so any tool mise understands is available.
+
+```yaml
+requires:
+  tooling:
+    mise:
+      gcloud: latest
+      jq: latest
+      "npm:typescript": "5.4"
+```
+
+Tooling installs happen during template build, not per session. Sessions created from a template that bundles a skill get the tooling pre-installed in the snapshot.
+
+## Skill categories
+
+Beyond the standard skill format (`skill_v0`), Runtime stores a few related directive types in the same system. Each represents a different way of extending agent context:
+
+| Type | Purpose |
+|------|---------|
+| `skill_v0` | The full skill bundle (markdown + files + MCP + tooling) |
+| `mcp_v0` | A standalone MCP server registration |
+| `doc_v0` | A reference URL the agent should treat as authoritative documentation |
+| `allowlist_rule_v0` | A bash command allow/ask/deny pattern (see [Guardrails](/concepts/guardrails)) |
+| `network_rule_v0` | A network access rule for the sandbox |
+
+All of them share the same versioning, publishing, and import system.
+
+## Versioning and publishing
+
+Skills are versioned. When you update a skill, you publish a new version and existing references either pin to a specific version or float to the latest.
+
+| Action | Endpoint |
+|--------|----------|
+| Create a skill | `POST /api/skills` |
+| Get a skill | `GET /api/skills/{id}` |
+| Update content | `PATCH /api/skills/{id}` |
+| Publish a new version | `POST /api/skills/{id}/publish` |
+| Bump version | `POST /api/skills/{id}:new-version` |
+| Resync from source | `POST /api/skills/{id}/resync` |
+
+See the [Skills API reference](/cloud-api/context/skills/list) for the full surface.
+
+## Authoring skills from a repo
+
+You can keep skill source in a Git repo and import it into Runtime:
+
+1. Lay out the skill as a directory with `SKILL.md` and reference files
+2. Push it to a GitHub repo Runtime has access to
+3. Use `POST /api/skills:import` or [Import](/cloud-api/context/skills/import) to pull it in
+4. Use `POST /api/skills/{id}/resync` to refresh from the repo when files change
+
+This keeps skill authoring under version control without leaving the team's normal git workflow.
+
+## Discovering skills in a repo
+
+Runtime can scan a connected Git repo for skill candidates and surface them for import. Use [Discover Skills](/cloud-api/context/skills/discover-in-repo) to list every directory in the repo that looks like a skill (has a `SKILL.md` or matching frontmatter).
+
+## Attaching skills
+
+Skills are attached to environments in two places:
+
+- **Templates** - admins attach skills to a template so every session created from it inherits them. See [Templates](/concepts/templates).
+- **Sessions** - skills can be attached to individual sessions for ad-hoc use without modifying the template.
+
+When the session boots, Runtime resolves the skill, mounts its files into the workspace, configures any MCP servers, and exposes the skill's content as part of the system prompt.
+
+## Best practices
+
+- **One skill, one workflow.** Don't bundle unrelated guidance into a single skill; create separate skills and attach the ones that apply.
+- **Keep instructions actionable.** Skills should describe how to do something concretely, with examples. Vague philosophy belongs in [org instructions](/concepts/context).
+- **Pin versions in production.** When stability matters, attach skills by version rather than floating to latest.
+- **Iterate from a repo.** Authoring in markdown files in a Git repo and resyncing is faster than editing through the API.

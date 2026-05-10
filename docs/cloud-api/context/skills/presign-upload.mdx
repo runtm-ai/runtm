@@ -1,0 +1,136 @@
+---
+title: "Presign Upload"
+api: "POST /api/agent-directives/{directive_id}/files:presign-upload"
+description: "Get a presigned URL for uploading a skill file directly to storage"
+---
+
+Mints a short-lived presigned PUT URL for uploading a file to a draft directive's content. The client hashes the file locally, calls this endpoint with the digest and size, then PUTs directly to the returned URL. Large payloads never traverse the backend.
+
+**Required scope:** `context:write`
+
+## Path Parameters
+
+<ParamField path="directive_id" type="string" required>
+  The directive ID (must be a draft). Example: `dir_abc123`.
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string">
+  Scope to an organization.
+</ParamField>
+
+## Body
+
+<ParamField body="path" type="string" required>
+  File path within the skill bundle (1–512 chars). Example: `SKILL.md`.
+</ParamField>
+
+<ParamField body="sha256" type="string" required>
+  Lowercase hex SHA-256 digest of the file (exactly 64 characters).
+</ParamField>
+
+<ParamField body="size" type="integer" required>
+  File size in bytes (must be > 0).
+</ParamField>
+
+## Response
+
+<ResponseField name="url" type="string">
+  Presigned PUT URL. Upload the file body directly with a PUT request.
+</ResponseField>
+
+<ResponseField name="ref" type="string">
+  Content-addressed reference (`sha256:<hex>`) to use when patching the directive's file entry.
+</ResponseField>
+
+<ResponseField name="expires_at" type="string">
+  ISO 8601 timestamp when the presigned URL expires.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/agent-directives/dir_abc123/files:presign-upload" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "path": "SKILL.md",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size": 8192
+  }'
+```
+
+```python Python
+import hashlib
+import requests
+
+with open("SKILL.md", "rb") as f:
+    content = f.read()
+    sha256 = hashlib.sha256(content).hexdigest()
+
+response = requests.post(
+    "https://app.runtm.com/api/agent-directives/dir_abc123/files:presign-upload",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+        "Content-Type": "application/json",
+    },
+    json={
+        "path": "SKILL.md",
+        "sha256": sha256,
+        "size": len(content),
+    },
+)
+
+data = response.json()
+
+# Upload directly to the presigned URL
+requests.put(data["url"], data=content)
+print(f"Uploaded with ref: {data['ref']}")
+```
+
+```javascript JavaScript
+const content = new TextEncoder().encode(skillContent);
+const hashBuffer = await crypto.subtle.digest("SHA-256", content);
+const sha256 = Array.from(new Uint8Array(hashBuffer))
+  .map((b) => b.toString(16).padStart(2, "0"))
+  .join("");
+
+const response = await fetch(
+  "https://app.runtm.com/api/agent-directives/dir_abc123/files:presign-upload",
+  {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      path: "SKILL.md",
+      sha256,
+      size: content.byteLength,
+    }),
+  }
+);
+
+const data = await response.json();
+
+await fetch(data.url, { method: "PUT", body: content });
+console.log(`Uploaded with ref: ${data.ref}`);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "url": "https://s3.amazonaws.com/bucket/skills/sha256:e3b0c4...?X-Amz-Signature=...",
+  "ref": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "expires_at": "2026-05-09T21:15:00Z"
+}
+```
+</ResponseExample>

@@ -1,0 +1,68 @@
+---
+title: "Validate Token"
+api: "GET /api/github-app/user-token/validate"
+description: "Validate the stored GitHub user token against the GitHub API."
+---
+
+Validates the stored GitHub user token by calling the GitHub API. Returns whether the token is valid, the authenticated username, and any issues.
+
+**Required scope:** `integrations:read`
+
+<ResponseField name="valid" type="boolean" required>
+  Whether the token is valid and accepted by GitHub.
+</ResponseField>
+
+<ResponseField name="username" type="string">
+  GitHub username (only when valid).
+</ResponseField>
+
+<ResponseField name="scopes" type="string">
+  Token scopes (only when valid).
+</ResponseField>
+
+<ResponseField name="reason" type="string">
+  Reason for invalid status. One of `"no_token"`, `"refresh_token_expired"`, `"refresh_failed"`, `"revoked"`, or `"error"`.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/github-app/user-token/validate" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+resp = requests.get(
+    "https://app.runtm.com/api/github-app/user-token/validate",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+data = resp.json()
+if data["valid"]:
+    print(f"Token valid for {data['username']}")
+else:
+    print(f"Token invalid: {data['reason']}")
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  "https://app.runtm.com/api/github-app/user-token/validate",
+  {
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+    },
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "valid": true,
+  "username": "octocat",
+  "scopes": null
+}
+```
+</ResponseExample>

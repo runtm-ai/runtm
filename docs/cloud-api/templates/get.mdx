@@ -1,0 +1,145 @@
+---
+title: "Get Template"
+api: "GET /api/org-templates/{template_id}"
+description: "Get detailed information about a specific template"
+---
+
+Returns the full detail of an organization template including its configuration, build status, linked repos, and secret requirements.
+
+**Required scope:** `templates:read`
+
+## Path Parameters
+
+<ParamField path="template_id" type="string" required>
+  The template ID (e.g. `tmpl_abc123`).
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  Organization ID.
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  Template ID.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Template slug name.
+</ResponseField>
+
+<ResponseField name="display_name" type="string">
+  Human-readable template name.
+</ResponseField>
+
+<ResponseField name="description" type="string | null">
+  Template description.
+</ResponseField>
+
+<ResponseField name="repo_patterns" type="array">
+  Glob patterns for auto-matching repos to this template.
+</ResponseField>
+
+<ResponseField name="required_secrets" type="array">
+  Secret keys required by this template.
+</ResponseField>
+
+<ResponseField name="secrets_configured" type="array">
+  Secret keys that have been configured.
+</ResponseField>
+
+<ResponseField name="has_all_required" type="boolean">
+  Whether all required secrets are configured.
+</ResponseField>
+
+<ResponseField name="tier" type="string">
+  Default sandbox tier for this template.
+</ResponseField>
+
+<ResponseField name="e2b_template_id" type="string">
+  E2B template ID for sandbox creation.
+</ResponseField>
+
+<ResponseField name="build_status" type="string | null">
+  Current build status (`pending`, `building`, `completed`, `failed`).
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/org-templates/tmpl_abc123" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/org-templates/tmpl_abc123",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+
+data = response.json()
+print(f"{data['display_name']} (build: {data['build_status']})")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/org-templates/tmpl_abc123",
+  {
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  }
+);
+
+const data = await response.json();
+console.log(`${data.display_name} (build: ${data.build_status})`);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "id": "tmpl_abc123",
+  "name": "nextjs-starter",
+  "display_name": "Next.js Starter",
+  "description": "Pre-configured Next.js template with Tailwind CSS",
+  "repo_patterns": ["owner/nextjs-*"],
+  "required_secrets": ["DATABASE_URL", "API_SECRET"],
+  "secrets_configured": ["DATABASE_URL"],
+  "has_all_required": false,
+  "tier": "starter",
+  "e2b_template_id": "e2b_tmpl_xyz",
+  "docker_image": null,
+  "created_at": "2026-04-15T10:00:00Z",
+  "updated_at": "2026-05-01T12:00:00Z",
+  "build_status": "completed",
+  "build_started_at": "2026-05-01T11:00:00Z",
+  "build_completed_at": "2026-05-01T11:05:00Z",
+  "framework": "next",
+  "github_repo": "owner/nextjs-starter",
+  "github_branch": "main",
+  "agents": ["claude-code"],
+  "e2b_agent_templates": null,
+  "repos": [
+    {
+      "full_name": "owner/nextjs-starter",
+      "branch": "main"
+    }
+  ],
+  "build_spec": null,
+  "workdir": "/home/user/project"
+}
+```
+</ResponseExample>

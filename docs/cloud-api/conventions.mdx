@@ -1,0 +1,124 @@
+---
+title: "Conventions"
+description: "Common patterns across all endpoints"
+---
+
+These conventions apply across all API endpoints. Individual endpoint pages may document additional behavior, but the patterns below are universal.
+
+## Pagination
+
+Most list endpoints support **offset-based pagination**:
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `limit` | integer | `20` | Number of results to return (1–100). |
+| `offset` | integer | `0` | Number of results to skip. |
+
+Responses include pagination metadata:
+
+```json
+{
+  "sessions": [...],
+  "total": 142,
+  "has_more": true
+}
+```
+
+Use `total` and `has_more` to build page controls or iterate through all results:
+
+```python
+offset = 0
+all_sessions = []
+
+while True:
+    response = requests.get(
+        "https://app.runtm.com/api/sessions",
+        headers=headers,
+        params={"limit": 100, "offset": offset},
+    )
+    data = response.json()
+    all_sessions.extend(data["sessions"])
+
+    if not data["has_more"]:
+        break
+    offset += len(data["sessions"])
+```
+
+### Cursor pagination
+
+Some endpoints use **cursor-based pagination** instead:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `page_size` | integer | Number of results per page (1–100). |
+| `page_token` | string | Opaque token from the previous response. |
+
+The response includes `next_page_token` when more results exist:
+
+```json
+{
+  "items": [...],
+  "next_page_token": "eyJpZCI6..."
+}
+```
+
+Endpoint pages specify which pagination style they use.
+
+## Organization header
+
+Include `X-Organization-Id` to scope requests to an organization's resources:
+
+```bash
+curl https://app.runtm.com/api/sessions \
+  -H "Authorization: Bearer runtm_sk_live_abc123..." \
+  -H "X-Organization-Id: org_abc123"
+```
+
+When omitted, the API returns the user's personal resources. See [Authentication](/cloud-api/authentication) for the full personal vs org distinction.
+
+## Timestamps
+
+All timestamps are **ISO 8601 in UTC**:
+
+```
+2026-05-09T21:00:00Z
+```
+
+Fields named `created_at` and `updated_at` follow this format. `updated_at` is `null` when the resource has never been modified after creation.
+
+## Content types
+
+| Scenario | Content-Type |
+|----------|-------------|
+| JSON request/response | `application/json` |
+| File uploads | `multipart/form-data` |
+| Streaming responses | `text/event-stream` |
+| WebSocket connections | N/A (upgrade handshake) |
+
+Most endpoints accept and return `application/json`. File upload endpoints (e.g. session file write) accept `multipart/form-data`.
+
+## Idempotency
+
+For `POST` requests that create resources, you can include an `Idempotency-Key` header to prevent duplicate creation on retries:
+
+```bash
+curl -X POST https://app.runtm.com/api/sessions \
+  -H "Authorization: Bearer runtm_sk_live_abc123..." \
+  -H "Idempotency-Key: req_unique_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{"agent": "claude-code"}'
+```
+
+If the same `Idempotency-Key` is sent within 24 hours, the API returns the original response without creating a duplicate resource. Keys are scoped to the API key that sent them.
+
+## Custom methods
+
+Some operations don't map cleanly to standard HTTP verbs. These use the **colon-separated action** pattern:
+
+```
+POST /api/sessions/{session_id}:pause
+POST /api/sessions/{session_id}:resume
+POST /api/sessions/{session_id}:prompt
+```
+
+Custom methods always use `POST` and append `:action` to the resource path.

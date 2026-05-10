@@ -1,0 +1,92 @@
+---
+title: "Set User Provider Key"
+api: "PUT /api/user/provider-keys/{provider}"
+description: "Store or replace a provider API key for the authenticated user."
+---
+
+Stores a provider API key for the authenticated user. If a key already exists for this provider, it is replaced.
+
+**Required scope:** `integrations:write`
+
+<ParamField path="provider" type="string" required>
+  The provider name. One of: `anthropic`, `openai`, `cursor`, `devin`, `gemini`, `copilot`.
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. `Authorization: Bearer runtm_xxx`
+</ParamField>
+
+<ParamField body="api_key" type="string" required>
+  The provider API key. Minimum 8 characters.
+</ParamField>
+
+<ResponseField name="provider" type="string">
+  The provider name.
+</ResponseField>
+
+<ResponseField name="connected" type="boolean">
+  Always `true` after a successful set.
+</ResponseField>
+
+<ResponseField name="key_preview" type="string">
+  Masked key preview.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  ISO 8601 timestamp of the update.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X PUT "https://app.runtm.com/api/user/provider-keys/anthropic" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "api_key": "sk-ant-api03-your-key-here"
+  }'
+```
+
+```python Python
+import requests
+
+provider = "anthropic"
+
+resp = requests.put(
+    f"https://app.runtm.com/api/user/provider-keys/{provider}",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "Content-Type": "application/json",
+    },
+    json={"api_key": "sk-ant-api03-your-key-here"},
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const provider = "anthropic";
+
+const resp = await fetch(
+  `https://app.runtm.com/api/user/provider-keys/${provider}`,
+  {
+    method: "PUT",
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ api_key: "sk-ant-api03-your-key-here" }),
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "provider": "anthropic",
+  "connected": true,
+  "key_preview": "sk-ant-...here",
+  "updated_at": "2026-05-09T18:00:00Z"
+}
+```
+</ResponseExample>

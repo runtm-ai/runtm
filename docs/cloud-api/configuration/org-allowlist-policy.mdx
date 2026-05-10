@@ -1,0 +1,222 @@
+---
+title: "Allowlist Default Policy"
+api: "GET/PUT /api/organizations/{org_id}/allowlist-policy"
+description: "Read and write the organization's default action when no allowlist rule matches."
+---
+
+The allowlist subsystem evaluates a list of rules against agent actions
+inside sessions. When no rule matches, the **default policy** decides what
+to do. This endpoint reads and writes that default.
+
+| Default | Behavior when no rule matches |
+|---------|--------------------------------|
+| `allow` | Permit the action silently (the historical default). |
+| `ask` | Pause and prompt the user / agent for confirmation. |
+| `deny` | Block the action and surface an error. |
+
+<Warning>
+  Updating the default policy is restricted to organization **owners** and
+  **admins**. Members with `guardrails:write` on their key still receive
+  `403`.
+</Warning>
+
+<Note>
+  Changing the default policy triggers a rebuild of every published
+  allowlist directive in the organization, so newly-created sessions pick up
+  the new default. There is a brief delay before all snapshots reflect the
+  change.
+</Note>
+
+## GET /api/organizations/{org_id}/allowlist-policy
+
+<Info>
+  Required scope: `guardrails:read`
+</Info>
+
+Read the current default policy for the organization.
+
+### Path Parameters
+
+<ParamField path="org_id" type="string" required>
+  Organization ID. Must match `X-Organization-Id` (or the API key's org).
+</ParamField>
+
+### Headers
+
+<ParamField header="Authorization" type="string" required>
+  `Bearer <your_api_key>`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  Required when using a personal API key. Must match `org_id`.
+</ParamField>
+
+### Response
+
+<ResponseField name="organization_id" type="string">
+  Echo of the path `org_id`.
+</ResponseField>
+
+<ResponseField name="default_policy" type="string">
+  One of `"allow"`, `"ask"`, `"deny"`. Defaults to `"allow"` when the org has
+  not configured a value.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  ISO 8601 timestamp of the last change, or `null` when never set.
+</ResponseField>
+
+<RequestExample>
+```bash cURL (read)
+curl -X GET "https://app.runtm.com/api/organizations/org_abc123/allowlist-policy" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python (read)
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/organizations/org_abc123/allowlist-policy",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+print(response.json()["default_policy"])
+```
+
+```javascript JavaScript (read)
+const response = await fetch(
+  "https://app.runtm.com/api/organizations/org_abc123/allowlist-policy",
+  {
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  },
+);
+console.log((await response.json()).default_policy);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "organization_id": "org_abc123",
+  "default_policy": "ask",
+  "updated_at": "2026-04-12T18:30:11Z"
+}
+```
+
+```json 403
+{
+  "detail": {
+    "code": "ORG_CONTEXT_MISMATCH",
+    "message": "Organization context mismatch. Set X-Organization-Id header to match."
+  }
+}
+```
+</ResponseExample>
+
+## PUT /api/organizations/{org_id}/allowlist-policy
+
+<Info>
+  Required scope: `guardrails:write`
+</Info>
+
+<Warning>
+  Org owner or admin role required.
+</Warning>
+
+Set the default policy. The change is applied immediately and a rebuild is
+queued for every published allowlist directive in the org.
+
+### Path Parameters
+
+<ParamField path="org_id" type="string" required>
+  Organization ID. Must match `X-Organization-Id` (or the API key's org).
+</ParamField>
+
+### Headers
+
+<ParamField header="Authorization" type="string" required>
+  `Bearer <your_api_key>`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  Required when using a personal API key. Must match `org_id`.
+</ParamField>
+
+### Request Body
+
+<ParamField body="default_policy" type="string" required>
+  One of `"allow"`, `"ask"`, `"deny"`.
+</ParamField>
+
+### Response
+
+Same shape as the GET response, reflecting the updated value.
+
+<RequestExample>
+```bash cURL (write)
+curl -X PUT "https://app.runtm.com/api/organizations/org_abc123/allowlist-policy" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{"default_policy": "deny"}'
+```
+
+```python Python (write)
+import requests
+
+response = requests.put(
+    "https://app.runtm.com/api/organizations/org_abc123/allowlist-policy",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+    json={"default_policy": "deny"},
+)
+print(response.json())
+```
+
+```javascript JavaScript (write)
+const response = await fetch(
+  "https://app.runtm.com/api/organizations/org_abc123/allowlist-policy",
+  {
+    method: "PUT",
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ default_policy: "deny" }),
+  },
+);
+console.log(await response.json());
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "organization_id": "org_abc123",
+  "default_policy": "deny",
+  "updated_at": "2026-05-09T22:14:00Z"
+}
+```
+
+```json 422
+{
+  "detail": [
+    {
+      "type": "literal_error",
+      "loc": ["body", "default_policy"],
+      "msg": "Input should be 'allow', 'ask' or 'deny'",
+      "input": "permit"
+    }
+  ]
+}
+```
+</ResponseExample>

@@ -1,0 +1,128 @@
+---
+title: "Recent Prompts"
+api: "GET /api/sessions/telemetry/prompts"
+description: "Recent prompt history across all sessions for the current user."
+---
+
+Returns a list of recent prompts with content previews, cost, model, and token usage. Useful for building an activity feed.
+
+**Required scope:** `activity:read`
+
+<ParamField query="limit" type="integer" default="20">
+  Maximum number of prompts to return. Range: 1–100.
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string">
+  Optional. Scope results to a specific organization.
+</ParamField>
+
+<ResponseField name="prompts" type="RecentPromptItem[]" required>
+  List of recent prompts.
+</ResponseField>
+
+<ResponseField name="prompts[].id" type="string" required>
+  Telemetry event ID.
+</ResponseField>
+
+<ResponseField name="prompts[].session_id" type="string">
+  Session the prompt was sent to.
+</ResponseField>
+
+<ResponseField name="prompts[].timestamp" type="string">
+  ISO 8601 timestamp.
+</ResponseField>
+
+<ResponseField name="prompts[].prompt_preview" type="string" required>
+  Truncated prompt content.
+</ResponseField>
+
+<ResponseField name="prompts[].prompt_length" type="integer" required>
+  Full prompt character length.
+</ResponseField>
+
+<ResponseField name="prompts[].model" type="string">
+  Model used (e.g. `"sonnet"`, `"opus"`).
+</ResponseField>
+
+<ResponseField name="prompts[].plan_mode" type="boolean" required>
+  Whether the prompt ran in plan mode.
+</ResponseField>
+
+<ResponseField name="prompts[].cost_usd" type="number">
+  Cost in USD.
+</ResponseField>
+
+<ResponseField name="prompts[].duration_ms" type="number">
+  Execution duration in milliseconds.
+</ResponseField>
+
+<ResponseField name="prompts[].input_tokens" type="integer">
+  Input tokens consumed.
+</ResponseField>
+
+<ResponseField name="prompts[].output_tokens" type="integer">
+  Output tokens consumed.
+</ResponseField>
+
+<ResponseField name="prompts[].agent" type="string">
+  Agent type (e.g. `"claude-code"`).
+</ResponseField>
+
+<ResponseField name="total" type="integer" required>
+  Number of prompts returned.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/sessions/telemetry/prompts?limit=5" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+resp = requests.get(
+    "https://app.runtm.com/api/sessions/telemetry/prompts",
+    params={"limit": 5},
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  "https://app.runtm.com/api/sessions/telemetry/prompts?limit=5",
+  {
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+    },
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "prompts": [
+    {
+      "id": "evt_01J...",
+      "session_id": "ses_abc123",
+      "timestamp": "2026-05-09T18:30:00Z",
+      "prompt_preview": "Fix the login redirect bug in the auth...",
+      "prompt_length": 142,
+      "model": "sonnet",
+      "plan_mode": false,
+      "cost_usd": 0.04,
+      "duration_ms": 15200,
+      "input_tokens": 3200,
+      "output_tokens": 1800,
+      "agent": "claude-code",
+      "abandoned": false
+    }
+  ],
+  "total": 1
+}
+```
+</ResponseExample>

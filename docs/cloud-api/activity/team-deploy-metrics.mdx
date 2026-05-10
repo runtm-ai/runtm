@@ -1,0 +1,81 @@
+---
+title: "Team Deploy Metrics"
+api: "GET /api/v0/telemetry/team/metrics/summary"
+description: "Deployment metrics summary for the organization."
+---
+
+Returns aggregated deployment metrics for the organization, proxied from the OSS telemetry API. Includes build counts, success rates, and deployment durations.
+
+**Required scope:** `activity:read`
+
+<Note>Requires organization context via the `X-Organization-Id` header.</Note>
+
+<ParamField query="days" type="integer" default="7">
+  Number of days to look back. Range: 1–90.
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization to get deployment metrics for.
+</ParamField>
+
+<ResponseField name="total_deployments" type="integer">
+  Total number of deployments in the period.
+</ResponseField>
+
+<ResponseField name="successful_deployments" type="integer">
+  Number of successful deployments.
+</ResponseField>
+
+<ResponseField name="failed_deployments" type="integer">
+  Number of failed deployments.
+</ResponseField>
+
+<ResponseField name="avg_build_duration_ms" type="number">
+  Average build duration in milliseconds.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/v0/telemetry/team/metrics/summary?days=7" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+resp = requests.get(
+    "https://app.runtm.com/api/v0/telemetry/team/metrics/summary",
+    params={"days": 7},
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  "https://app.runtm.com/api/v0/telemetry/team/metrics/summary?days=7",
+  {
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "total_deployments": 23,
+  "successful_deployments": 20,
+  "failed_deployments": 3,
+  "avg_build_duration_ms": 45000
+}
+```
+</ResponseExample>

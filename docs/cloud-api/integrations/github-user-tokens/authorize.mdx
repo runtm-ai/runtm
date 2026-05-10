@@ -1,0 +1,83 @@
+---
+title: "Authorize"
+api: "POST /api/github-app/authorize"
+description: "Exchange an OAuth code for a GitHub user token."
+---
+
+Exchanges a GitHub OAuth authorization code for user-level access and refresh tokens. The tokens are encrypted and stored server-side. Returns the authenticated GitHub user's profile info.
+
+**Required scope:** `integrations:write`
+
+<ParamField body="code" type="string" required>
+  OAuth authorization code from the GitHub callback.
+</ParamField>
+
+<ParamField body="redirect_uri" type="string" required>
+  The redirect URI used in the OAuth flow.
+</ParamField>
+
+<ResponseField name="username" type="string" required>
+  GitHub username.
+</ResponseField>
+
+<ResponseField name="avatar_url" type="string">
+  GitHub avatar URL.
+</ResponseField>
+
+<ResponseField name="email" type="string">
+  GitHub email address.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/github-app/authorize" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "abc123def456",
+    "redirect_uri": "https://app.runtm.com/api/github/callback"
+  }'
+```
+
+```python Python
+import requests
+
+resp = requests.post(
+    "https://app.runtm.com/api/github-app/authorize",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "Content-Type": "application/json",
+    },
+    json={
+        "code": "abc123def456",
+        "redirect_uri": "https://app.runtm.com/api/github/callback",
+    },
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const resp = await fetch("https://app.runtm.com/api/github-app/authorize", {
+  method: "POST",
+  headers: {
+    Authorization: "Bearer runtm_xxx",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    code: "abc123def456",
+    redirect_uri: "https://app.runtm.com/api/github/callback",
+  }),
+});
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "username": "octocat",
+  "avatar_url": "https://avatars.githubusercontent.com/u/583231",
+  "email": "octocat@github.com"
+}
+```
+</ResponseExample>

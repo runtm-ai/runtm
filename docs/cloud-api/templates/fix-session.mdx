@@ -1,0 +1,95 @@
+---
+title: "Fix Session"
+api: "POST /api/org-templates/{template_id}/fix-session"
+description: "Create a session to repair a broken template"
+---
+
+Creates a new sandbox session pre-loaded with the template's current state, allowing an agent to diagnose and fix build failures or configuration issues. The fix session includes the build transcript for context. Requires admin or owner role.
+
+**Required scope:** `templates:write`
+
+## Path Parameters
+
+<ParamField path="template_id" type="string" required>
+  The template ID (e.g. `tmpl_abc123`).
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  Organization ID.
+</ParamField>
+
+## Response
+
+Returns `201` with the created fix session.
+
+<ResponseField name="id" type="string">
+  The fix session ID.
+</ResponseField>
+
+<ResponseField name="state" type="string">
+  Session state (typically `running`).
+</ResponseField>
+
+<ResponseField name="template_id" type="string">
+  The template this fix session is targeting.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Confirmation message.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/org-templates/tmpl_abc123/fix-session" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://app.runtm.com/api/org-templates/tmpl_abc123/fix-session",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+
+data = response.json()
+print(f"Fix session created: {data['id']}")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/org-templates/tmpl_abc123/fix-session",
+  {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  }
+);
+
+const data = await response.json();
+console.log(`Fix session created: ${data.id}`);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 201
+{
+  "id": "sess_fix_abc123",
+  "state": "running",
+  "template_id": "tmpl_abc123",
+  "message": "Fix session created for template nextjs-starter"
+}
+```
+</ResponseExample>

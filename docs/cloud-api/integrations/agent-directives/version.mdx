@@ -1,0 +1,88 @@
+---
+title: "New Directive Version"
+api: "POST /agent-directives/{directive_id}:new-version"
+description: "Clone a directive into a new unpublished draft for editing"
+---
+
+Clones an existing directive into a new **unpublished** draft version. Use this to safely edit a published directive: PATCH the draft, then call [Publish Directive](/cloud-api/integrations/agent-directives/publish) when ready to switch traffic over.
+
+This call is idempotent - repeated calls return the same draft version until that draft is published.
+
+<Info>Required scope: `context:write`</Info>
+
+<Note>
+Agent directives are **organization-scoped**. The request must include `X-Organization-Id` (or use an org-scoped API key).
+</Note>
+
+## Path Parameters
+
+<ParamField path="directive_id" type="string" required>
+  Directive id.
+</ParamField>
+
+## Headers
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization context.
+</ParamField>
+
+## Response
+
+<ResponseField name="directive" type="object">
+  The new draft directive.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/agent-directives/dir_aaa:new-version" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_456"
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://app.runtm.com/api/agent-directives/dir_aaa:new-version",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_456",
+    },
+)
+
+draft = response.json()["directive"]
+print(f"New draft v{draft['version']}")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/agent-directives/dir_aaa:new-version",
+  {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "X-Organization-Id": "org_456",
+    },
+  }
+);
+
+const data = await response.json();
+console.log(`New draft v${data.directive.version}`);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 201
+{
+  "directive": {
+    "id": "dir_aaa",
+    "type": "skill_v0",
+    "name": "deploy-checks",
+    "version": 4,
+    "is_published": false,
+    "content_kind": "inline",
+    "content_hash": "sha256:abc..."
+  }
+}
+```
+</ResponseExample>

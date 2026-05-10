@@ -1,0 +1,167 @@
+---
+title: run
+description: "Run project locally with auto-detection"
+---
+
+# runtm run
+
+Run your project locally with automatic runtime detection.
+
+```bash
+runtm run [path]
+```
+
+## Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `path` | No | Path to project (default: `.`) |
+
+## Options
+
+| Option | Description |
+|--------|-------------|
+| `--no-install` | Skip dependency installation |
+| `--no-autofix` | Don't auto-fix lockfile drift |
+
+## How It Works
+
+The `run` command:
+
+1. Reads `runtm.yaml` to detect runtime type
+2. Installs dependencies (if needed)
+3. Starts the appropriate development server
+
+### Runtime Detection
+
+| Runtime | Port | Command |
+|---------|------|---------|
+| `python` | 8080 | `uvicorn app.main:app --port 8080 --reload` |
+| `node` | 3000 | `bun dev` or `npm run dev` |
+| `fullstack` | 3000 | Starts both frontend and backend |
+
+<Note>
+  For Node.js projects, Runtime uses **Bun** if available (3x faster). Otherwise falls back to npm.
+</Note>
+
+## Examples
+
+### Basic Usage
+
+```bash
+# Run project in current directory
+runtm run
+
+# Run specific project
+runtm run ./my-project
+```
+
+### Skip Installation
+
+```bash
+# Skip bun/npm/pip install
+runtm run --no-install
+```
+
+### Disable Auto-Fix
+
+```bash
+# Don't automatically fix lockfile issues
+runtm run --no-autofix
+```
+
+## Runtime-Specific Behavior
+
+### Python Projects
+
+```bash
+runtm run
+```
+
+Runs:
+```bash
+pip install -e . --quiet
+uvicorn app.main:app --port 8080 --reload
+```
+
+### Node.js Projects
+
+```bash
+runtm run
+```
+
+Runs (with Bun):
+```bash
+bun install
+bun run dev
+```
+
+Or (without Bun):
+```bash
+npm install
+npm run dev
+```
+
+### Fullstack Projects
+
+```bash
+runtm run
+```
+
+Starts both:
+- Frontend at `http://localhost:3000`
+- Backend at `http://localhost:8080`
+
+## Lockfile Auto-Fix
+
+If your lockfile is missing or out of sync, `runtm run` automatically fixes it:
+
+```
+⚠ Lockfile drift detected
+✓ Auto-fixed: ran bun install to update lockfile
+```
+
+Disable with `--no-autofix` if you want manual control.
+
+## Local vs Production
+
+| Aspect | `runtm run` | `runtm deploy` |
+|--------|-------------|----------------|
+| Hot reload | ✓ Enabled | ✗ Production build |
+| Database | Uses local SQLite | Persistent Fly volume |
+| Secrets | `.env.local` | Injected at deploy |
+| URL | `localhost` | `https://xxx.fly.dev` |
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Port already in use">
+    Check what's using the port:
+    ```bash
+    lsof -i :8080  # Python
+    lsof -i :3000  # Node
+    ```
+    Kill the process or use a different port in your `main.py`/`package.json`.
+  </Accordion>
+  <Accordion title="Dependencies not installing">
+    Try installing manually:
+    ```bash
+    # Python
+    pip install -e .
+    
+    # Node
+    bun install  # or npm install
+    ```
+  </Accordion>
+  <Accordion title="'runtm.yaml not found'">
+    Make sure you're in a Runtime project directory:
+    ```bash
+    ls runtm.yaml
+    ```
+    Or initialize a new project:
+    ```bash
+    runtm init backend-service
+    ```
+  </Accordion>
+</AccordionGroup>
+

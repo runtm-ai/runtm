@@ -1,0 +1,279 @@
+---
+title: "Session Metadata"
+description: "Set visibility, rename a session, and inspect collaborators"
+---
+
+These endpoints manage human-readable metadata and team collaboration on an
+existing session. Only the session owner can change visibility or rename;
+team members on a `team`-visible session can read collaborators.
+
+<Info>
+  Required scopes:
+  - `sessions:write` - set visibility, rename
+  - `sessions:read` - list collaborators
+</Info>
+
+---
+
+## Set Visibility
+
+`POST /api/sessions/{session_id}/visibility`
+
+Toggles a session between `private` (only the owner can access) and `team`
+(every member of the owning organization can view, prompt, and collaborate).
+
+<Note>
+  Switching to `team` requires the session to be scoped to an organization.
+  Personal sessions (`organization_id = null`) cannot be shared with a team - 
+  the request returns `400`.
+</Note>
+
+### Path Parameters
+
+<ParamField path="session_id" type="string" required>Session UUID.</ParamField>
+
+### Body Parameters
+
+<ParamField body="visibility" type="string" required>
+  Either `private` or `team`.
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="string">Session UUID.</ResponseField>
+<ResponseField name="visibility" type="string">Resulting visibility.</ResponseField>
+<ResponseField name="message" type="string">Human-readable confirmation.</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11/visibility" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{ "visibility": "team" }'
+```
+
+```python Python
+import requests
+
+session_id = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11"
+response = requests.post(
+    f"https://app.runtm.com/api/sessions/{session_id}/visibility",
+    headers={"Authorization": "Bearer runtm_xxx"},
+    json={"visibility": "team"},
+)
+print(response.json())
+```
+
+```javascript JavaScript
+const sessionId = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11";
+const res = await fetch(
+  `https://app.runtm.com/api/sessions/${sessionId}/visibility`,
+  {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ visibility: "team" }),
+  },
+);
+console.log(await res.json());
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "id": "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11",
+  "visibility": "team",
+  "message": "Visibility updated successfully"
+}
+```
+
+```json 400
+{ "detail": "Cannot share session with team: session is not scoped to an organization" }
+```
+
+```json 400
+{ "detail": "Invalid visibility: foo. Must be 'private' or 'team'" }
+```
+
+```json 404
+{ "detail": "Session not found" }
+```
+</ResponseExample>
+
+---
+
+## Rename Session
+
+`PATCH /api/sessions/{session_id}/name`
+
+Sets or clears the human-readable name of a session. Use `null` (or the empty
+string) to clear the name and let the system fall back to default naming.
+
+### Path Parameters
+
+<ParamField path="session_id" type="string" required>Session UUID.</ParamField>
+
+### Body Parameters
+
+<ParamField body="name" type="string">
+  New session name (max 255 characters). Pass `null` or an empty string to
+  clear and use auto-generated names.
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="string">Session UUID.</ResponseField>
+<ResponseField name="name" type="string">Resulting name (`null` when cleared).</ResponseField>
+<ResponseField name="message" type="string">Human-readable confirmation.</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X PATCH "https://app.runtm.com/api/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11/name" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{ "name": "Refactor checkout page" }'
+```
+
+```python Python
+import requests
+
+session_id = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11"
+response = requests.patch(
+    f"https://app.runtm.com/api/sessions/{session_id}/name",
+    headers={"Authorization": "Bearer runtm_xxx"},
+    json={"name": "Refactor checkout page"},
+)
+print(response.json())
+```
+
+```javascript JavaScript
+const sessionId = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11";
+const res = await fetch(
+  `https://app.runtm.com/api/sessions/${sessionId}/name`,
+  {
+    method: "PATCH",
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ name: "Refactor checkout page" }),
+  },
+);
+console.log(await res.json());
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "id": "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11",
+  "name": "Refactor checkout page",
+  "message": "Session renamed successfully"
+}
+```
+
+```json 422
+{
+  "detail": [
+    {
+      "type": "string_too_long",
+      "loc": ["body", "name"],
+      "msg": "String should have at most 255 characters"
+    }
+  ]
+}
+```
+</ResponseExample>
+
+---
+
+## List Collaborators
+
+`GET /api/sessions/{session_id}/collaborators`
+
+Returns everyone currently viewing, or who has recently viewed, the session.
+The owner can always call this. Org members can call it for sessions in their
+org with `visibility = "team"`.
+
+### Path Parameters
+
+<ParamField path="session_id" type="string" required>Session UUID.</ParamField>
+
+### Response
+
+<ResponseField name="collaborators" type="array">
+  Active and recent viewers.
+  <Expandable title="Collaborator">
+    <ResponseField name="user_id" type="string">User identifier.</ResponseField>
+    <ResponseField name="user_name" type="string">Display name.</ResponseField>
+    <ResponseField name="user_email" type="string">Email address.</ResponseField>
+    <ResponseField name="color" type="string">Hex color assigned for presence UI.</ResponseField>
+    <ResponseField name="is_online" type="boolean">`true` when actively connected via the collaboration WebSocket.</ResponseField>
+    <ResponseField name="joined_at" type="string">When this user first joined the session.</ResponseField>
+    <ResponseField name="last_seen_at" type="string">Last presence heartbeat from this user.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="count" type="integer">Total collaborators returned.</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "https://app.runtm.com/api/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11/collaborators" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+session_id = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11"
+response = requests.get(
+    f"https://app.runtm.com/api/sessions/{session_id}/collaborators",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+print(response.json())
+```
+
+```javascript JavaScript
+const sessionId = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11";
+const res = await fetch(
+  `https://app.runtm.com/api/sessions/${sessionId}/collaborators`,
+  { headers: { Authorization: "Bearer runtm_xxx" } },
+);
+console.log(await res.json());
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "collaborators": [
+    {
+      "user_id": "user_01HZX...",
+      "user_name": "Alex Rivera",
+      "user_email": "alex@acme.com",
+      "color": "#3b82f6",
+      "is_online": true,
+      "joined_at": "2026-05-09T15:03:42Z",
+      "last_seen_at": "2026-05-09T15:18:54Z"
+    },
+    {
+      "user_id": "user_01HZY...",
+      "user_name": "Sam Lee",
+      "user_email": "sam@acme.com",
+      "color": "#a855f7",
+      "is_online": false,
+      "joined_at": "2026-05-09T14:12:08Z",
+      "last_seen_at": "2026-05-09T14:55:30Z"
+    }
+  ],
+  "count": 2
+}
+```
+
+```json 404
+{ "detail": "Session not found" }
+```
+</ResponseExample>

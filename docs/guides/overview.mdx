@@ -1,0 +1,50 @@
+---
+title: Guides
+description: "Practical patterns for using the Runtime API"
+---
+
+These guides cover the patterns and workflows you will use most often with the Runtime API — whether you are calling it from your terminal, letting a coding agent orchestrate cloud sessions, or integrating it into a CI pipeline or backend service. Each guide includes code samples in cURL, Python, and JavaScript.
+
+If you are new to Runtime, start with the [Quick Start](/quickstart) and the [API Overview](/cloud-api/overview), then come back here for deeper patterns.
+
+## Get started
+
+<CardGroup cols={2}>
+  <Card title="Authenticate and manage API keys" icon="key" href="/guides/authentication-walkthrough">
+    Create, verify, scope, rotate, and revoke API keys. Understand personal vs organization keys.
+  </Card>
+</CardGroup>
+
+## Core API patterns
+
+<CardGroup cols={2}>
+  <Card title="Manage sessions at scale" icon="cube" href="/guides/managing-sessions-at-scale">
+    Session lifecycle, polling, heartbeats, retries, and error recovery.
+  </Card>
+  <Card title="Stream prompts over WebSockets" icon="bolt" href="/guides/streaming-prompts-over-websockets">
+    Token exchange, the Prompt WebSocket protocol, event types, and reconnection handling.
+  </Card>
+  <Card title="Work with session files" icon="file" href="/guides/working-with-files">
+    Read, write, upload, download, and search files inside a running sandbox.
+  </Card>
+  <Card title="Handle long-running prompts" icon="hourglass" href="/guides/long-running-prompts">
+    Cancel, rewind, replay history, and choose between REST and WebSocket for prompt control.
+  </Card>
+  <Card title="Pull activity and telemetry" icon="chart-line" href="/guides/pulling-activity-and-telemetry">
+    Read personal and team activity, usage summaries, traces, and per-session cost data.
+  </Card>
+  <Card title="Webhooks and triggers" icon="webhook" href="/guides/webhooks-and-triggers">
+    Outbound webhook events Runtime emits and how to consume them from external systems.
+  </Card>
+</CardGroup>
+
+## Best practices
+
+<CardGroup cols={2}>
+  <Card title="Best practices" icon="shield" href="/guides/best-practices">
+    Key hygiene, scope selection, lifecycle management, prompt design, and cost controls.
+  </Card>
+  <Card title="Teach the agent your codebase" icon="brain" href="/guides/teach-the-agent-your-codebase">
+    AGENTS.md, skills, and org instructions — how the three context layers compose.
+  </Card>
+</CardGroup>

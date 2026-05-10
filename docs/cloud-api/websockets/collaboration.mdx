@@ -1,0 +1,152 @@
+---
+title: "Collaboration WebSocket"
+description: "Real-time presence and collaboration"
+---
+
+The collaboration WebSocket provides real-time presence tracking for sessions with `team` visibility. See who is viewing a session, track cursor positions, and receive live updates when collaborators join or leave.
+
+## Connection
+
+```
+wss://app.runtm.com/api/sessions/{session_id}/collaborate?token={ws_token}
+```
+
+Obtain `ws_token` from the [Token Exchange](/cloud-api/websockets/token-exchange) endpoint with `capability: "collaborate"`.
+
+**Required scope:** `sessions:read`
+
+## Authentication
+
+The `token` query parameter authenticates the connection. Invalid or expired tokens result in an immediate close with code `4001`.
+
+## Receiving messages
+
+Once connected, the server sends presence events as JSON messages:
+
+### `user_joined`
+
+A user has connected to the session:
+
+```json
+{
+  "type": "user_joined",
+  "user": {
+    "id": "user_xyz",
+    "name": "Jane Developer",
+    "email": "jane@example.com",
+    "avatar_url": "https://..."
+  },
+  "active_users": 3
+}
+```
+
+### `user_left`
+
+A user has disconnected:
+
+```json
+{
+  "type": "user_left",
+  "user": {
+    "id": "user_xyz",
+    "name": "Jane Developer"
+  },
+  "active_users": 2
+}
+```
+
+### `cursor_update`
+
+A collaborator's cursor position has changed:
+
+```json
+{
+  "type": "cursor_update",
+  "user_id": "user_xyz",
+  "position": {
+    "file": "src/app.tsx",
+    "line": 42,
+    "column": 15
+  }
+}
+```
+
+### `selection_change`
+
+A collaborator has selected text:
+
+```json
+{
+  "type": "selection_change",
+  "user_id": "user_xyz",
+  "selection": {
+    "file": "src/app.tsx",
+    "start": { "line": 10, "column": 0 },
+    "end": { "line": 15, "column": 20 }
+  }
+}
+```
+
+## Sending messages
+
+You can broadcast your own cursor and selection state by sending the same message types:
+
+```javascript
+ws.send(JSON.stringify({
+  type: "cursor_update",
+  position: {
+    file: "src/app.tsx",
+    line: 42,
+    column: 15,
+  },
+}));
+```
+
+## Example: presence tracking
+
+```javascript
+const tokenResponse = await fetch(
+  "https://app.runtm.com/api/sessions/ses_abc123/ws-token",
+  {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer runtm_sk_live_abc123...",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ capability: "collaborate" }),
+  }
+);
+const { token } = await tokenResponse.json();
+
+const ws = new WebSocket(
+  `wss://app.runtm.com/api/sessions/ses_abc123/collaborate?token=${token}`
+);
+
+const activeUsers = new Map();
+
+ws.onmessage = (event) => {
+  const msg = JSON.parse(event.data);
+
+  switch (msg.type) {
+    case "user_joined":
+      activeUsers.set(msg.user.id, msg.user);
+      console.log(`${msg.user.name} joined (${msg.active_users} online)`);
+      break;
+    case "user_left":
+      activeUsers.delete(msg.user.id);
+      console.log(`${msg.user.name} left (${msg.active_users} online)`);
+      break;
+    case "cursor_update":
+      console.log(`${msg.user_id} → ${msg.position.file}:${msg.position.line}`);
+      break;
+  }
+};
+```
+
+## Auto-disconnect
+
+The server closes idle collaboration connections after 30 minutes of inactivity. Cursor and selection updates count as activity. Reconnect with a fresh token when needed.
+
+## Privacy
+
+Collaboration is only available on sessions with `team` visibility. Private sessions do not accept collaboration WebSocket connections — the token exchange returns `403`.

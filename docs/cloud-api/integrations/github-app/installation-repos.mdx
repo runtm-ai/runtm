@@ -1,0 +1,100 @@
+---
+title: "Installation Repos"
+api: "GET /api/github-app/installations/{installation_id}/repos"
+description: "List repos for a specific GitHub App installation."
+---
+
+Returns repositories accessible to a specific GitHub App installation with pagination. If the installation no longer exists on GitHub, the stale record is automatically removed.
+
+**Required scope:** `integrations:read`
+
+<ParamField path="installation_id" type="string" required>
+  Internal installation ID (not GitHub's installation ID).
+</ParamField>
+
+<ParamField query="page" type="integer" default="1">
+  Page number. Starts at 1.
+</ParamField>
+
+<ParamField query="per_page" type="integer" default="30">
+  Number of repos per page. Range: 1–100.
+</ParamField>
+
+<ResponseField name="repos" type="RepoInfo[]" required>
+  List of repositories.
+</ResponseField>
+
+<ResponseField name="total_count" type="integer" required>
+  Total number of repos in this installation.
+</ResponseField>
+
+<ResponseField name="page" type="integer" required>
+  Current page number.
+</ResponseField>
+
+<ResponseField name="per_page" type="integer" required>
+  Results per page.
+</ResponseField>
+
+<ResponseField name="has_next" type="boolean" required>
+  Whether there are more pages.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/github-app/installations/inst_01J.../repos?page=1&per_page=30" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+installation_id = "inst_01J..."
+
+resp = requests.get(
+    f"https://app.runtm.com/api/github-app/installations/{installation_id}/repos",
+    params={"page": 1, "per_page": 30},
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const installationId = "inst_01J...";
+
+const resp = await fetch(
+  `https://app.runtm.com/api/github-app/installations/${installationId}/repos?page=1&per_page=30`,
+  {
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+    },
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "repos": [
+    {
+      "id": 987654,
+      "name": "backend",
+      "full_name": "acme-corp/backend",
+      "private": true,
+      "description": "Main backend API",
+      "default_branch": "main",
+      "html_url": "https://github.com/acme-corp/backend",
+      "language": "Python",
+      "updated_at": "2026-05-09T12:00:00Z",
+      "size": 15400
+    }
+  ],
+  "total_count": 12,
+  "page": 1,
+  "per_page": 30,
+  "has_next": false
+}
+```
+</ResponseExample>

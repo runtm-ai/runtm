@@ -1,0 +1,243 @@
+---
+title: "Session Environment Variables"
+description: "Get, set, and delete env vars scoped to a single session"
+---
+
+Manage environment variables that are scoped to one session. Variables set
+here are encrypted at rest, injected into terminal commands and dev servers
+via E2B's process-level env injection, and survive pause/resume.
+
+For variables shared across many sessions, use
+[Personal Secrets](/cloud-api/secrets/personal-list) and
+[Team Secrets](/cloud-api/secrets/team-list) instead - they merge into the
+same resolved env at runtime.
+
+<Info>
+  Required scopes:
+  - `secrets:read` - get
+  - `secrets:write` - set, delete
+
+  See [Scopes & Permissions](/cloud-api/scopes) for the full catalog.
+</Info>
+
+<Note>
+  Values are **never** returned by the API. The list endpoint replaces every
+  value with `*****`. Treat the API as write-only for secret material.
+</Note>
+
+---
+
+## List Env Var Names
+
+`GET /api/sessions/{session_id}/env-vars`
+
+Returns the names of every env var saved on this session, with values
+masked.
+
+### Path Parameters
+
+<ParamField path="session_id" type="string" required>Session UUID.</ParamField>
+
+### Response
+
+<ResponseField name="env_vars" type="object">
+  Map of env var names to the masked string `*****`.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "https://app.runtm.com/api/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11/env-vars" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+session_id = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11"
+response = requests.get(
+    f"https://app.runtm.com/api/sessions/{session_id}/env-vars",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+print(list(response.json()["env_vars"].keys()))
+```
+
+```javascript JavaScript
+const sessionId = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11";
+const res = await fetch(
+  `https://app.runtm.com/api/sessions/${sessionId}/env-vars`,
+  { headers: { Authorization: "Bearer runtm_xxx" } },
+);
+const data = await res.json();
+console.log(Object.keys(data.env_vars));
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "env_vars": {
+    "DATABASE_URL": "*****",
+    "STRIPE_KEY": "*****"
+  }
+}
+```
+
+```json 404
+{ "detail": "Session not found" }
+```
+</ResponseExample>
+
+---
+
+## Set Env Vars
+
+`PUT /api/sessions/{session_id}/env-vars`
+
+Upserts one or more env vars. The provided map is merged into any existing
+session env vars; pass keys you want to keep along with the new ones.
+Variables are encrypted before storage and synced to the running sandbox so
+they are immediately available to new terminal sessions and dev servers.
+
+Names must match `^[A-Za-z_][A-Za-z0-9_]*$`. Reserved names such as
+`PATH`, `HOME`, and any name starting with `RUNTM_` are rejected.
+
+### Path Parameters
+
+<ParamField path="session_id" type="string" required>Session UUID.</ParamField>
+
+### Body Parameters
+
+<ParamField body="env_vars" type="object" required>
+  Map of name → value. Values are stored encrypted and never returned.
+</ParamField>
+
+### Response
+
+<ResponseField name="status" type="string">Always `ok`.</ResponseField>
+<ResponseField name="count" type="integer">Number of env vars in this request.</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X PUT "https://app.runtm.com/api/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11/env-vars" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "env_vars": {
+      "DATABASE_URL": "postgres://user:pw@host/db",
+      "STRIPE_KEY": "sk_live_..."
+    }
+  }'
+```
+
+```python Python
+import requests
+
+session_id = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11"
+response = requests.put(
+    f"https://app.runtm.com/api/sessions/{session_id}/env-vars",
+    headers={"Authorization": "Bearer runtm_xxx"},
+    json={
+        "env_vars": {
+            "DATABASE_URL": "postgres://user:pw@host/db",
+            "STRIPE_KEY": "sk_live_...",
+        }
+    },
+)
+print(response.json())
+```
+
+```javascript JavaScript
+const sessionId = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11";
+const res = await fetch(
+  `https://app.runtm.com/api/sessions/${sessionId}/env-vars`,
+  {
+    method: "PUT",
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      env_vars: {
+        DATABASE_URL: "postgres://user:pw@host/db",
+        STRIPE_KEY: "sk_live_...",
+      },
+    }),
+  },
+);
+console.log(await res.json());
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{ "status": "ok", "count": 2 }
+```
+
+```json 400
+{ "detail": "Invalid env var name 'PATH': reserved" }
+```
+
+```json 400
+{ "detail": "Invalid env var name '1FOO': must match ^[A-Za-z_][A-Za-z0-9_]*$" }
+```
+</ResponseExample>
+
+---
+
+## Delete Env Var
+
+`DELETE /api/sessions/{session_id}/env-vars/{key}`
+
+Removes one env var from the session and re-syncs the sandbox so future
+processes do not see the value. The endpoint is idempotent - deleting a
+name that isn't set still returns `200`.
+
+### Path Parameters
+
+<ParamField path="session_id" type="string" required>Session UUID.</ParamField>
+
+<ParamField path="key" type="string" required>
+  Env var name to delete.
+</ParamField>
+
+### Response
+
+<ResponseField name="status" type="string">Always `ok`.</ResponseField>
+<ResponseField name="deleted" type="string">Echo of the deleted key.</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE "https://app.runtm.com/api/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11/env-vars/STRIPE_KEY" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+session_id = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11"
+response = requests.delete(
+    f"https://app.runtm.com/api/sessions/{session_id}/env-vars/STRIPE_KEY",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+print(response.json())
+```
+
+```javascript JavaScript
+const sessionId = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11";
+const res = await fetch(
+  `https://app.runtm.com/api/sessions/${sessionId}/env-vars/STRIPE_KEY`,
+  { method: "DELETE", headers: { Authorization: "Bearer runtm_xxx" } },
+);
+console.log(await res.json());
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{ "status": "ok", "deleted": "STRIPE_KEY" }
+```
+
+```json 404
+{ "detail": "Session not found" }
+```
+</ResponseExample>

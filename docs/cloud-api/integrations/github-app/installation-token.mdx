@@ -1,0 +1,64 @@
+---
+title: "Installation Token"
+api: "GET /api/github-app/installations/{installation_id}/token"
+description: "Get a short-lived access token for a GitHub App installation."
+---
+
+Returns a short-lived GitHub App installation access token. Tokens are cached and auto-refreshed when expired.
+
+**Required scope:** `integrations:read`
+
+<ParamField path="installation_id" type="string" required>
+  Internal installation ID.
+</ParamField>
+
+<ResponseField name="access_token" type="string" required>
+  GitHub App installation access token.
+</ResponseField>
+
+<ResponseField name="expires_at" type="string" required>
+  ISO 8601 token expiry timestamp.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/github-app/installations/inst_01J.../token" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+installation_id = "inst_01J..."
+
+resp = requests.get(
+    f"https://app.runtm.com/api/github-app/installations/{installation_id}/token",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+data = resp.json()
+print(f"Token expires at: {data['expires_at']}")
+```
+
+```javascript JavaScript
+const installationId = "inst_01J...";
+
+const resp = await fetch(
+  `https://app.runtm.com/api/github-app/installations/${installationId}/token`,
+  {
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+    },
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "access_token": "ghs_xxxxxxxxxxxxxxxxxxxx",
+  "expires_at": "2026-05-09T19:00:00Z"
+}
+```
+</ResponseExample>

@@ -1,0 +1,81 @@
+---
+title: "Get Allowlist Policy"
+api: "GET /api/organizations/{org_id}/allowlist-policy"
+description: "Retrieve the default allowlist policy for an organization."
+---
+
+Returns the organization's default allowlist policy that controls how tools and commands are handled.
+
+**Required scope:** `guardrails:read`
+
+<ParamField path="org_id" type="string" required>
+  The organization ID.
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. `Authorization: Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  Must match the `org_id` path parameter.
+</ParamField>
+
+<ResponseField name="organization_id" type="string">
+  The organization ID.
+</ResponseField>
+
+<ResponseField name="default_policy" type="string">
+  The default policy. One of `allow`, `ask`, or `deny`.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  ISO 8601 timestamp of the last update. Null if never set.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/organizations/org_abc123/allowlist-policy" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+org_id = "org_abc123"
+
+resp = requests.get(
+    f"https://app.runtm.com/api/organizations/{org_id}/allowlist-policy",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": org_id,
+    },
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const orgId = "org_abc123";
+
+const resp = await fetch(
+  `https://app.runtm.com/api/organizations/${orgId}/allowlist-policy`,
+  {
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": orgId,
+    },
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "organization_id": "org_abc123",
+  "default_policy": "ask",
+  "updated_at": "2026-05-06T09:00:00Z"
+}
+```
+</ResponseExample>

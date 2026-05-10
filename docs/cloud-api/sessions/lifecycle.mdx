@@ -1,0 +1,309 @@
+---
+title: "Lifecycle"
+description: "Pause, resume, and start sessions; clean up old paused sessions"
+---
+
+Sessions transition between `creating`, `running`, `paused`, `destroying`, and
+`destroyed`. Pausing preserves filesystem and memory state so that resuming is
+fast and cheap. The `start` endpoint is a convenience that handles every
+transition (creating → running, paused → running, dev server boot) in a
+single atomic call.
+
+<Info>
+  Required scope for all four endpoints: `sessions:write`.
+</Info>
+
+---
+
+## Pause Session
+
+`POST /api/sessions/{session_id}/pause`
+
+Pauses a `running` session. The sandbox is snapshotted (filesystem and
+memory) and held for the duration of your plan's paused-session retention.
+While paused, sessions accrue no compute cost but are not interactive.
+
+Calling pause on an already-paused session is a no-op and returns `200`.
+Calling pause while a prompt is actively running returns `409`.
+
+### Path Parameters
+
+<ParamField path="session_id" type="string" required>Session UUID.</ParamField>
+
+### Query Parameters
+
+<ParamField query="reason" type="string" default="manual">
+  Why the session was paused. Reasonable values: `manual`, `inactivity`,
+  `e2b_auto`, `ttl_expired`. Surfaces in activity logs only.
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="string">Session UUID.</ResponseField>
+<ResponseField name="paused_at" type="string">ISO 8601 timestamp.</ResponseField>
+<ResponseField name="message" type="string">Human-readable confirmation.</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11/pause" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+session_id = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11"
+response = requests.post(
+    f"https://app.runtm.com/api/sessions/{session_id}/pause",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+print(response.json())
+```
+
+```javascript JavaScript
+const sessionId = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11";
+const res = await fetch(
+  `https://app.runtm.com/api/sessions/${sessionId}/pause`,
+  { method: "POST", headers: { Authorization: "Bearer runtm_xxx" } },
+);
+console.log(await res.json());
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "id": "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11",
+  "paused_at": "2026-05-09T15:30:00Z",
+  "message": "Session paused successfully"
+}
+```
+
+```json 400
+{ "detail": "Can only pause running sessions (state: paused)" }
+```
+
+```json 409
+{ "detail": "Cannot pause while a prompt is running" }
+```
+
+```json 410
+{ "detail": "Sandbox has expired. Please create a new session." }
+```
+</ResponseExample>
+
+---
+
+## Resume Session
+
+`POST /api/sessions/{session_id}/resume`
+
+Resumes a `paused` session, restoring the exact state captured at pause time.
+Custom instructions, environment variables, and template secrets are
+re-injected. Calling resume on an already-running session is a no-op.
+
+### Path Parameters
+
+<ParamField path="session_id" type="string" required>Session UUID.</ParamField>
+
+### Response
+
+<ResponseField name="id" type="string">Session UUID.</ResponseField>
+<ResponseField name="resumed_at" type="string">ISO 8601 timestamp.</ResponseField>
+<ResponseField name="message" type="string">Human-readable confirmation.</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11/resume" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+session_id = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11"
+response = requests.post(
+    f"https://app.runtm.com/api/sessions/{session_id}/resume",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+print(response.json())
+```
+
+```javascript JavaScript
+const sessionId = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11";
+const res = await fetch(
+  `https://app.runtm.com/api/sessions/${sessionId}/resume`,
+  { method: "POST", headers: { Authorization: "Bearer runtm_xxx" } },
+);
+console.log(await res.json());
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "id": "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11",
+  "resumed_at": "2026-05-09T15:32:11Z",
+  "message": "Session resumed successfully"
+}
+```
+
+```json 400
+{ "detail": "Can only resume paused sessions (state: running)" }
+```
+
+```json 404
+{ "detail": "Session not found" }
+```
+</ResponseExample>
+
+---
+
+## Start Session
+
+`POST /api/sessions/{session_id}/start`
+
+Convenience endpoint that always returns a running sandbox with the dev
+server up (or an explicit error). It handles every transition transparently:
+
+- `creating` → polls the sandbox until provisioning completes, then starts the dev server.
+- `paused` → resumes and starts the dev server.
+- `running` → idempotent: starts/checks the dev server, no-op if already up.
+- `destroyed` / `error` / `destroying` → returns `410`.
+
+Use this from automation that doesn't want to track state machines manually.
+
+### Path Parameters
+
+<ParamField path="session_id" type="string" required>Session UUID.</ParamField>
+
+### Response
+
+<ResponseField name="id" type="string">Session UUID.</ResponseField>
+<ResponseField name="state" type="string">Always `running` on success.</ResponseField>
+<ResponseField name="preview_url" type="string">Live preview URL (when a server boots).</ResponseField>
+<ResponseField name="port" type="integer">Port the dev server is bound to.</ResponseField>
+<ResponseField name="project_type" type="string">Detected type (e.g. `node`, `python`, `static`).</ResponseField>
+<ResponseField name="framework" type="string">Detected framework, when known.</ResponseField>
+<ResponseField name="server_ready" type="boolean">`true` when the server responded to a health probe.</ResponseField>
+<ResponseField name="message" type="string">Optional human-readable status message.</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11/start" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+session_id = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11"
+response = requests.post(
+    f"https://app.runtm.com/api/sessions/{session_id}/start",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+data = response.json()
+print(f"{data['state']} preview={data.get('preview_url')}")
+```
+
+```javascript JavaScript
+const sessionId = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11";
+const res = await fetch(
+  `https://app.runtm.com/api/sessions/${sessionId}/start`,
+  { method: "POST", headers: { Authorization: "Bearer runtm_xxx" } },
+);
+const data = await res.json();
+console.log(data.state, data.preview_url);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "id": "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11",
+  "state": "running",
+  "preview_url": "https://3000-9f3a3f22.proxy.runtm.com",
+  "port": 3000,
+  "project_type": "node",
+  "framework": "next",
+  "server_ready": true,
+  "message": null
+}
+```
+
+```json 410
+{ "detail": "Session is no longer available" }
+```
+
+```json 503
+{ "detail": "Session is taking longer than expected to provision. Please try again." }
+```
+</ResponseExample>
+
+---
+
+## Cleanup Old Paused Sessions
+
+`POST /api/sessions/cleanup`
+
+Triggers an idempotent maintenance pass that:
+
+1. Sends warning notifications for sessions approaching their paused-retention limit.
+2. Destroys sessions that have exceeded their plan's paused retention period.
+
+This is the same job a scheduler runs periodically. Trigger it manually if
+you need to force cleanup ahead of schedule (for example, while migrating).
+The pass applies the standard platform retention policy: `90` days on the
+free plan, indefinite on paid plans (configured per session at pause time).
+
+<Note>
+  This is a maintenance trigger and is not required for normal operation - 
+  the platform runs the same pass on a schedule. Calling it more often does
+  not extend or shorten any individual session's retention; sessions are
+  only acted on once their retention has elapsed.
+</Note>
+
+### Response
+
+<ResponseField name="destroyed_count" type="integer">Number of sessions destroyed in this run.</ResponseField>
+<ResponseField name="warned_count" type="integer">Number of sessions that received expiration warnings.</ResponseField>
+<ResponseField name="message" type="string">Human-readable summary.</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/sessions/cleanup" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://app.runtm.com/api/sessions/cleanup",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+print(response.json())
+```
+
+```javascript JavaScript
+const res = await fetch("https://app.runtm.com/api/sessions/cleanup", {
+  method: "POST",
+  headers: { Authorization: "Bearer runtm_xxx" },
+});
+console.log(await res.json());
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "destroyed_count": 3,
+  "warned_count": 5,
+  "message": "Warned 5, destroyed 3 sessions"
+}
+```
+
+```json 401
+{ "detail": "Invalid or expired API key" }
+```
+</ResponseExample>

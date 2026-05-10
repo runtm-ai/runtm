@@ -1,0 +1,137 @@
+---
+title: "Get Knowledge OAuth Install URL"
+api: "POST /knowledge/oauth/{provider_id}/{auth_method_id}/install"
+description: "Mint an OAuth install URL for an OAuth-based knowledge auth method"
+---
+
+Returns an OAuth install URL the user's browser should be redirected to in order to grant Runtime access to a knowledge provider via the chosen OAuth method. The `state` parameter is short-lived and verified by Runtime before the OAuth callback exchanges the resulting code - treat it as opaque.
+
+This is a **browser-driven** OAuth flow. After the user authorizes, the upstream provider redirects back to Runtime's callback handler which exchanges the code for a token and persists the integration. From the API caller's perspective this endpoint just returns the URL.
+
+<Info>Required scope: `integrations:write`</Info>
+
+<Note>
+This endpoint is **organization-only**. The request must include `X-Organization-Id` (or use an org-scoped API key).
+</Note>
+
+## Path Parameters
+
+<ParamField path="provider_id" type="string" required>
+  Knowledge provider id from the [catalog](/cloud-api/integrations/knowledge/catalog).
+</ParamField>
+
+<ParamField path="auth_method_id" type="string" required>
+  Auth method id. Must be a method with `auth_kind: "oauth"`.
+</ParamField>
+
+## Body Parameters
+
+<ParamField body="scope" type="string" default="org">
+  Whether the resulting connection is org-shared (`org`) or personal (`personal`).
+</ParamField>
+
+<ParamField body="display_name" type="string">
+  Optional display name to label the resulting integration with (max 200 chars).
+</ParamField>
+
+<ParamField body="provider_metadata" type="object">
+  Provider-specific metadata to persist alongside the connection (e.g. project ids).
+</ParamField>
+
+## Headers
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization context.
+</ParamField>
+
+## Response
+
+<ResponseField name="install_url" type="string">
+  Upstream OAuth authorize URL. Redirect the user's browser to this URL.
+</ResponseField>
+
+<ResponseField name="state" type="string">
+  Signed state token embedded in the install URL. Echo this back if your UI later needs to confirm the flow originated locally.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/knowledge/oauth/bigquery/google-oauth/install" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_456" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scope": "org",
+    "display_name": "Production BigQuery",
+    "provider_metadata": { "project_id": "acme-prod" }
+  }'
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://app.runtm.com/api/knowledge/oauth/bigquery/google-oauth/install",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_456",
+    },
+    json={
+        "scope": "org",
+        "display_name": "Production BigQuery",
+        "provider_metadata": {"project_id": "acme-prod"},
+    },
+)
+
+install_url = response.json()["install_url"]
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/knowledge/oauth/bigquery/google-oauth/install",
+  {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "X-Organization-Id": "org_456",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      scope: "org",
+      display_name: "Production BigQuery",
+      provider_metadata: { project_id: "acme-prod" },
+    }),
+  }
+);
+
+const { install_url } = await response.json();
+window.location.href = install_url;
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "install_url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...",
+  "state": "AbcDefGhIj..."
+}
+```
+
+```json 400
+{
+  "detail": {
+    "code": "KNOWLEDGE_AUTH_METHOD_NOT_OAUTH",
+    "message": "Auth method 'api-key' is not an OAuth method."
+  }
+}
+```
+
+```json 501
+{
+  "detail": {
+    "code": "KNOWLEDGE_OAUTH_INSTALL_NOT_IMPLEMENTED",
+    "message": "OAuth install for bigquery/google-oauth is not yet wired."
+  }
+}
+```
+</ResponseExample>

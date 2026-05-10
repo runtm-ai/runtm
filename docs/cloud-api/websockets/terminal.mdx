@@ -1,0 +1,134 @@
+---
+title: "Terminal WebSocket"
+description: "Interactive terminal access via WebSocket"
+---
+
+The terminal WebSocket provides full PTY access to the sandbox shell. It behaves like an SSH session — you send keystrokes, receive output, and can resize the terminal.
+
+## Connection
+
+```
+wss://app.runtm.com/api/sessions/{session_id}/terminal?token={ws_token}
+```
+
+Obtain `ws_token` from the [Token Exchange](/cloud-api/websockets/token-exchange) endpoint with `capability: "terminal"`.
+
+**Required scope:** `sessions:terminal`
+
+## Authentication
+
+The `token` query parameter authenticates the connection. If the token is invalid or expired, the server closes the WebSocket immediately with code `4001`.
+
+## Message format
+
+The terminal uses **text frames** for all communication:
+
+| Direction | Format | Description |
+|-----------|--------|-------------|
+| Client → Server | Raw text | Keystrokes and input sent to the shell's stdin. |
+| Server → Client | Raw text | Shell output from stdout/stderr. |
+| Client → Server | JSON | Control messages (e.g. resize). |
+
+### Sending input
+
+Send keystrokes as plain text frames. The server writes them directly to the PTY's stdin:
+
+```javascript
+ws.send("ls -la\r");
+```
+
+Use `\r` (carriage return) to submit commands, just like pressing Enter in a terminal.
+
+### Receiving output
+
+Output from the shell arrives as text frames. These include ANSI escape codes for color, cursor movement, and other terminal formatting. Use a terminal emulator library (e.g. [xterm.js](https://xtermjs.org/)) to render them correctly.
+
+```javascript
+ws.onmessage = (event) => {
+  terminal.write(event.data);
+};
+```
+
+### Resizing the terminal
+
+Send a JSON control message to resize the PTY:
+
+```javascript
+ws.send(JSON.stringify({
+  type: "resize",
+  cols: 120,
+  rows: 40
+}));
+```
+
+The server resizes the PTY to match. Send a resize message whenever the user's terminal viewport changes.
+
+## Example: full connection
+
+```javascript
+const tokenResponse = await fetch(
+  "https://app.runtm.com/api/sessions/ses_abc123/ws-token",
+  {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer runtm_sk_live_abc123...",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ capability: "terminal" }),
+  }
+);
+const { token } = await tokenResponse.json();
+
+const ws = new WebSocket(
+  `wss://app.runtm.com/api/sessions/ses_abc123/terminal?token=${token}`
+);
+
+ws.onopen = () => {
+  ws.send(JSON.stringify({ type: "resize", cols: 80, rows: 24 }));
+  ws.send("echo 'Hello from the API'\r");
+};
+
+ws.onmessage = (event) => {
+  process.stdout.write(event.data);
+};
+
+ws.onclose = (event) => {
+  console.log(`Disconnected: ${event.code} ${event.reason}`);
+};
+```
+
+```python
+import asyncio
+import json
+import websockets
+import requests
+
+response = requests.post(
+    "https://app.runtm.com/api/sessions/ses_abc123/ws-token",
+    headers={
+        "Authorization": "Bearer runtm_sk_live_abc123...",
+        "Content-Type": "application/json",
+    },
+    json={"capability": "terminal"},
+)
+token = response.json()["token"]
+
+async def terminal():
+    uri = f"wss://app.runtm.com/api/sessions/ses_abc123/terminal?token={token}"
+    async with websockets.connect(uri) as ws:
+        await ws.send(json.dumps({"type": "resize", "cols": 80, "rows": 24}))
+        await ws.send("echo 'Hello from the API'\r")
+
+        async for message in ws:
+            print(message, end="")
+
+asyncio.run(terminal())
+```
+
+## Connection limits
+
+Only one terminal WebSocket connection is allowed per session at a time. Opening a second connection closes the first with code `4009`.
+
+## Idle timeout
+
+The server closes idle terminal connections after 10 minutes of no input. Send any character to keep the connection alive.

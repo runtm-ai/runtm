@@ -1,0 +1,85 @@
+---
+title: "Errors"
+description: "Standard error responses and status codes"
+---
+
+The API uses conventional HTTP status codes and a consistent JSON error shape so your code can handle failures programmatically.
+
+## Error response shape
+
+All error responses return a JSON object with a `detail` field:
+
+```json
+{
+  "detail": "Session not found"
+}
+```
+
+Some endpoints return a structured detail object with additional context:
+
+```json
+{
+  "detail": {
+    "error": "validation_error",
+    "message": "Field 'agent' is required",
+    "field": "agent"
+  }
+}
+```
+
+## Status codes
+
+| Code | Meaning | When you will see it |
+|------|---------|---------------------|
+| `400` | **Bad Request** | Validation failed — missing or invalid fields, malformed JSON. |
+| `401` | **Unauthorized** | API key is missing, invalid, or expired. |
+| `403` | **Forbidden** | Key is valid but lacks the required scope, or the user is not a member of the target organization. |
+| `404` | **Not Found** | The requested resource does not exist, or is not visible to the key's scope. |
+| `409` | **Conflict** | The resource is in an invalid state for the requested operation (e.g. pausing an already-paused session). |
+| `413` | **Payload Too Large** | The request body exceeds the maximum allowed size. |
+| `429` | **Too Many Requests** | Rate limit exceeded. See [Rate Limits](/cloud-api/rate-limits). |
+| `500` | **Internal Server Error** | An unexpected error occurred. If persistent, contact support. |
+
+## Rate limit headers
+
+Every response includes rate limit information in the headers:
+
+| Header | Description |
+|--------|-------------|
+| `X-RateLimit-Limit` | Maximum requests allowed in the current window. |
+| `X-RateLimit-Remaining` | Requests remaining in the current window. |
+| `X-RateLimit-Reset` | Unix timestamp (seconds) when the window resets. |
+
+When you receive a `429` response, the `Retry-After` header tells you how many seconds to wait:
+
+```
+HTTP/1.1 429 Too Many Requests
+Retry-After: 30
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: 1748052600
+```
+
+```json
+{
+  "detail": "Rate limit exceeded. Retry after 30 seconds."
+}
+```
+
+## Handling errors
+
+<Tip>
+  Always check the HTTP status code first, then parse the `detail` field for a human-readable message.
+</Tip>
+
+```python
+response = requests.get(url, headers=headers)
+
+if response.status_code == 429:
+    retry_after = int(response.headers.get("Retry-After", 30))
+    time.sleep(retry_after)
+    response = requests.get(url, headers=headers)
+elif response.status_code >= 400:
+    error = response.json()
+    raise Exception(f"API error {response.status_code}: {error['detail']}")
+```

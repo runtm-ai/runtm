@@ -1,0 +1,176 @@
+---
+title: "Onboarding Preferences"
+api: "GET/PUT /api/user/onboarding"
+description: "Read and write the caller's onboarding-flow choices and skipped steps."
+---
+
+Tracks where the caller is in the dashboard's onboarding flow: which path
+they chose (`team` or `personal`), which steps they explicitly skipped, and
+whether they have finished and clicked **Continue**.
+
+These preferences are stored on the caller's pure-personal preferences
+record (no `organization_id`), so the response is consistent regardless of
+the active organization.
+
+<Note>
+  Most programmatic clients can ignore this endpoint. It is documented for
+  parity with the dashboard so custom embed/SSO integrations can pre-seed
+  state on behalf of users.
+</Note>
+
+## GET /api/user/onboarding
+
+<Info>
+  Required scope: `context:read`
+</Info>
+
+Read the caller's onboarding preferences.
+
+### Headers
+
+<ParamField header="Authorization" type="string" required>
+  `Bearer <your_api_key>`
+</ParamField>
+
+### Response
+
+<ResponseField name="onboarding_path" type="string">
+  Chosen onboarding flow. One of `"team"`, `"personal"`, or `null` when the
+  user has not picked yet.
+</ResponseField>
+
+<ResponseField name="onboarding_skipped" type="array">
+  IDs of onboarding steps the user explicitly skipped. Empty array when none.
+</ResponseField>
+
+<ResponseField name="onboarding_completed" type="boolean">
+  `true` once the user has clicked **Continue** at the end of onboarding.
+</ResponseField>
+
+<RequestExample>
+```bash cURL (read)
+curl -X GET "https://app.runtm.com/api/user/onboarding" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python (read)
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/user/onboarding",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+print(response.json())
+```
+
+```javascript JavaScript (read)
+const response = await fetch(
+  "https://app.runtm.com/api/user/onboarding",
+  { headers: { Authorization: "Bearer runtm_xxx" } },
+);
+console.log(await response.json());
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "onboarding_path": "team",
+  "onboarding_skipped": ["connect_github"],
+  "onboarding_completed": false
+}
+```
+
+```json 200 (never started)
+{
+  "onboarding_path": null,
+  "onboarding_skipped": [],
+  "onboarding_completed": false
+}
+```
+</ResponseExample>
+
+## PUT /api/user/onboarding
+
+<Info>
+  Required scope: `context:write`
+</Info>
+
+Update one or more onboarding fields. Only the fields you include are
+modified; omitted fields are left untouched.
+
+### Headers
+
+<ParamField header="Authorization" type="string" required>
+  `Bearer <your_api_key>`
+</ParamField>
+
+### Request Body
+
+<ParamField body="onboarding_path" type="string">
+  Selected onboarding flow. Use `"team"` or `"personal"`. Pass `null` to
+  reset.
+</ParamField>
+
+<ParamField body="onboarding_skipped" type="array">
+  Replace the list of skipped step IDs.
+</ParamField>
+
+<ParamField body="onboarding_completed" type="boolean">
+  Mark onboarding as complete (or revert to incomplete).
+</ParamField>
+
+### Response
+
+Same shape as the GET response, reflecting the merged state.
+
+<RequestExample>
+```bash cURL (write)
+curl -X PUT "https://app.runtm.com/api/user/onboarding" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "onboarding_path": "team",
+    "onboarding_completed": true
+  }'
+```
+
+```python Python (write)
+import requests
+
+response = requests.put(
+    "https://app.runtm.com/api/user/onboarding",
+    headers={"Authorization": "Bearer runtm_xxx"},
+    json={"onboarding_path": "team", "onboarding_completed": True},
+)
+print(response.json())
+```
+
+```javascript JavaScript (write)
+const response = await fetch(
+  "https://app.runtm.com/api/user/onboarding",
+  {
+    method: "PUT",
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      onboarding_path: "team",
+      onboarding_completed: true,
+    }),
+  },
+);
+console.log(await response.json());
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "onboarding_path": "team",
+  "onboarding_skipped": ["connect_github"],
+  "onboarding_completed": true
+}
+```
+</ResponseExample>

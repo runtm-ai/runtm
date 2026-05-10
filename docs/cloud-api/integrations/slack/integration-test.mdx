@@ -1,0 +1,79 @@
+---
+title: "Test Integration"
+api: "POST /api/v1/slack/integration/test"
+description: "Send a test message to verify the Slack integration is working."
+---
+
+Sends a test message to a Slack channel to verify the integration is properly configured and the bot can post messages.
+
+Requires org admin role.
+
+**Required scope:** `integrations:write`
+
+<Note>Requires organization context via the `X-Organization-Id` header.</Note>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization with the Slack integration.
+</ParamField>
+
+<ParamField body="channel" type="string" required>
+  Slack channel ID to send the test message to.
+</ParamField>
+
+<ResponseField name="success" type="boolean" required>
+  Whether the test message was sent successfully.
+</ResponseField>
+
+<ResponseField name="message" type="string" required>
+  Human-readable result message.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/v1/slack/integration/test" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{ "channel": "C01ABC123" }'
+```
+
+```python Python
+import requests
+
+resp = requests.post(
+    "https://app.runtm.com/api/v1/slack/integration/test",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+        "Content-Type": "application/json",
+    },
+    json={"channel": "C01ABC123"},
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  "https://app.runtm.com/api/v1/slack/integration/test",
+  {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ channel: "C01ABC123" }),
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "success": true,
+  "message": "Test message sent"
+}
+```
+</ResponseExample>

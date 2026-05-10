@@ -1,0 +1,103 @@
+---
+title: "Template Repos"
+api: "GET /api/org-templates/repos"
+description: "List repositories available for template creation"
+---
+
+Returns a flat, deduplicated list of repositories referenced by the organization's templates. Useful for discovering which repos already have template coverage.
+
+**Required scope:** `templates:read`
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  Organization ID.
+</ParamField>
+
+## Response
+
+<ResponseField name="repos" type="array">
+  Array of repository info objects linked to templates.
+</ResponseField>
+
+<ResponseField name="repos[].full_name" type="string">
+  Full repository name (e.g. `owner/repo`).
+</ResponseField>
+
+<ResponseField name="repos[].default_branch" type="string">
+  Default branch name.
+</ResponseField>
+
+<ResponseField name="repos[].template_name" type="string">
+  Name of the template this repo belongs to.
+</ResponseField>
+
+<ResponseField name="repos[].template_id" type="string">
+  ID of the template this repo belongs to.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/org-templates/repos" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/org-templates/repos",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+
+data = response.json()
+for repo in data["repos"]:
+    print(f"{repo['full_name']} -> {repo['template_name']}")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/org-templates/repos",
+  {
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  }
+);
+
+const data = await response.json();
+data.repos.forEach((repo) =>
+  console.log(`${repo.full_name} -> ${repo.template_name}`)
+);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "repos": [
+    {
+      "full_name": "acme/web-app",
+      "default_branch": "main",
+      "template_name": "web-app-template",
+      "template_id": "tmpl_abc123"
+    },
+    {
+      "full_name": "acme/api-service",
+      "default_branch": "main",
+      "template_name": "api-template",
+      "template_id": "tmpl_def456"
+    }
+  ]
+}
+```
+</ResponseExample>

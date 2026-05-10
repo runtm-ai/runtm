@@ -1,0 +1,230 @@
+---
+title: "Work with session files"
+description: "Read, write, upload, download, and search files inside a running sandbox"
+---
+
+Every session has a full Linux filesystem. The files API lets you read, write, list, search, upload, and download files without opening a terminal or WebSocket. This guide covers the patterns for each operation.
+
+For the complete endpoint specifications, see the file operation pages under [Sessions](/cloud-api/sessions/files-list).
+
+## When to use this
+
+- You are reading agent output (generated code, logs, artifacts) from a script or coding agent
+- You want to seed a session with files before sending a prompt
+- You need to download build artifacts or generated assets from a session
+- You are searching session files for specific patterns
+
+## Prerequisites
+
+- An API key with `sessions:read` scope (for read operations) and `sessions:write` scope (for write operations)
+- A session in `running` state
+
+## List files
+
+`GET /api/sessions/{id}/files` returns files and directories under a given path. By default it walks up to 3 levels deep and excludes build artifacts (`node_modules`, `.git`, `__pycache__`, etc.).
+
+<CodeGroup>
+
+```python Python
+import requests
+
+SESSION_ID = "9f3a3f22-..."
+headers = {"Authorization": "Bearer runtm_xxx"}
+
+resp = requests.get(
+    f"https://app.runtm.com/api/sessions/{SESSION_ID}/files",
+    headers=headers,
+    params={"path": "/home/user/project", "recursive": True, "max_depth": 3},
+)
+
+for f in resp.json()["files"]:
+    kind = "DIR " if f["is_dir"] else "FILE"
+    print(f"{kind} {f['path']}")
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  `https://app.runtm.com/api/sessions/${SESSION_ID}/files?path=/home/user/project&recursive=true`,
+  { headers: { Authorization: "Bearer runtm_xxx" } },
+);
+const { files } = await resp.json();
+files.forEach((f) => console.log(f.is_dir ? "DIR " : "FILE", f.path));
+```
+
+</CodeGroup>
+
+Useful parameters:
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `path` | `/home/user` | Absolute path to list |
+| `recursive` | `true` | Walk subdirectories |
+| `max_depth` | `3` | Maximum recursion depth |
+| `max_files` | `300` | Maximum entries returned |
+| `show_hidden` | `false` | Include dotfiles |
+
+## Read a file
+
+`GET /api/sessions/{id}/files/read` returns the content of a single file as a string:
+
+<CodeGroup>
+
+```python Python
+resp = requests.get(
+    f"https://app.runtm.com/api/sessions/{SESSION_ID}/files/read",
+    headers=headers,
+    params={"path": "/home/user/project/src/index.ts"},
+)
+content = resp.json()["content"]
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  `https://app.runtm.com/api/sessions/${SESSION_ID}/files/read?path=/home/user/project/src/index.ts`,
+  { headers: { Authorization: "Bearer runtm_xxx" } },
+);
+const { content } = await resp.json();
+```
+
+</CodeGroup>
+
+## Write a file
+
+`POST /api/sessions/{id}/files/write` creates or overwrites a file. Parent directories are created automatically:
+
+<CodeGroup>
+
+```python Python
+requests.post(
+    f"https://app.runtm.com/api/sessions/{SESSION_ID}/files/write",
+    headers=headers,
+    json={
+        "path": "/home/user/project/config.json",
+        "content": '{"debug": true, "port": 3000}',
+    },
+)
+```
+
+```javascript JavaScript
+await fetch(`https://app.runtm.com/api/sessions/${SESSION_ID}/files/write`, {
+  method: "POST",
+  headers: {
+    Authorization: "Bearer runtm_xxx",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    path: "/home/user/project/config.json",
+    content: '{"debug": true, "port": 3000}',
+  }),
+});
+```
+
+</CodeGroup>
+
+<Tip>
+Write config files, seed data, or `.env` files before sending the first prompt so the agent has the context it needs from the start.
+</Tip>
+
+## Upload a file
+
+`POST /api/sessions/{id}/files/upload` accepts a multipart file upload for binary or large files:
+
+```bash
+curl -X POST "https://app.runtm.com/api/sessions/${SESSION_ID}/files/upload" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -F "file=@logo.png" \
+  -F "path=/home/user/project/public/logo.png"
+```
+
+## Download a file
+
+`GET /api/sessions/{id}/files/download` returns the raw file content as a binary stream:
+
+```bash
+curl "https://app.runtm.com/api/sessions/${SESSION_ID}/files/download?path=/home/user/project/dist/bundle.js" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -o bundle.js
+```
+
+## Search file content
+
+`GET /api/sessions/{id}/files/search` searches file contents with a text query:
+
+<CodeGroup>
+
+```python Python
+resp = requests.get(
+    f"https://app.runtm.com/api/sessions/{SESSION_ID}/files/search",
+    headers=headers,
+    params={"query": "TODO", "path": "/home/user/project/src"},
+)
+for match in resp.json().get("results", []):
+    print(f"{match['path']}:{match['line']}: {match['content']}")
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  `https://app.runtm.com/api/sessions/${SESSION_ID}/files/search?query=TODO&path=/home/user/project/src`,
+  { headers: { Authorization: "Bearer runtm_xxx" } },
+);
+const { results } = await resp.json();
+results.forEach((m) => console.log(`${m.path}:${m.line}: ${m.content}`));
+```
+
+</CodeGroup>
+
+## Create a directory
+
+`POST /api/sessions/{id}/files/mkdir` creates a directory (and any missing parents):
+
+```bash
+curl -X POST "https://app.runtm.com/api/sessions/${SESSION_ID}/files/mkdir" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{"path": "/home/user/project/src/components"}'
+```
+
+## Delete a file
+
+`DELETE /api/sessions/{id}/files` removes a file or directory:
+
+```bash
+curl -X DELETE "https://app.runtm.com/api/sessions/${SESSION_ID}/files?path=/home/user/project/temp.log" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+## Rename or move a file
+
+`POST /api/sessions/{id}/files/rename` moves or renames a file:
+
+```bash
+curl -X POST "https://app.runtm.com/api/sessions/${SESSION_ID}/files/rename" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{"old_path": "/home/user/project/old.ts", "new_path": "/home/user/project/new.ts"}'
+```
+
+## Path constraints
+
+All paths must resolve under `/home/user` or the session's `workspace_path`. Attempting to read or write outside the sandbox returns `400`:
+
+```json
+{ "detail": "Path '/etc' is outside the sandbox workspace" }
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Manage sessions at scale" icon="cube" href="/guides/managing-sessions-at-scale">
+    Lifecycle management, polling, and error recovery.
+  </Card>
+  <Card title="Handle long-running prompts" icon="hourglass" href="/guides/long-running-prompts">
+    Cancel, rewind, and replay prompt history.
+  </Card>
+  <Card title="Files API reference" icon="file" href="/cloud-api/sessions/files-list">
+    Full endpoint specification for all file operations.
+  </Card>
+  <Card title="Terminal WebSocket" icon="terminal" href="/cloud-api/websockets/terminal">
+    Interactive shell access for running commands directly.
+  </Card>
+</CardGroup>

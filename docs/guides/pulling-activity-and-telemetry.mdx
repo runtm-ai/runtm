@@ -1,0 +1,188 @@
+---
+title: "Pull activity and telemetry"
+description: "Read personal and team activity, usage summaries, traces, and per-session cost data"
+---
+
+The Activity API surfaces session and prompt telemetry for your account and organization. Use it to track usage, monitor costs, generate reports, and understand how your team is using Runtime.
+
+For the full endpoint specifications, see the [Activity](/cloud-api/activity/personal-activity) reference pages.
+
+## When to use this
+
+- You want to track how many sessions and prompts your team runs per day
+- You need to monitor LLM spend for budgeting or cost alerts
+- You are building an internal dashboard that surfaces Runtime usage data
+- You want to generate weekly or monthly usage digests
+
+## Prerequisites
+
+- An API key with `activity:read` scope
+- For team-level data: an organization-scoped key
+
+## Personal activity (daily heatmap)
+
+`GET /sessions/telemetry/activity` returns daily counts of sessions, prompts, and costs for the authenticated user. The data is suitable for rendering a GitHub-style contribution heatmap.
+
+<CodeGroup>
+
+```python Python
+import requests
+
+headers = {"Authorization": "Bearer runtm_xxx"}
+
+resp = requests.get(
+    "https://app.runtm.com/api/sessions/telemetry/activity",
+    headers=headers,
+    params={"days": 30},
+)
+data = resp.json()
+
+for day in data["daily_activity"]:
+    if day["sessions"] or day["prompts"]:
+        print(f"{day['date']}: {day['sessions']} sessions, "
+              f"{day['prompts']} prompts, ${day['cost_usd']:.2f}")
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  "https://app.runtm.com/api/sessions/telemetry/activity?days=30",
+  { headers: { Authorization: "Bearer runtm_xxx" } },
+);
+const { daily_activity } = await resp.json();
+
+daily_activity
+  .filter((d) => d.sessions || d.prompts)
+  .forEach((d) => console.log(`${d.date}: ${d.sessions} sessions, ${d.prompts} prompts`));
+```
+
+</CodeGroup>
+
+Pass `X-Organization-Id` to scope results to a specific organization. Without it, the response covers personal sessions only.
+
+## Personal summary
+
+`GET /sessions/telemetry/summary` returns aggregate totals for a time period — total sessions, total prompts, total cost, and averages:
+
+```bash
+curl "https://app.runtm.com/api/sessions/telemetry/summary?days=30" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+## Recent prompts
+
+`GET /sessions/telemetry/recent-prompts` returns the most recent prompts across all sessions, with their status, cost, model, and timing:
+
+```bash
+curl "https://app.runtm.com/api/sessions/telemetry/recent-prompts?limit=10" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+This is useful for debugging — quickly see what prompts ran, which ones failed, and how much they cost.
+
+## Per-session usage
+
+`GET /sessions/{id}/telemetry/usage` returns detailed usage for a specific session — prompt count, total cost, token usage, and per-prompt breakdown:
+
+```bash
+curl "https://app.runtm.com/api/sessions/${SESSION_ID}/telemetry/usage" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+## Team-level telemetry
+
+Organization-scoped keys unlock team-wide endpoints. These require the `activity:read` scope and an org-scoped key (or `X-Organization-Id` header).
+
+| Endpoint | What it returns |
+|----------|----------------|
+| `GET /sessions/telemetry/team/summary` | Aggregate org totals (sessions, prompts, cost) |
+| `GET /sessions/telemetry/team/activity` | Daily team-wide activity for heatmaps |
+| `GET /sessions/telemetry/team/members` | Per-member breakdown (sessions, prompts, cost) |
+| `GET /sessions/telemetry/team/deploy-metrics` | Deploy counts and success rates |
+| `GET /sessions/telemetry/team/events` | Raw event stream for the org |
+| `GET /sessions/telemetry/team/traces` | Prompt-level traces with tool calls and timing |
+
+### Team member breakdown
+
+See which team members are most active and where spend is concentrated:
+
+```python Python
+resp = requests.get(
+    "https://app.runtm.com/api/sessions/telemetry/team/members",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+    params={"days": 30},
+)
+for member in resp.json()["members"]:
+    print(f"{member['name']}: {member['prompt_count']} prompts, ${member['total_cost_usd']:.2f}")
+```
+
+### Team traces
+
+Traces give you prompt-level detail including tool calls, token usage, and timing. Useful for auditing what agents are doing:
+
+```bash
+curl "https://app.runtm.com/api/sessions/telemetry/team/traces?days=7&limit=50" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+## Patterns for monitoring
+
+### Daily cost alerting
+
+Poll the summary endpoint daily and alert when spend exceeds a threshold:
+
+```python Python
+resp = requests.get(
+    "https://app.runtm.com/api/sessions/telemetry/team/summary",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+    params={"days": 1},
+)
+today_cost = resp.json().get("total_cost_usd", 0)
+if today_cost > 50.00:
+    send_alert(f"Runtime spend today: ${today_cost:.2f}")
+```
+
+### Weekly digest
+
+Combine `team/summary` and `team/members` to build a weekly digest:
+
+```python Python
+summary = requests.get(
+    "https://app.runtm.com/api/sessions/telemetry/team/summary",
+    headers=headers,
+    params={"days": 7},
+).json()
+
+members = requests.get(
+    "https://app.runtm.com/api/sessions/telemetry/team/members",
+    headers=headers,
+    params={"days": 7},
+).json()
+
+print(f"This week: {summary['total_sessions']} sessions, "
+      f"{summary['total_prompts']} prompts, ${summary['total_cost_usd']:.2f}")
+print(f"Top contributor: {members['members'][0]['name']}")
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Personal Activity reference" icon="chart-line" href="/cloud-api/activity/personal-activity">
+    Full endpoint spec for personal daily activity.
+  </Card>
+  <Card title="Team Summary reference" icon="users" href="/cloud-api/activity/team-summary">
+    Aggregate org-wide telemetry.
+  </Card>
+  <Card title="Best practices" icon="shield" href="/guides/best-practices">
+    Cost controls, scope hygiene, and lifecycle patterns.
+  </Card>
+  <Card title="Webhooks and triggers" icon="webhook" href="/guides/webhooks-and-triggers">
+    Get notified when prompts complete instead of polling.
+  </Card>
+</CardGroup>

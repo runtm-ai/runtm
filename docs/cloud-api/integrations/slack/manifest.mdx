@@ -1,0 +1,71 @@
+---
+title: "App Manifest"
+api: "GET /api/v1/slack/manifest"
+description: "Get the Slack App Manifest URL for self-hosted setup."
+---
+
+Returns a pre-filled Slack App Manifest creation URL. Use this for self-hosted Slack app setup when not using the managed OAuth flow.
+
+**Required scope:** `integrations:read`
+
+<Note>Requires organization context via the `X-Organization-Id` header.</Note>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization context.
+</ParamField>
+
+<ParamField query="app_name" type="string" default="Runtime">
+  Custom name for the Slack app. Max 35 characters.
+</ParamField>
+
+<ResponseField name="url" type="string" required>
+  Slack App Manifest creation URL.
+</ResponseField>
+
+<ResponseField name="interactions_url" type="string" required>
+  The interactivity URL to configure in the Slack app settings.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/v1/slack/manifest?app_name=My%20Bot" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+resp = requests.get(
+    "https://app.runtm.com/api/v1/slack/manifest",
+    params={"app_name": "My Bot"},
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  "https://app.runtm.com/api/v1/slack/manifest?app_name=My%20Bot",
+  {
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "url": "https://api.slack.com/apps?new_app=1&manifest_yaml=...",
+  "interactions_url": "https://app.runtm.com/api/v1/slack/interactions"
+}
+```
+</ResponseExample>

@@ -1,0 +1,126 @@
+---
+title: "Update Knowledge Integration"
+api: "PATCH /api/knowledge/integrations/{integration_id}"
+description: "Update display name, metadata, or tool permissions on an integration."
+---
+
+Partially updates a knowledge integration. Only the fields you include in the body are changed; omitted fields are left untouched.
+
+This endpoint does **not** update credentials — use [Rotate Credentials](/cloud-api/context/knowledge/rotate) for that.
+
+**Required scope:** `integrations:write`
+
+<Note>Requires organization context via the `X-Organization-Id` header.</Note>
+
+<ParamField path="integration_id" type="string" required>
+  The integration ID to update.
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization the integration belongs to.
+</ParamField>
+
+<ParamField body="display_name" type="string">
+  New display name (max 200 characters).
+</ParamField>
+
+<ParamField body="provider_metadata" type="object">
+  Replacement provider-specific configuration.
+</ParamField>
+
+<ParamField body="default_mode" type="string">
+  Default tool permission mode: `"auto"`, `"allow"`, or `"ask"`.
+</ParamField>
+
+<ParamField body="tool_permissions" type="object">
+  Per-tool permission overrides. Keys are tool IDs, values are `"auto"`, `"allow"`, or `"ask"`.
+</ParamField>
+
+<ResponseField name="integration" type="KnowledgeIntegrationResource" required>
+  The updated integration resource. See [List](/cloud-api/context/knowledge/list) for the full resource shape.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X PATCH https://app.runtm.com/api/knowledge/integrations/ki_01J... \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "display_name": "Prod warehouse (read-only)",
+    "default_mode": "ask",
+    "tool_permissions": {
+      "query": "allow"
+    }
+  }'
+```
+
+```python Python
+import requests
+
+integration_id = "ki_01J..."
+
+resp = requests.patch(
+    f"https://app.runtm.com/api/knowledge/integrations/{integration_id}",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+        "Content-Type": "application/json",
+    },
+    json={
+        "display_name": "Prod warehouse (read-only)",
+        "default_mode": "ask",
+        "tool_permissions": {"query": "allow"},
+    },
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const integrationId = "ki_01J...";
+
+const resp = await fetch(
+  `https://app.runtm.com/api/knowledge/integrations/${integrationId}`,
+  {
+    method: "PATCH",
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      display_name: "Prod warehouse (read-only)",
+      default_mode: "ask",
+      tool_permissions: { query: "allow" },
+    }),
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "integration": {
+    "id": "ki_01J...",
+    "organization_id": "org_abc123",
+    "user_id": null,
+    "provider": "bigquery",
+    "auth_method": "service_account",
+    "display_name": "Prod warehouse (read-only)",
+    "status": "active",
+    "has_credentials": true,
+    "has_oauth_refresh": false,
+    "oauth_access_expires_at": null,
+    "provider_metadata": { "project_id": "my-gcp-project" },
+    "default_mode": "ask",
+    "tool_permissions": { "query": "allow" },
+    "connected_by_user_id": "usr_xyz",
+    "last_used_at": "2026-05-08T12:00:00Z",
+    "created_at": "2026-04-20T09:30:00Z",
+    "updated_at": "2026-05-09T18:30:00Z"
+  }
+}
+```
+</ResponseExample>

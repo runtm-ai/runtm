@@ -1,0 +1,125 @@
+---
+title: "API Overview"
+description: "Programmatic access to Runtime Cloud sessions, deployments, templates, and integrations"
+---
+
+The Runtime API gives you programmatic control of the same surfaces you use in the dashboard at [app.runtm.com](https://app.runtm.com): cloud development sessions, prompts, deployments, organization templates, secrets, instructions, integrations, and real-time WebSockets.
+
+It is designed for:
+
+- Developers running Runtime from their terminal or local scripts to spin up cloud sessions
+- Coding agents (Claude Code, Cursor, Codex, etc.) that call the API to orchestrate sessions programmatically
+- CI/CD pipelines that build, deploy, and roll back applications
+- Internal tools and dashboards that read activity, manage secrets, or sync templates across orgs
+
+<Tip>
+**Looking for guides?** If you want patterns and walkthroughs instead of endpoint specs, see the [Guides](/guides/overview) — covering authentication, session management, prompt streaming, file operations, telemetry, and best practices.
+</Tip>
+
+## Base URL
+
+All endpoints share the same base URL:
+
+```
+https://app.runtm.com/api
+```
+
+For self-hosted instances, substitute your own host. Endpoint paths shown in this documentation always start with `/api/...`, `/api/v1/...`, `/api/v2/...`, or `/auth/...` - append them to the host above.
+
+## Quick start
+
+<Steps>
+  <Step title="Create an API key">
+    Sign in at [app.runtm.com](https://app.runtm.com), open **Settings > API Keys**, and click **Create key**. Choose a scope preset (e.g. **Session automation**) or pick custom scopes. The raw secret is shown **once**; copy it immediately.
+
+    <Tip>
+      You can also create keys via the dashboard while viewing an organization to scope the key to that org. See [Authentication](/cloud-api/authentication) for the personal vs org distinction.
+    </Tip>
+  </Step>
+
+  <Step title="Verify the key">
+    Confirm the key is valid and inspect its scopes:
+
+    ```bash
+    curl https://app.runtm.com/auth/verify \
+      -H "Authorization: Bearer runtm_xxx"
+    ```
+
+    See the [Verify API key](/cloud-api/authentication/verify) reference.
+  </Step>
+
+  <Step title="Make your first call">
+    List the sessions the key can see:
+
+    ```bash
+    curl https://app.runtm.com/api/sessions \
+      -H "Authorization: Bearer runtm_xxx"
+    ```
+  </Step>
+</Steps>
+
+## Capability map
+
+Use this map to find the right slice of the API for what you want to do.
+
+<CardGroup cols={2}>
+  <Card title="Sessions" icon="cube" href="/cloud-api/sessions/manage">
+    Create cloud development sessions, manage their lifecycle, send prompts, and stream agent output.
+  </Card>
+  <Card title="Deploy" icon="rocket" href="/cloud-api/deploy/info">
+    Scaffold, validate, and ship sessions to production with streaming logs.
+  </Card>
+  <Card title="Templates" icon="sparkles" href="/cloud-api/templates/list">
+    Manage organization templates, build snapshots, and the secrets they require.
+  </Card>
+  <Card title="Secrets" icon="key" href="/cloud-api/secrets/personal-list">
+    Personal and team secret stores. Values are write-only.
+  </Card>
+  <Card title="Context" icon="brain" href="/cloud-api/context/user-instructions">
+    System instructions, skills, MCP servers, docs, and knowledge sources that shape agent behavior.
+  </Card>
+  <Card title="Guardrails" icon="shield" href="/cloud-api/guardrails/allowlist-policy">
+    Allowlists, deploy permissions, org limits, and cleanup policies.
+  </Card>
+  <Card title="Activity" icon="chart-line" href="/cloud-api/activity/personal-activity">
+    Personal and team telemetry: prompts, usage, traces, and member breakdowns.
+  </Card>
+  <Card title="Integrations" icon="plug" href="/cloud-api/integrations/github-app/installations-list">
+    GitHub App, GitHub user tokens, Linear, and Slack.
+  </Card>
+  <Card title="Provider Keys" icon="key-skeleton" href="/cloud-api/provider-keys/anthropic">
+    Bring-your-own Anthropic and OpenAI keys, resolved key status, and current plan.
+  </Card>
+  <Card title="WebSockets" icon="bolt" href="/cloud-api/websockets/overview">
+    Real-time terminal, prompt streaming, and collaboration presence.
+  </Card>
+</CardGroup>
+
+## Foundations
+
+Every endpoint page assumes you have read these short pages:
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="lock" href="/cloud-api/authentication">
+    How to send your API key and how the personal vs organization distinction works.
+  </Card>
+  <Card title="Scopes & Permissions" icon="shield" href="/cloud-api/scopes">
+    What each scope unlocks, role ceilings, and the legacy scope expansion table.
+  </Card>
+  <Card title="Errors & Rate Limits" icon="circle-exclamation" href="/cloud-api/errors">
+    Standard error shape, status codes, and the headers you should observe.
+  </Card>
+  <Card title="Conventions" icon="book" href="/cloud-api/conventions">
+    Pagination, organization headers, datetimes, idempotency, and content types.
+  </Card>
+</CardGroup>
+
+## What is not covered
+
+A few classes of endpoints exist in the platform but are intentionally absent from the API reference:
+
+- **Dashboard-only routes.** Anything that requires a browser session (e.g. some `/api/keys` mutations, billing portal redirects, GitHub App install flow) is not part of the programmatic surface.
+- **Internal service-to-service routes.** Frontend-to-backend authentication and platform proxy mechanics are not part of the customer surface.
+- **Webhook receivers.** Stripe, Slack events, Linear webhooks, GitHub App webhook callbacks, and similar inbound endpoints are platform infrastructure, not customer endpoints.
+
+If you have a use case that is not covered, the team is happy to discuss it.

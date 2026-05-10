@@ -1,0 +1,235 @@
+---
+title: Configuration
+description: "Environment variables for self-hosted Runtime"
+---
+
+# Configuration
+
+Configure your self-hosted Runtime instance with environment variables.
+
+## Required Variables
+
+These must be set for Runtime to function:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `DATABASE_URL` | PostgreSQL connection | `postgresql://user:pass@host:5432/runtm` |
+| `REDIS_URL` | Redis connection | `redis://localhost:6379/0` |
+| `FLY_API_TOKEN` | Fly.io deploy token | `FlyV1 xxx...` |
+| `RUNTM_API_SECRET` | API authentication secret | Random 32+ char string |
+
+## All Variables
+
+### Database
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_URL` | Required | PostgreSQL connection string |
+| `DATABASE_POOL_SIZE` | `5` | Connection pool size |
+| `DATABASE_MAX_OVERFLOW` | `10` | Max overflow connections |
+
+### Redis
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `REDIS_URL` | Required | Redis connection string |
+| `RQ_QUEUE_NAME` | `runtm` | Job queue name |
+
+### API Server
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RUNTM_API_SECRET` | Required | Auth secret (32+ chars) |
+| `API_HOST` | `0.0.0.0` | Bind host |
+| `API_PORT` | `8000` | Bind port |
+| `CORS_ORIGINS` | `*` | Allowed CORS origins |
+| `LOG_LEVEL` | `INFO` | Logging level |
+
+### Worker
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `FLY_API_TOKEN` | Required | Fly.io deploy token |
+| `ARTIFACT_STORAGE_PATH` | `/tmp/artifacts` | Local artifact storage |
+| `BUILD_TIMEOUT_SECONDS` | `600` | Max build time |
+| `DEPLOY_TIMEOUT_SECONDS` | `300` | Max deploy time |
+
+### Token Security
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TOKEN_PEPPER_V1` | Required | Pepper for token hashing |
+| `CURRENT_PEPPER_VERSION` | `1` | Active pepper version |
+| `PEPPER_MIGRATION_VERSIONS` | - | Versions during rotation |
+
+### Custom Domains (Optional)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DNS_ENABLED` | `false` | Enable auto DNS management |
+| `DNS_PROVIDER` | - | DNS provider (`cloudflare`) |
+| `CLOUDFLARE_API_TOKEN` | - | Cloudflare API token |
+| `CLOUDFLARE_ZONE_ID` | - | Cloudflare zone ID |
+| `BASE_DOMAIN` | - | Base domain for subdomains |
+
+### Limits (Optional)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MAX_ARTIFACT_SIZE_MB` | `20` | Max upload size |
+| `MAX_DEPLOYMENTS_PER_HOUR` | `10` | Rate limit per token |
+| `MAX_CONCURRENT_DEPLOYS` | `5` | Per-tenant limit |
+
+## Example Configuration
+
+### Development (.env)
+
+```bash
+# Database
+DATABASE_URL=postgresql://runtm:runtm@localhost:5432/runtm
+
+# Redis
+REDIS_URL=redis://localhost:6379/0
+
+# API
+RUNTM_API_SECRET=dev-secret-change-in-production-123
+
+# Worker
+FLY_API_TOKEN=FlyV1_your_token_here
+ARTIFACT_STORAGE_PATH=/tmp/runtm-artifacts
+
+# Token Security
+TOKEN_PEPPER_V1=dev-pepper-change-in-production-456
+
+# Logging
+LOG_LEVEL=DEBUG
+```
+
+### Production (.env)
+
+```bash
+# Database (managed PostgreSQL)
+DATABASE_URL=postgresql://runtm:secure_pass@db.example.com:5432/runtm?sslmode=require
+DATABASE_POOL_SIZE=10
+DATABASE_MAX_OVERFLOW=20
+
+# Redis (managed Redis)
+REDIS_URL=rediss://user:pass@redis.example.com:6379/0
+
+# API
+RUNTM_API_SECRET=generated-64-char-random-string
+API_HOST=0.0.0.0
+API_PORT=8000
+CORS_ORIGINS=https://app.runtm.example.com
+
+# Worker
+FLY_API_TOKEN=FlyV1_production_token
+ARTIFACT_STORAGE_PATH=/data/artifacts
+BUILD_TIMEOUT_SECONDS=600
+DEPLOY_TIMEOUT_SECONDS=300
+
+# Token Security
+TOKEN_PEPPER_V1=generated-32-char-pepper
+
+# Custom Domains (optional)
+DNS_ENABLED=true
+DNS_PROVIDER=cloudflare
+CLOUDFLARE_API_TOKEN=your_cf_token
+CLOUDFLARE_ZONE_ID=your_zone_id
+BASE_DOMAIN=apps.example.com
+
+# Logging
+LOG_LEVEL=INFO
+```
+
+## Generating Secrets
+
+### API Secret
+
+```bash
+openssl rand -base64 48
+```
+
+### Token Pepper
+
+```bash
+openssl rand -base64 24
+```
+
+## Security Considerations
+
+<Warning>
+  Never commit `.env` files to version control. Add `.env` to `.gitignore`.
+</Warning>
+
+### Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use strong secrets">
+    Generate all secrets with `openssl rand`:
+    ```bash
+    openssl rand -base64 48
+    ```
+  </Accordion>
+  <Accordion title="Use TLS in production">
+    Set `?sslmode=require` on DATABASE_URL.
+    Use `rediss://` (with SSL) for Redis.
+  </Accordion>
+  <Accordion title="Restrict CORS origins">
+    In production, set `CORS_ORIGINS` to your specific domains.
+  </Accordion>
+  <Accordion title="Secure the Fly.io token">
+    Create a deploy-only token, not a full access token:
+    ```bash
+    fly tokens create deploy -n runtm-worker
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Pepper Rotation
+
+To rotate the token pepper (e.g., after a breach):
+
+1. Add new pepper:
+   ```bash
+   TOKEN_PEPPER_V2=new-pepper-value
+   PEPPER_MIGRATION_VERSIONS=1,2
+   ```
+
+2. Wait for old tokens to expire or be revoked
+
+3. Remove old pepper:
+   ```bash
+   CURRENT_PEPPER_VERSION=2
+   # Remove TOKEN_PEPPER_V1
+   # Remove PEPPER_MIGRATION_VERSIONS
+   ```
+
+See [admin commands](/self-hosting/admin-commands#rotate-pepper) for the guided rotation process.
+
+## Validating Configuration
+
+After setting up, verify your configuration:
+
+```bash
+# Check API health
+curl http://localhost:8000/health
+
+# Check database connection
+docker compose exec api python -c "from runtm_api.db import engine; print(engine.execute('SELECT 1').scalar())"
+
+# Check Redis connection
+docker compose exec api python -c "from redis import Redis; print(Redis.from_url('$REDIS_URL').ping())"
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Admin Commands" icon="terminal" href="/self-hosting/admin-commands">
+    Create and manage API tokens
+  </Card>
+  <Card title="Docker Compose" icon="docker" href="/self-hosting/docker-compose">
+    Service orchestration
+  </Card>
+</CardGroup>
+

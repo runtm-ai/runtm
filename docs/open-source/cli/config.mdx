@@ -1,0 +1,156 @@
+---
+title: config
+description: "Manage CLI configuration"
+---
+
+# runtm config
+
+Manage CLI configuration stored in `~/.runtm/config.yaml`.
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `runtm config set KEY=VALUE` | Set a config value |
+| `runtm config get KEY` | Get a config value |
+| `runtm config list` | List all config |
+| `runtm config reset` | Reset to defaults |
+
+---
+
+## config set
+
+Set a configuration value.
+
+```bash
+runtm config set <KEY=VALUE>
+```
+
+### Valid Keys
+
+| Key | Description | Default |
+|-----|-------------|---------|
+| `api_url` | API endpoint URL | `https://app.runtm.com/api` |
+| `default_template` | Default for `runtm init` | `backend-service` |
+| `default_runtime` | Default runtime | `python` |
+
+### Examples
+
+```bash
+# Self-hosted API URL
+runtm config set api_url=https://runtm.internal.example.com/api
+
+# Change default template
+runtm config set default_template=web-app
+```
+
+---
+
+## config get
+
+Get a configuration value.
+
+```bash
+runtm config get <KEY>
+```
+
+### Examples
+
+```bash
+# Get API URL
+runtm config get api_url
+
+# Use in scripts
+API_URL=$(runtm config get api_url)
+```
+
+---
+
+## config list
+
+List all configuration values.
+
+```bash
+runtm config list
+```
+
+### Output
+
+```
+Configuration (~/.runtm/config.yaml)
+
+  api_url: https://app.runtm.com/api (default)
+  default_template: web-app
+  default_runtime: python (default)
+```
+
+---
+
+## config reset
+
+Reset configuration to defaults.
+
+```bash
+runtm config reset
+```
+
+### Options
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--force` | `-f` | Skip confirmation |
+
+### Examples
+
+```bash
+# With confirmation
+runtm config reset
+
+# Skip confirmation
+runtm config reset --force
+```
+
+---
+
+## Configuration File
+
+The CLI stores configuration in `~/.runtm/config.yaml`:
+
+```yaml
+api_url: https://app.runtm.com/api
+default_template: backend-service
+default_runtime: python
+```
+
+### Environment Variables
+
+Environment variables override config file:
+
+| Variable | Overrides |
+|----------|-----------|
+| `RUNTM_API_URL` | `api_url` |
+| `RUNTM_API_KEY` | Authentication token |
+
+---
+
+## Self-Hosting Configuration
+
+For self-hosted Runtime instances:
+
+```bash
+# Set API URL
+runtm config set api_url=https://runtm.internal.example.com/api
+
+# Login to self-hosted instance
+runtm login --no-verify
+```
+
+See [Self-Hosting](/self-hosting/overview) for complete setup.
+
+---
+
+## Related Commands
+
+- [`runtm doctor`](/cli/auth#doctor) - Diagnose setup
+- [`runtm login`](/cli/auth) - Authenticate
+

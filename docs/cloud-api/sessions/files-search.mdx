@@ -1,0 +1,108 @@
+---
+title: "Search Files"
+api: "GET /api/sessions/{session_id}/files/search"
+description: "Search for files by content in the sandbox"
+---
+
+Searches for files matching a query string within the sandbox. Returns matching files with line-level match details.
+
+**Required scope:** `sessions:read`
+
+## Path Parameters
+
+<ParamField path="session_id" type="string" required>
+  The session ID (e.g. `ses_abc123`).
+</ParamField>
+
+## Query Parameters
+
+<ParamField query="query" type="string" required>
+  Search query string.
+</ParamField>
+
+<ParamField query="path" type="string" default="/">
+  Directory path to scope the search (e.g. `/src`).
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+## Response
+
+<ResponseField name="results" type="array">
+  Array of matching file results.
+</ResponseField>
+
+<ResponseField name="results[].path" type="string">
+  Path of the matching file.
+</ResponseField>
+
+<ResponseField name="results[].matches" type="array">
+  Array of line matches within the file.
+</ResponseField>
+
+<ResponseField name="results[].matches[].line" type="integer">
+  Line number of the match.
+</ResponseField>
+
+<ResponseField name="results[].matches[].content" type="string">
+  Content of the matching line.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/sessions/ses_abc123/files/search?query=TODO&path=/src" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/sessions/ses_abc123/files/search",
+    headers={"Authorization": "Bearer runtm_xxx"},
+    params={"query": "TODO", "path": "/src"},
+)
+
+for result in response.json()["results"]:
+    print(f"{result['path']}:")
+    for m in result["matches"]:
+        print(f"  L{m['line']}: {m['content']}")
+```
+
+```javascript JavaScript
+const params = new URLSearchParams({ query: "TODO", path: "/src" });
+
+const response = await fetch(
+  `https://app.runtm.com/api/sessions/ses_abc123/files/search?${params}`,
+  {
+    headers: { "Authorization": "Bearer runtm_xxx" },
+  }
+);
+
+const { results } = await response.json();
+results.forEach((r) => {
+  console.log(`${r.path}:`);
+  r.matches.forEach((m) => console.log(`  L${m.line}: ${m.content}`));
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "results": [
+    {
+      "path": "/src/index.ts",
+      "matches": [
+        { "line": 12, "content": "// TODO: add error handling" },
+        { "line": 45, "content": "// TODO: implement caching" }
+      ]
+    }
+  ]
+}
+```
+</ResponseExample>

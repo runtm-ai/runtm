@@ -1,0 +1,78 @@
+---
+title: "Delete User Provider Key"
+api: "DELETE /api/user/provider-keys/{provider}"
+description: "Remove a stored provider API key for the authenticated user."
+---
+
+Deletes the provider API key for the authenticated user. After deletion, the user will need to configure a new key or rely on an organization-level key.
+
+**Required scope:** `integrations:write`
+
+<ParamField path="provider" type="string" required>
+  The provider name. One of: `anthropic`, `openai`, `cursor`, `devin`, `gemini`, `copilot`.
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. `Authorization: Bearer runtm_xxx`
+</ParamField>
+
+<ResponseField name="provider" type="string">
+  The provider name.
+</ResponseField>
+
+<ResponseField name="connected" type="boolean">
+  Always `false` after deletion.
+</ResponseField>
+
+<ResponseField name="key_preview" type="string">
+  Always `null` after deletion.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  Always `null` after deletion.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE "https://app.runtm.com/api/user/provider-keys/anthropic" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+provider = "anthropic"
+
+resp = requests.delete(
+    f"https://app.runtm.com/api/user/provider-keys/{provider}",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const provider = "anthropic";
+
+const resp = await fetch(
+  `https://app.runtm.com/api/user/provider-keys/${provider}`,
+  {
+    method: "DELETE",
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+    },
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "provider": "anthropic",
+  "connected": false,
+  "key_preview": null,
+  "updated_at": null
+}
+```
+</ResponseExample>

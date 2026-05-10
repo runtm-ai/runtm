@@ -1,0 +1,107 @@
+---
+title: "Org Cleanup"
+api: "DELETE /api/organizations/{org_id}/cleanup"
+description: "Post-deletion cleanup of organization resources"
+---
+
+Runs post-org-delete cleanup: converts org-scoped sessions and API keys to personal ownership (nulls `organization_id`), deletes organization preferences, and cleans up organization secrets.
+
+This is an administrative action intended to be called after an organization has been deleted from the auth system.
+
+## Path Parameters
+
+<ParamField path="org_id" type="string" required>
+  The organization ID to clean up
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. `Authorization: Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  Must match the `org_id` path parameter
+</ParamField>
+
+## Response
+
+<ResponseField name="organization_id" type="string">
+  The organization ID that was cleaned up
+</ResponseField>
+
+<ResponseField name="sessions_converted" type="integer">
+  Number of sessions converted from org-scoped to personal
+</ResponseField>
+
+<ResponseField name="keys_converted" type="integer">
+  Number of API keys converted from org-scoped to personal
+</ResponseField>
+
+<ResponseField name="preferences_deleted" type="boolean">
+  Whether organization preferences were deleted
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE "https://app.runtm.com/api/organizations/org_abc123/cleanup" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+response = requests.delete(
+    "https://app.runtm.com/api/organizations/org_abc123/cleanup",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+
+data = response.json()
+print(f"Sessions converted: {data['sessions_converted']}")
+print(f"Keys converted: {data['keys_converted']}")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/organizations/org_abc123/cleanup",
+  {
+    method: "DELETE",
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  }
+);
+
+const data = await response.json();
+console.log(`Sessions converted: ${data.sessions_converted}`);
+console.log(`Keys converted: ${data.keys_converted}`);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "organization_id": "org_abc123",
+  "sessions_converted": 12,
+  "keys_converted": 3,
+  "preferences_deleted": true
+}
+```
+
+```json 400
+{
+  "detail": "Organization context required"
+}
+```
+</ResponseExample>
+
+## Scopes
+
+| Method | Required scope |
+|--------|---------------|
+| DELETE | `guardrails:write` |

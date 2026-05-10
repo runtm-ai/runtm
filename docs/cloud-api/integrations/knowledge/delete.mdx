@@ -1,0 +1,78 @@
+---
+title: "Delete Knowledge Integration"
+api: "DELETE /knowledge/integrations/{integration_id}"
+description: "Delete a knowledge integration and its stored credentials"
+---
+
+Deletes a knowledge integration and any stored credentials. Sessions referencing this integration will surface unmet requirement entries until reconnected.
+
+<Info>Required scope: `integrations:write`</Info>
+
+<Note>
+This endpoint is **organization-only**. The request must include `X-Organization-Id` (or use an org-scoped API key).
+</Note>
+
+## Path Parameters
+
+<ParamField path="integration_id" type="string" required>
+  Knowledge integration id.
+</ParamField>
+
+## Headers
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization context.
+</ParamField>
+
+## Response
+
+`204 No Content` on success - the response body is empty.
+
+<RequestExample>
+```bash cURL
+curl -X DELETE "https://app.runtm.com/api/knowledge/integrations/kint_aaa" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_456"
+```
+
+```python Python
+import requests
+
+response = requests.delete(
+    "https://app.runtm.com/api/knowledge/integrations/kint_aaa",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_456",
+    },
+)
+
+print(response.status_code)
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/knowledge/integrations/kint_aaa",
+  {
+    method: "DELETE",
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "X-Organization-Id": "org_456",
+    },
+  }
+);
+
+console.log(response.status);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 204
+{}
+```
+
+```json 404
+{
+  "detail": "Knowledge integration not found"
+}
+```
+</ResponseExample>

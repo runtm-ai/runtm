@@ -1,0 +1,60 @@
+---
+title: "Get User Instructions"
+api: "GET /api/user/instructions"
+description: "Retrieve the custom instructions set by the authenticated user."
+---
+
+Returns the user's custom instructions. When an organization context is provided, returns the user's instructions scoped to that organization; otherwise returns their personal instructions.
+
+**Required scope:** `context:read`
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. `Authorization: Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string">
+  Include to retrieve instructions scoped to an organization context. Omit for personal instructions.
+</ParamField>
+
+<ResponseField name="instructions" type="string">
+  The user's custom instructions text. Null if none set.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  ISO 8601 timestamp of the last update. Null if never set.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/user/instructions" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+resp = requests.get(
+    "https://app.runtm.com/api/user/instructions",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const resp = await fetch("https://app.runtm.com/api/user/instructions", {
+  headers: {
+    Authorization: "Bearer runtm_xxx",
+  },
+});
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "instructions": "Always use TypeScript. Prefer functional components with hooks.",
+  "updated_at": "2026-05-08T14:30:00Z"
+}
+```
+</ResponseExample>

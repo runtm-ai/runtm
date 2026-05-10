@@ -1,0 +1,190 @@
+---
+title: "Authenticate and manage API keys"
+description: "Create, verify, scope, rotate, and revoke API keys for the Runtime API"
+---
+
+This guide walks through the full lifecycle of an API key: creating one, verifying it, choosing the right scopes, using it with an organization, rotating it safely, and revoking it when done.
+
+For the full specification of every scope and role ceiling, see the [Scopes & Permissions](/cloud-api/scopes) reference.
+
+## When to use this
+
+- You want to use Runtime programmatically — from your terminal, scripts, coding agents, or CI/CD pipelines
+- You need to understand the difference between personal and organization keys
+- You want to establish a key rotation policy for your team
+
+## Prerequisites
+
+- A [Runtime account](https://app.runtm.com)
+- Access to the **Settings > API Keys** page in the dashboard
+
+## Create a key
+
+Keys are created from the dashboard only — there is no programmatic key-creation endpoint. This prevents a compromised key from bootstrapping new credentials.
+
+<Steps>
+  <Step title="Choose a context">
+    Decide whether the key should act as **you personally** or as a **member of an organization**.
+
+    - **Personal key** — operates on your own sessions and secrets. Cannot touch org resources.
+    - **Organization key** — operates on resources owned by the organization. You must have the org selected in the org switcher when you create the key.
+  </Step>
+
+  <Step title="Pick scopes">
+    The dashboard offers scope presets for common use cases:
+
+    | Preset | Scopes included | Good for |
+    |--------|----------------|----------|
+    | **Session automation** | `sessions:read`, `sessions:write`, `sessions:prompt`, `context:read` | Local scripts, coding agents, CI pipelines |
+    | **Read-only** | `sessions:read`, `activity:read`, `context:read` | Monitoring dashboards |
+    | **Full access** | All granular scopes your role allows | Admin tooling |
+
+    You can also pick individual scopes. See [Scopes & Permissions](/cloud-api/scopes) for the full list.
+  </Step>
+
+  <Step title="Set an expiration">
+    Optionally set an expiration between 1 and 365 days. Keys without an expiration live until revoked.
+
+    <Tip>
+      For production automation, set a 90-day expiration and rotate before it lapses. For one-off scripts, shorter is better.
+    </Tip>
+  </Step>
+
+  <Step title="Copy the secret">
+    The raw token is shown **once**. Copy it immediately and store it in a secret manager (1Password, Doppler, GitHub Actions secrets, etc.).
+
+    <Warning>
+      Runtime stores only a one-way hash. If you lose the secret, revoke the key and create a new one.
+    </Warning>
+  </Step>
+</Steps>
+
+## Verify the key
+
+Confirm the key is valid and inspect its scopes before doing real work:
+
+<CodeGroup>
+
+```bash cURL
+curl https://app.runtm.com/auth/verify \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+resp = requests.get(
+    "https://app.runtm.com/auth/verify",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+info = resp.json()
+print(f"Key {info['key_id']} — scopes: {info['scopes']}")
+```
+
+```javascript JavaScript
+const resp = await fetch("https://app.runtm.com/auth/verify", {
+  headers: { Authorization: "Bearer runtm_xxx" },
+});
+const info = await resp.json();
+console.log(`Key ${info.key_id} — scopes: ${info.scopes}`);
+```
+
+</CodeGroup>
+
+A healthy response looks like:
+
+```json
+{
+  "valid": true,
+  "key_id": "1f3c5e2a-...",
+  "name": "ci-pipeline",
+  "scopes": ["sessions:read", "sessions:write", "sessions:prompt", "context:read"]
+}
+```
+
+If the key is expired or revoked, you get `401`:
+
+```json
+{ "detail": "Invalid or expired API key" }
+```
+
+## Use an organization key
+
+Organization keys have the org encoded on the key itself. You do not need to pass the org on every request. However, if you do send the `X-Organization-Id` header, it must match the key's org or the request fails with `403`.
+
+```bash
+curl https://app.runtm.com/api/sessions \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+| Key type | `X-Organization-Id` header | Behavior |
+|----------|---------------------------|----------|
+| Personal | Omit or absent | Operates on personal resources |
+| Personal | Set to any value | `403` — personal keys cannot act as an org |
+| Organization | Omit | Uses the key's org automatically |
+| Organization | Set to matching org | Works (redundant but harmless) |
+| Organization | Set to different org | `403` |
+
+## Scope hygiene
+
+Apply the principle of least privilege:
+
+- Give CI keys only `sessions:read`, `sessions:write`, and `sessions:prompt` — not `sessions:delete` or `sessions:terminal`
+- Monitoring dashboards need only `sessions:read` and `activity:read`
+- Only org admins or owners should use `templates:write`, `guardrails:write`, or `integrations:write`
+- Never share a single key across multiple services — create one key per consumer
+
+## Rotate a key
+
+Runtime does not have a built-in "rotate" button. Instead, follow this sequence:
+
+<Steps>
+  <Step title="Create a new key">
+    Create a new key with the same scopes and context. You now have two active keys.
+  </Step>
+
+  <Step title="Deploy the new key">
+    Update your CI secrets, environment variables, or secret manager to use the new key.
+  </Step>
+
+  <Step title="Verify the new key is working">
+    Confirm the new key produces successful requests in your logs.
+  </Step>
+
+  <Step title="Revoke the old key">
+    In the dashboard, revoke the old key. Revocation is immediate — any in-flight requests using the old key fail with `401`.
+  </Step>
+</Steps>
+
+<Note>
+A user may have at most **3 active keys** per context (personal + each org). Key creation is rate-limited to **5 keys per hour per user** across all contexts.
+</Note>
+
+## Revoke a key
+
+Navigate to **Settings > API Keys** in the dashboard and click **Revoke** next to the key. Revocation is immediate and permanent — the key ID is retained for audit but the key can never be used again.
+
+Revoke immediately when:
+
+- A key is committed to a public repository
+- A key is posted in a chat or document
+- A teammate with key access leaves the organization
+- A key is no longer needed
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Scopes & Permissions" icon="shield" href="/cloud-api/scopes">
+    Full scope catalog, role ceilings, and legacy expansion table.
+  </Card>
+  <Card title="Manage sessions at scale" icon="cube" href="/guides/managing-sessions-at-scale">
+    Use your key to create, poll, and manage sessions programmatically.
+  </Card>
+  <Card title="Best practices" icon="list-check" href="/guides/best-practices">
+    Key hygiene, lifecycle patterns, prompt design, and cost controls.
+  </Card>
+  <Card title="Authentication reference" icon="lock" href="/cloud-api/authentication">
+    Full API reference for Bearer auth and the X-Organization-Id header.
+  </Card>
+</CardGroup>

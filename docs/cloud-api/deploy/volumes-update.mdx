@@ -1,0 +1,125 @@
+---
+title: "Update Volumes"
+api: "PATCH /api/sessions/{session_id}/deploy/volumes"
+description: "Update persistent volume configuration for a session"
+---
+
+Replaces the session's persistent volume configuration. Volumes are stored in session metadata and merged into `runtm.yaml` by name at deploy time. Volume names must be unique within the request.
+
+**Required scope:** `deployments:write`
+
+## Path Parameters
+
+<ParamField path="session_id" type="string" required>
+  The session ID (UUID).
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string">
+  Scope to an organization.
+</ParamField>
+
+## Body
+
+<ParamField body="volumes" type="array" required>
+  List of volume specifications. Each volume must have a unique `name`.
+</ParamField>
+
+<ParamField body="volumes[].name" type="string" required>
+  Volume name (used as the identifier when merging into `runtm.yaml`).
+</ParamField>
+
+<ParamField body="volumes[].mount_path" type="string" required>
+  Mount path inside the container (e.g. `/data`).
+</ParamField>
+
+<ParamField body="volumes[].size_gb" type="integer" required>
+  Volume size in gigabytes.
+</ParamField>
+
+## Response
+
+<ResponseField name="volumes" type="array">
+  The updated list of volume specifications.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X PATCH "https://app.runtm.com/api/sessions/550e8400-e29b-41d4-a716-446655440000/deploy/volumes" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "volumes": [
+      {"name": "data", "mount_path": "/data", "size_gb": 1},
+      {"name": "uploads", "mount_path": "/app/uploads", "size_gb": 3}
+    ]
+  }'
+```
+
+```python Python
+import requests
+
+response = requests.patch(
+    "https://app.runtm.com/api/sessions/550e8400-e29b-41d4-a716-446655440000/deploy/volumes",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "Content-Type": "application/json",
+    },
+    json={
+        "volumes": [
+            {"name": "data", "mount_path": "/data", "size_gb": 1},
+            {"name": "uploads", "mount_path": "/app/uploads", "size_gb": 3},
+        ]
+    },
+)
+
+data = response.json()
+print(f"Updated {len(data['volumes'])} volumes")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/sessions/550e8400-e29b-41d4-a716-446655440000/deploy/volumes",
+  {
+    method: "PATCH",
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      volumes: [
+        { name: "data", mount_path: "/data", size_gb: 1 },
+        { name: "uploads", mount_path: "/app/uploads", size_gb: 3 },
+      ],
+    }),
+  }
+);
+
+const data = await response.json();
+console.log(`Updated ${data.volumes.length} volumes`);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "volumes": [
+    {
+      "name": "data",
+      "mount_path": "/data",
+      "size_gb": 1
+    },
+    {
+      "name": "uploads",
+      "mount_path": "/app/uploads",
+      "size_gb": 3
+    }
+  ]
+}
+```
+</ResponseExample>

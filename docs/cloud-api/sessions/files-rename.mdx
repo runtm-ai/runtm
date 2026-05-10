@@ -1,0 +1,95 @@
+---
+title: "Rename File"
+api: "POST /api/sessions/{session_id}/file/rename"
+description: "Rename or move a file within the sandbox"
+---
+
+Renames or moves a file from one path to another within the sandbox.
+
+**Required scope:** `sessions:write`
+
+## Path Parameters
+
+<ParamField path="session_id" type="string" required>
+  The session ID (e.g. `ses_abc123`).
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+## Body
+
+<ParamField body="old_path" type="string" required>
+  Current file path (e.g. `/src/utils.ts`).
+</ParamField>
+
+<ParamField body="new_path" type="string" required>
+  New file path (e.g. `/src/helpers.ts`).
+</ParamField>
+
+## Response
+
+<ResponseField name="old_path" type="string">
+  Previous file path.
+</ResponseField>
+
+<ResponseField name="new_path" type="string">
+  New file path.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/sessions/ses_abc123/file/rename" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{"old_path": "/src/utils.ts", "new_path": "/src/helpers.ts"}'
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://app.runtm.com/api/sessions/ses_abc123/file/rename",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "Content-Type": "application/json",
+    },
+    json={"old_path": "/src/utils.ts", "new_path": "/src/helpers.ts"},
+)
+
+data = response.json()
+print(f"Renamed {data['old_path']} → {data['new_path']}")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/sessions/ses_abc123/file/rename",
+  {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      old_path: "/src/utils.ts",
+      new_path: "/src/helpers.ts",
+    }),
+  }
+);
+
+const data = await response.json();
+console.log(`Renamed ${data.old_path} → ${data.new_path}`);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "old_path": "/src/utils.ts",
+  "new_path": "/src/helpers.ts"
+}
+```
+</ResponseExample>

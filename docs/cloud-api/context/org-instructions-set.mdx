@@ -1,0 +1,98 @@
+---
+title: "Set Org Instructions"
+api: "PUT /api/organizations/{org_id}/instructions"
+description: "Set or clear the custom instructions for an organization."
+---
+
+Sets the organization's shared custom instructions that apply to all members. Pass `null` to clear.
+
+**Required scope:** `context:write`
+
+<Note>The `X-Organization-Id` header must match the `org_id` path parameter.</Note>
+
+<ParamField path="org_id" type="string" required>
+  The organization ID.
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. `Authorization: Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  Must match the `org_id` path parameter.
+</ParamField>
+
+<ParamField body="instructions" type="string" required>
+  The custom instructions text. Pass `null` to clear.
+</ParamField>
+
+<ResponseField name="organization_id" type="string">
+  The organization ID.
+</ResponseField>
+
+<ResponseField name="instructions" type="string">
+  The updated instructions text. Null if cleared.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  ISO 8601 timestamp of the update.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X PUT "https://app.runtm.com/api/organizations/org_abc123/instructions" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "instructions": "Use our internal design system. Follow the coding standards in CONTRIBUTING.md."
+  }'
+```
+
+```python Python
+import requests
+
+org_id = "org_abc123"
+
+resp = requests.put(
+    f"https://app.runtm.com/api/organizations/{org_id}/instructions",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": org_id,
+        "Content-Type": "application/json",
+    },
+    json={"instructions": "Use our internal design system. Follow the coding standards in CONTRIBUTING.md."},
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const orgId = "org_abc123";
+
+const resp = await fetch(
+  `https://app.runtm.com/api/organizations/${orgId}/instructions`,
+  {
+    method: "PUT",
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": orgId,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      instructions: "Use our internal design system. Follow the coding standards in CONTRIBUTING.md.",
+    }),
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "organization_id": "org_abc123",
+  "instructions": "Use our internal design system. Follow the coding standards in CONTRIBUTING.md.",
+  "updated_at": "2026-05-09T18:00:00Z"
+}
+```
+</ResponseExample>

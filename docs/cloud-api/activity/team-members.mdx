@@ -1,0 +1,123 @@
+---
+title: "Team Members"
+api: "GET /api/sessions/telemetry/team/members"
+description: "Per-member usage breakdown for the organization."
+---
+
+Returns usage statistics broken down by individual team member, including sessions, prompts, cost, and last active timestamp.
+
+**Required scope:** `activity:read`
+
+<Note>Requires organization context via the `X-Organization-Id` header.</Note>
+
+<ParamField query="days" type="integer" default="30">
+  Number of days to look back. Range: 1–365.
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization to get member breakdown for.
+</ParamField>
+
+<ResponseField name="members" type="TeamMemberStats[]" required>
+  Array of per-member usage stats.
+</ResponseField>
+
+<ResponseField name="members[].user_id" type="string" required>
+  User ID.
+</ResponseField>
+
+<ResponseField name="members[].name" type="string">
+  Display name.
+</ResponseField>
+
+<ResponseField name="members[].email" type="string">
+  Email address.
+</ResponseField>
+
+<ResponseField name="members[].sessions" type="integer" required>
+  Number of sessions created.
+</ResponseField>
+
+<ResponseField name="members[].prompts" type="integer" required>
+  Number of prompts sent.
+</ResponseField>
+
+<ResponseField name="members[].cost_usd" type="number" required>
+  Total cost in USD.
+</ResponseField>
+
+<ResponseField name="members[].last_active_at" type="string">
+  ISO 8601 timestamp of last activity.
+</ResponseField>
+
+<ResponseField name="total_members" type="integer" required>
+  Total number of active members.
+</ResponseField>
+
+<ResponseField name="period_days" type="integer" required>
+  Number of days covered.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/sessions/telemetry/team/members?days=30" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+resp = requests.get(
+    "https://app.runtm.com/api/sessions/telemetry/team/members",
+    params={"days": 30},
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  "https://app.runtm.com/api/sessions/telemetry/team/members?days=30",
+  {
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "members": [
+    {
+      "user_id": "usr_abc",
+      "name": "Alice",
+      "email": "alice@example.com",
+      "sessions": 15,
+      "prompts": 120,
+      "cost_usd": 4.80,
+      "last_active_at": "2026-05-09T18:00:00Z"
+    },
+    {
+      "user_id": "usr_def",
+      "name": "Bob",
+      "email": "bob@example.com",
+      "sessions": 8,
+      "prompts": 65,
+      "cost_usd": 2.60,
+      "last_active_at": "2026-05-08T14:30:00Z"
+    }
+  ],
+  "total_members": 2,
+  "period_days": 30
+}
+```
+</ResponseExample>

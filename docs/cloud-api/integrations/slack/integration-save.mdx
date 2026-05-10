@@ -1,0 +1,141 @@
+---
+title: "Save Integration"
+api: "POST /api/v1/slack/integration"
+description: "Save or update the Slack integration configuration."
+---
+
+Creates or updates the Slack integration for the active organization. For self-hosted setups, provide the bot token and signing secret. For settings-only updates on an existing integration, pass `"__unchanged__"` as the `bot_token`.
+
+Requires org admin role.
+
+**Required scope:** `integrations:write`
+
+<Note>Requires organization context via the `X-Organization-Id` header.</Note>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization to configure.
+</ParamField>
+
+<ParamField body="bot_token" type="string" required>
+  Slack Bot User OAuth Token (`xoxb-...`). Use `"__unchanged__"` for settings-only updates.
+</ParamField>
+
+<ParamField body="signing_secret" type="string" required>
+  Slack App Signing Secret. Min 10 characters.
+</ParamField>
+
+<ParamField body="service_user_id" type="string" required>
+  Runtime user ID for the service account that runs agent sessions.
+</ParamField>
+
+<ParamField body="default_template" type="string">
+  Default sandbox template.
+</ParamField>
+
+<ParamField body="default_github_repo" type="string">
+  Default GitHub repo (`owner/repo`).
+</ParamField>
+
+<ParamField body="default_agent" type="string" default="claude-code">
+  Default coding agent.
+</ParamField>
+
+<ParamField body="rate_limit_per_hour" type="integer" default="30">
+  Maximum agent launches per hour. Range: 1–100.
+</ParamField>
+
+<ParamField body="channel_repo_map" type="object">
+  Channel ID to GitHub repo mapping.
+</ParamField>
+
+<ResponseField name="connected" type="boolean" required>
+  Always `true` for a successful save.
+</ResponseField>
+
+<ResponseField name="team_name" type="string">
+  Slack workspace name.
+</ResponseField>
+
+<ResponseField name="enabled" type="boolean" required>
+  Whether the integration is enabled.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/v1/slack/integration" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "bot_token": "xoxb-xxxx-xxxx-xxxx",
+    "signing_secret": "abc123def456ghi",
+    "service_user_id": "usr_xyz",
+    "default_agent": "claude-code",
+    "rate_limit_per_hour": 30
+  }'
+```
+
+```python Python
+import requests
+
+resp = requests.post(
+    "https://app.runtm.com/api/v1/slack/integration",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+        "Content-Type": "application/json",
+    },
+    json={
+        "bot_token": "xoxb-xxxx-xxxx-xxxx",
+        "signing_secret": "abc123def456ghi",
+        "service_user_id": "usr_xyz",
+        "default_agent": "claude-code",
+        "rate_limit_per_hour": 30,
+    },
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  "https://app.runtm.com/api/v1/slack/integration",
+  {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      bot_token: "xoxb-xxxx-xxxx-xxxx",
+      signing_secret: "abc123def456ghi",
+      service_user_id: "usr_xyz",
+      default_agent: "claude-code",
+      rate_limit_per_hour: 30,
+    }),
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "connected": true,
+  "connection_type": "manual",
+  "managed_app_available": true,
+  "team_name": "Acme Corp",
+  "bot_user_id": "U01ABC123",
+  "service_user_id": "usr_xyz",
+  "default_template": null,
+  "default_github_repo": null,
+  "default_agent": "claude-code",
+  "rate_limit_per_hour": 30,
+  "enabled": true,
+  "interactivity_confirmed": true,
+  "channel_repo_map": null,
+  "service_account_health": { "healthy": true, "issues": [] }
+}
+```
+</ResponseExample>

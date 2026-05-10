@@ -1,0 +1,112 @@
+---
+title: "List Directive Attachments"
+api: "GET /agent-directives/{directive_id}/attachments"
+description: "List the repositories a directive is attached to"
+---
+
+Returns the list of repository attachments for a directive. Attachments determine which repos the directive applies to when sessions start with that repo as their primary.
+
+<Info>Required scope: `context:read`</Info>
+
+<Note>
+Agent directives are **organization-scoped**. The request must include `X-Organization-Id` (or use an org-scoped API key).
+</Note>
+
+## Path Parameters
+
+<ParamField path="directive_id" type="string" required>
+  Directive id.
+</ParamField>
+
+## Headers
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization context.
+</ParamField>
+
+## Response
+
+<ResponseField name="attachments" type="array">
+  Attachment records.
+  <Expandable title="DirectiveAttachmentResource">
+    <ResponseField name="id" type="string">
+      Attachment id.
+    </ResponseField>
+    <ResponseField name="directive_id" type="string">
+      Owning directive id.
+    </ResponseField>
+    <ResponseField name="directive_version" type="integer">
+      Directive version this attachment was recorded against.
+    </ResponseField>
+    <ResponseField name="repo_full_name" type="string">
+      Repository full name (`owner/name`), or `null` when `applies_to_all` is true.
+    </ResponseField>
+    <ResponseField name="applies_to_all" type="boolean">
+      True if the directive applies to every repo in the org (no specific list).
+    </ResponseField>
+    <ResponseField name="position" type="integer">
+      Stable ordering position within the attachment list.
+    </ResponseField>
+    <ResponseField name="created_at" type="string">
+      ISO 8601 creation timestamp.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "https://app.runtm.com/api/agent-directives/dir_aaa/attachments" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_456"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/agent-directives/dir_aaa/attachments",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_456",
+    },
+)
+
+for a in response.json()["attachments"]:
+    print(a.get("repo_full_name") or "(applies to all)")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/agent-directives/dir_aaa/attachments",
+  {
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "X-Organization-Id": "org_456",
+    },
+  }
+);
+
+const data = await response.json();
+for (const a of data.attachments) {
+  console.log(a.repo_full_name ?? "(applies to all)");
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "attachments": [
+    {
+      "id": "attach_001",
+      "directive_id": "dir_aaa",
+      "directive_version": 3,
+      "repo_full_name": "acme-corp/backend",
+      "applies_to_all": false,
+      "position": 0,
+      "created_at": "2026-04-15T00:00:00Z"
+    }
+  ]
+}
+```
+</ResponseExample>

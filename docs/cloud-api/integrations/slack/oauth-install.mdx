@@ -1,0 +1,68 @@
+---
+title: "OAuth Install URL"
+api: "GET /api/v1/slack/oauth/install-url"
+description: "Get the Slack OAuth URL to install the managed Runtime app."
+---
+
+Returns the Slack OAuth authorization URL for the managed Runtime app. After the user authorizes on Slack, they are redirected back to complete the integration setup.
+
+Requires `SLACK_CLIENT_ID` to be configured.
+
+**Required scope:** `integrations:write`
+
+<Note>Requires organization context via the `X-Organization-Id` header.</Note>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization to install the integration for.
+</ParamField>
+
+<ParamField query="dev_proxy_url" type="string">
+  Optional. Dev server URL for OAuth proxy redirect during local development.
+</ParamField>
+
+<ResponseField name="url" type="string" required>
+  Slack OAuth authorization URL. Redirect the user here.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/v1/slack/oauth/install-url" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+resp = requests.get(
+    "https://app.runtm.com/api/v1/slack/oauth/install-url",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+data = resp.json()
+print(f"Redirect user to: {data['url']}")
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  "https://app.runtm.com/api/v1/slack/oauth/install-url",
+  {
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  }
+);
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "url": "https://slack.com/oauth/v2/authorize?client_id=xxx&scope=app_mentions:read,chat:write,channels:read,...&redirect_uri=...&state=..."
+}
+```
+</ResponseExample>

@@ -1,0 +1,169 @@
+---
+title: "Create Session"
+api: "POST /api/sessions"
+description: "Create a new cloud session with a coding agent"
+---
+
+Creates a new cloud session backed by a sandbox environment. The session starts in a `pending` state and transitions to `active` once the sandbox is provisioned.
+
+**Required scope:** `sessions:write`
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string">
+  Scope the session to an organization.
+</ParamField>
+
+## Body
+
+<ParamField body="agent" type="string" required>
+  Coding agent to use: `claude-code`, `codex`, `cursor`, `gemini`, etc.
+</ParamField>
+
+<ParamField body="template_id" type="string">
+  Template ID to initialize the session from.
+</ParamField>
+
+<ParamField body="name" type="string">
+  Display name for the session.
+</ParamField>
+
+<ParamField body="visibility" type="string" default="private">
+  Session visibility: `private` or `team`.
+</ParamField>
+
+<ParamField body="env_vars" type="object">
+  Key-value pairs of environment variables to inject into the sandbox.
+</ParamField>
+
+## Response
+
+Returns `201` with the created session object.
+
+<ResponseField name="id" type="string">
+  Session ID (e.g. `ses_abc123`).
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Display name.
+</ResponseField>
+
+<ResponseField name="state" type="string">
+  Session state: `active`, `paused`, or `destroyed`.
+</ResponseField>
+
+<ResponseField name="agent" type="string">
+  Coding agent assigned to the session.
+</ResponseField>
+
+<ResponseField name="template_id" type="string | null">
+  Template used to initialize the session.
+</ResponseField>
+
+<ResponseField name="sandbox_url" type="string">
+  URL of the sandbox environment.
+</ResponseField>
+
+<ResponseField name="visibility" type="string">
+  Session visibility.
+</ResponseField>
+
+<ResponseField name="user_id" type="string">
+  Owner user ID.
+</ResponseField>
+
+<ResponseField name="organization_id" type="string | null">
+  Organization the session belongs to.
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  ISO 8601 creation timestamp.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string | null">
+  ISO 8601 last update timestamp.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/sessions" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent": "claude-code",
+    "name": "API refactor",
+    "visibility": "team",
+    "env_vars": {
+      "NODE_ENV": "development"
+    }
+  }'
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://app.runtm.com/api/sessions",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+        "Content-Type": "application/json",
+    },
+    json={
+        "agent": "claude-code",
+        "name": "API refactor",
+        "visibility": "team",
+        "env_vars": {"NODE_ENV": "development"},
+    },
+)
+
+session = response.json()
+print(f"Created session: {session['id']} at {session['sandbox_url']}")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/sessions",
+  {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      agent: "claude-code",
+      name: "API refactor",
+      visibility: "team",
+      env_vars: { NODE_ENV: "development" },
+    }),
+  }
+);
+
+const session = await response.json();
+console.log(`Created session: ${session.id} at ${session.sandbox_url}`);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 201
+{
+  "id": "ses_abc123",
+  "name": "API refactor",
+  "state": "active",
+  "agent": "claude-code",
+  "template_id": null,
+  "sandbox_url": "https://ses-abc123.runtm.dev",
+  "visibility": "team",
+  "user_id": "user_xyz",
+  "organization_id": "org_abc123",
+  "created_at": "2026-05-09T21:00:00Z",
+  "updated_at": null
+}
+```
+</ResponseExample>

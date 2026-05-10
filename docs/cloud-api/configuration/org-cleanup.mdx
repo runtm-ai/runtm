@@ -1,0 +1,120 @@
+---
+title: "Cleanup Organization"
+api: "DELETE /api/organizations/{org_id}/cleanup"
+description: "Tidy up resources left behind after an organization has been deleted. Converts org-scoped sessions and keys to personal mode and removes shared preferences and team secrets."
+---
+
+<Info>
+  Required scope: `guardrails:write`
+</Info>
+
+<Warning>
+  Call this **after** the organization has been deleted via the
+  authentication system. The endpoint does not delete the organization
+  itself; it only tidies up data that previously referenced the org.
+</Warning>
+
+The endpoint:
+
+1. Converts all org-scoped sessions to **personal mode** (`organization_id`
+   becomes `null`). Sessions remain owned by the user who created them.
+2. Converts all org-scoped API keys to personal mode owned by the user
+   who originally created them.
+3. Deletes the organization's preferences (instructions, limits,
+   allowlist policy, provider keys).
+4. Hard-deletes all team secrets and any personal-in-org secrets stored
+   against this organization.
+
+The operation is idempotent: calling it again on an already-cleaned org
+returns zeros for the conversion counts and `false` for `preferences_deleted`.
+
+<Note>
+  Existing snapshots, deployments, and external integrations are not
+  modified. The objective is to prevent orphaned `organization_id` references
+  inside Runtime; downstream consumers should be cleaned up separately.
+</Note>
+
+## Path Parameters
+
+<ParamField path="org_id" type="string" required>
+  Organization ID that was just deleted.
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  `Bearer <your_api_key>`
+</ParamField>
+
+## Response
+
+<ResponseField name="organization_id" type="string">
+  Echo of the path `org_id`.
+</ResponseField>
+
+<ResponseField name="sessions_converted" type="integer">
+  Number of sessions whose `organization_id` was nulled.
+</ResponseField>
+
+<ResponseField name="keys_converted" type="integer">
+  Number of API keys whose `organization_id` was nulled.
+</ResponseField>
+
+<ResponseField name="preferences_deleted" type="boolean">
+  `true` when the organization preferences row was removed; `false` when no
+  row existed (already cleaned).
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE "https://app.runtm.com/api/organizations/org_abc123/cleanup" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+response = requests.delete(
+    "https://app.runtm.com/api/organizations/org_abc123/cleanup",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+print(response.json())
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/organizations/org_abc123/cleanup",
+  {
+    method: "DELETE",
+    headers: { Authorization: "Bearer runtm_xxx" },
+  },
+);
+console.log(await response.json());
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "organization_id": "org_abc123",
+  "sessions_converted": 4,
+  "keys_converted": 2,
+  "preferences_deleted": true
+}
+```
+
+```json 200 (already clean)
+{
+  "organization_id": "org_abc123",
+  "sessions_converted": 0,
+  "keys_converted": 0,
+  "preferences_deleted": false
+}
+```
+
+```json 401
+{
+  "detail": "Invalid or expired API key"
+}
+```
+</ResponseExample>

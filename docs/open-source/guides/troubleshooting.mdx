@@ -1,0 +1,253 @@
+---
+title: Troubleshooting
+description: "Common issues and how to fix them"
+---
+
+Quick solutions to common problems.
+
+## CLI issues
+
+<AccordionGroup>
+  <Accordion title="Command not found: runtm">
+    The CLI isn't in your PATH. Reinstall:
+    ```bash
+    uv tool install runtm --force
+    ```
+    Or with pipx:
+    ```bash
+    pipx install runtm --force
+    ```
+  </Accordion>
+  
+  <Accordion title="Authentication failed">
+    Check your setup:
+    ```bash
+    runtm doctor
+    ```
+    Re-authenticate:
+    ```bash
+    runtm logout
+    runtm login
+    ```
+  </Accordion>
+  
+  <Accordion title="Invalid API key format">
+    Keys should start with `runtm_`. Get a new key from [app.runtm.com](https://app.runtm.com).
+  </Accordion>
+  
+  <Accordion title="Connection refused">
+    If self-hosting, check your API URL:
+    ```bash
+    echo $RUNTM_API_URL
+    curl $RUNTM_API_URL/health
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Deploy issues
+
+<AccordionGroup>
+  <Accordion title="Missing lockfile">
+    Auto-fix lockfiles:
+    ```bash
+    runtm fix
+    runtm deploy
+    ```
+    Or skip the prompt:
+    ```bash
+    runtm deploy --yes
+    ```
+  </Accordion>
+  
+  <Accordion title="Missing required environment variable">
+    Set the missing secret:
+    ```bash
+    runtm secrets list           # See what's missing
+    runtm secrets set KEY=value
+    runtm deploy
+    ```
+  </Accordion>
+  
+  <Accordion title="Artifact too large">
+    Check what's being included:
+    ```bash
+    du -sh .
+    ```
+    Add large files to `.gitignore`. Max artifact size is 20MB.
+  </Accordion>
+  
+  <Accordion title="Build timeout">
+    Builds have a 10-minute limit. Common causes:
+    - Too many dependencies
+    - Large assets being processed
+    - Network issues during package install
+    
+    Try a higher tier:
+    ```bash
+    runtm deploy --tier standard
+    ```
+  </Accordion>
+  
+  <Accordion title="Health check failed">
+    Your app must respond HTTP 200 at `/health` (or custom `health_path`).
+    
+    Test locally:
+    ```bash
+    runtm run
+    curl http://localhost:8080/health
+    ```
+    
+    Check logs:
+    ```bash
+    runtm logs <id> --type deploy
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Runtime issues
+
+<AccordionGroup>
+  <Accordion title="App crashes on startup">
+    Check runtime logs:
+    ```bash
+    runtm logs <id> --type runtime
+    ```
+    Common causes:
+    - Missing environment variables
+    - Wrong port (should match manifest)
+    - Unhandled exceptions during init
+  </Accordion>
+  
+  <Accordion title="Out of memory">
+    Upgrade to a higher tier:
+    ```bash
+    runtm deploy --tier standard   # 512MB
+    runtm deploy --tier performance # 1GB
+    ```
+  </Accordion>
+  
+  <Accordion title="Database connection errors">
+    If using `features.database: true`:
+    - Ensure your app connects to `sqlite:///data/app.db`
+    - The `/data` directory is mounted automatically
+    - Check for file permission issues in logs
+  </Accordion>
+  
+  <Accordion title="Slow cold starts">
+    Apps in suspended state take ~1-2 seconds to wake. To reduce this:
+    - Minimize startup work
+    - Use lazy loading for heavy dependencies
+    - Consider `performance` tier for faster cold starts
+  </Accordion>
+</AccordionGroup>
+
+## Self-hosting issues
+
+<AccordionGroup>
+  <Accordion title="Port already in use">
+    Find what's using the port:
+    ```bash
+    lsof -i :8000
+    lsof -i :5432
+    ```
+    Stop the conflicting process or use a `docker-compose.override.yml` to change ports.
+  </Accordion>
+  
+  <Accordion title="Database connection failed">
+    Check PostgreSQL is running:
+    ```bash
+    docker compose -f infra/docker-compose.yml ps postgres
+    docker compose -f infra/docker-compose.yml logs postgres
+    ```
+  </Accordion>
+  
+  <Accordion title="Worker not processing jobs">
+    Check worker logs:
+    ```bash
+    ./scripts/dev.sh logs worker
+    ```
+    Verify:
+    - `FLY_API_TOKEN` is set in `.env`
+    - Redis is running
+    - API is healthy
+  </Accordion>
+  
+  <Accordion title="Migrations not running">
+    Migrations run on API startup. To run manually:
+    ```bash
+    ./scripts/dev.sh migrate
+    ```
+    Or inside container:
+    ```bash
+    docker compose -f infra/docker-compose.yml exec api alembic upgrade head
+    ```
+  </Accordion>
+  
+  <Accordion title="FLY_API_TOKEN errors">
+    Use a Personal Access Token, not a deploy token:
+    ```bash
+    fly auth token
+    ```
+    Deploy tokens (`fly tokens create deploy`) don't have Logs API access.
+  </Accordion>
+</AccordionGroup>
+
+## Validation errors
+
+<AccordionGroup>
+  <Accordion title="Invalid manifest">
+    Validate your `runtm.yaml`:
+    ```bash
+    runtm validate
+    ```
+    Common issues:
+    - Missing required fields (`name`, `template`, `runtime`)
+    - Invalid template name
+    - Malformed YAML
+  </Accordion>
+  
+  <Accordion title="Secret with default value">
+    Secrets can't have defaults. Fix in `runtm.yaml`:
+    ```yaml
+    # Wrong
+    - name: API_KEY
+      secret: true
+      default: "xxx"
+    
+    # Correct
+    - name: API_KEY
+      secret: true
+      required: true
+    ```
+  </Accordion>
+  
+  <Accordion title="Missing Dockerfile">
+    Each template requires a `Dockerfile`. If missing:
+    ```bash
+    runtm init <template> --force
+    ```
+    This regenerates the template files.
+  </Accordion>
+</AccordionGroup>
+
+## Getting help
+
+If you're still stuck:
+
+1. **Check logs** - Most issues are visible in logs:
+   ```bash
+   runtm logs <id> --type build
+   runtm logs <id> --type deploy
+   runtm logs <id> --type runtime
+   ```
+
+2. **Run diagnostics**:
+   ```bash
+   runtm doctor
+   runtm validate
+   ```
+
+3. **Search the docs** - Use the search bar above
+
+4. **Open an issue** - [github.com/runtm-ai/runtm/issues](https://github.com/runtm-ai/runtm/issues)
+

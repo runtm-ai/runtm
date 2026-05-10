@@ -1,0 +1,82 @@
+---
+title: "Rate Limits"
+description: "API rate limiting and throttling"
+---
+
+The API enforces rate limits per API key to ensure fair usage and platform stability. Limits are applied on a sliding window basis.
+
+## Default limits
+
+| Tier | Requests per minute | Burst |
+|------|-------------------|-------|
+| Standard | 100 | 20 |
+| High-volume (on request) | 500 | 50 |
+
+Limits are applied per API key, not per user. If you have multiple keys, each has its own quota.
+
+## Rate limit headers
+
+Every response includes rate limit metadata so you can track your consumption:
+
+| Header | Description |
+|--------|-------------|
+| `X-RateLimit-Limit` | Maximum requests allowed in the current window. |
+| `X-RateLimit-Remaining` | Requests remaining in the current window. |
+| `X-RateLimit-Reset` | Unix timestamp (seconds) when the window resets. |
+
+## Handling 429 responses
+
+When you exceed the limit, the API returns `429 Too Many Requests` with a `Retry-After` header:
+
+```
+HTTP/1.1 429 Too Many Requests
+Retry-After: 15
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: 1748052600
+Content-Type: application/json
+```
+
+```json
+{
+  "detail": "Rate limit exceeded. Retry after 15 seconds."
+}
+```
+
+Wait the number of seconds specified in `Retry-After` before retrying.
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="Use exponential backoff">
+    When you receive a 429, don't retry immediately. Wait `Retry-After` seconds on the first retry, then double the wait on subsequent retries up to a maximum (e.g. 60 seconds).
+
+    ```python
+    import time
+    import requests
+
+    def request_with_backoff(url, headers, max_retries=3):
+        for attempt in range(max_retries):
+            response = requests.get(url, headers=headers)
+            if response.status_code != 429:
+                return response
+
+            retry_after = int(response.headers.get("Retry-After", 2 ** attempt))
+            time.sleep(min(retry_after, 60))
+
+        return response
+    ```
+  </Accordion>
+
+  <Accordion title="Cache responses">
+    Cache responses that don't change frequently — session lists, template configs, org settings. Use `Cache-Control` or a local TTL to avoid unnecessary requests.
+  </Accordion>
+
+  <Accordion title="Batch operations">
+    Instead of making one request per resource, use list endpoints with filters and pagination. A single `GET /api/sessions?limit=100` replaces 100 individual `GET /api/sessions/{id}` calls.
+  </Accordion>
+
+  <Accordion title="Monitor your usage">
+    Check `X-RateLimit-Remaining` in responses proactively. If you are consistently running close to the limit, consider requesting a higher tier or optimizing your request patterns.
+  </Accordion>
+</AccordionGroup>

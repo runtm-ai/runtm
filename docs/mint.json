@@ -1,6 +1,6 @@
 {
   "$schema": "https://mintlify.com/schema.json",
-  "name": "Runtm",
+  "name": "Runtime",
   "logo": {
     "dark": "/images/logo-dark.svg",
     "light": "/images/logo-light.svg"
@@ -38,24 +38,24 @@
   },
   "tabs": [
     {
-      "name": "Guides",
+      "name": "Documentation",
       "url": "/",
       "icon": "book-open"
     },
     {
+      "name": "Guides",
+      "url": "guides",
+      "icon": "graduation-cap"
+    },
+    {
       "name": "API Reference",
-      "url": "api",
+      "url": "cloud-api",
       "icon": "code"
     },
     {
-      "name": "CLI",
-      "url": "cli",
-      "icon": "terminal"
-    },
-    {
-      "name": "Self-Hosting",
-      "url": "self-hosting",
-      "icon": "server"
+      "name": "Open Source",
+      "url": "open-source",
+      "icon": "box-open"
     }
   ],
   "anchors": [
@@ -63,11 +63,6 @@
       "name": "GitHub",
       "icon": "github",
       "url": "https://github.com/runtm-ai/runtm"
-    },
-    {
-      "name": "Discord",
-      "icon": "discord",
-      "url": "https://discord.com/invite/JUuCkUKc"
     }
   ],
   "navigation": [
@@ -79,108 +74,388 @@
       ]
     },
     {
-      "group": "Templates",
+      "group": "Concepts",
       "pages": [
-        "templates/overview",
-        "templates/backend-service",
-        "templates/static-site",
-        "templates/web-app",
-        "templates/docker"
-      ]
-    },
-    {
-      "group": "Features",
-      "pages": [
-        "features/machine-tiers",
-        "features/secrets",
-        "features/database",
-        "features/auth",
-        "features/custom-domains"
-      ]
-    },
-    {
-      "group": "Guides",
-      "pages": [
-        "guides/agent-workflow",
-        "guides/discovery",
-        "guides/logs-debugging",
-        "guides/troubleshooting"
+        "concepts/sessions",
+        "concepts/coding-agents",
+        "concepts/agents",
+        "concepts/templates",
+        "concepts/context",
+        "concepts/skills",
+        "concepts/guardrails",
+        "concepts/deployments",
+        "concepts/integrations",
+        "concepts/organizations",
+        "concepts/observability",
+        "concepts/real-time"
       ]
     },
     {
       "group": "API Reference",
       "pages": [
-        "api/overview"
+        "cloud-api/overview",
+        "cloud-api/authentication",
+        "cloud-api/authentication/verify",
+        "cloud-api/scopes",
+        "cloud-api/errors",
+        "cloud-api/rate-limits",
+        "cloud-api/conventions"
       ]
     },
     {
-      "group": "Deployments",
+      "group": "Sessions",
       "pages": [
-        "api/deployments/list",
-        "api/deployments/create",
-        "api/deployments/get",
-        "api/deployments/delete",
-        "api/deployments/search"
+        "cloud-api/sessions/list",
+        "cloud-api/sessions/create",
+        "cloud-api/sessions/get",
+        "cloud-api/sessions/delete",
+        "cloud-api/sessions/rename",
+        "cloud-api/sessions/visibility",
+        "cloud-api/sessions/pause",
+        "cloud-api/sessions/resume",
+        "cloud-api/sessions/start",
+        "cloud-api/sessions/collaborators",
+        "cloud-api/sessions/heartbeat",
+        "cloud-api/sessions/workspace-state",
+        "cloud-api/sessions/files-list",
+        "cloud-api/sessions/files-read",
+        "cloud-api/sessions/files-write",
+        "cloud-api/sessions/files-delete",
+        "cloud-api/sessions/files-rename",
+        "cloud-api/sessions/files-mkdir",
+        "cloud-api/sessions/files-search",
+        "cloud-api/sessions/files-upload",
+        "cloud-api/sessions/files-download",
+        "cloud-api/sessions/run-server",
+        "cloud-api/sessions/env-vars-get",
+        "cloud-api/sessions/env-vars-set",
+        "cloud-api/sessions/env-vars-delete",
+        "cloud-api/sessions/detected-env-vars",
+        "cloud-api/sessions/detect-env-vars",
+        "cloud-api/sessions/prompt",
+        "cloud-api/sessions/prompt-cancel",
+        "cloud-api/sessions/prompt-rewind",
+        "cloud-api/sessions/history",
+        "cloud-api/sessions/events",
+        "cloud-api/sessions/instructions-get",
+        "cloud-api/sessions/instructions-set",
+        "cloud-api/sessions/git-clone",
+        "cloud-api/sessions/git-operation",
+        "cloud-api/sessions/git-sync"
       ]
     },
     {
-      "group": "Logs",
+      "group": "Deploy",
       "pages": [
-        "api/logs"
+        "cloud-api/deploy/info",
+        "cloud-api/deploy/scaffold",
+        "cloud-api/deploy/validate",
+        "cloud-api/deploy/preflight",
+        "cloud-api/deploy/run",
+        "cloud-api/deploy/volumes-get",
+        "cloud-api/deploy/volumes-update"
       ]
     },
     {
-      "group": "Domains",
+      "group": "Templates",
       "pages": [
-        "api/domains/add",
-        "api/domains/get",
-        "api/domains/remove"
+        "cloud-api/templates/list",
+        "cloud-api/templates/repos",
+        "cloud-api/templates/get",
+        "cloud-api/templates/create",
+        "cloud-api/templates/update-config",
+        "cloud-api/templates/delete",
+        "cloud-api/templates/build",
+        "cloud-api/templates/build-logs",
+        "cloud-api/templates/build-logs-history",
+        "cloud-api/templates/secrets-list",
+        "cloud-api/templates/secrets-update",
+        "cloud-api/templates/secret-delete",
+        "cloud-api/templates/fix-session",
+        "cloud-api/templates/save-snapshot"
       ]
     },
     {
-      "group": "User",
+      "group": "Secrets",
       "pages": [
-        "api/user/me"
+        "cloud-api/secrets/personal-list",
+        "cloud-api/secrets/personal-set",
+        "cloud-api/secrets/personal-delete",
+        "cloud-api/secrets/team-list",
+        "cloud-api/secrets/team-set",
+        "cloud-api/secrets/team-delete",
+        "cloud-api/secrets/resolved"
+      ]
+    },
+    {
+      "group": "Context",
+      "pages": [
+        "cloud-api/context/user-instructions-get",
+        "cloud-api/context/user-instructions-set",
+        "cloud-api/context/org-instructions-get",
+        "cloud-api/context/org-instructions-set",
+        "cloud-api/context/skills/list",
+        "cloud-api/context/skills/create",
+        "cloud-api/context/skills/get",
+        "cloud-api/context/skills/patch",
+        "cloud-api/context/skills/delete",
+        "cloud-api/context/skills/version",
+        "cloud-api/context/skills/publish",
+        "cloud-api/context/skills/resync",
+        "cloud-api/context/skills/presign-upload",
+        "cloud-api/context/skills/discover-in-repo",
+        "cloud-api/context/skills/import",
+        "cloud-api/context/skills/attachments-list",
+        "cloud-api/context/skills/attachments-replace"
+      ]
+    },
+    {
+      "group": "Knowledge",
+      "pages": [
+        "cloud-api/context/knowledge/catalog",
+        "cloud-api/context/knowledge/list",
+        "cloud-api/context/knowledge/create",
+        "cloud-api/context/knowledge/get",
+        "cloud-api/context/knowledge/patch",
+        "cloud-api/context/knowledge/rotate",
+        "cloud-api/context/knowledge/test",
+        "cloud-api/context/knowledge/delete",
+        "cloud-api/context/knowledge/oauth-install"
+      ]
+    },
+    {
+      "group": "Guardrails",
+      "pages": [
+        "cloud-api/guardrails/allowlist-policy-get",
+        "cloud-api/guardrails/allowlist-policy-set",
+        "cloud-api/guardrails/org-limits-get",
+        "cloud-api/guardrails/org-limits-set",
+        "cloud-api/guardrails/org-cleanup",
+        "cloud-api/guardrails/deploy-permission",
+        "cloud-api/guardrails/deploy-limits"
+      ]
+    },
+    {
+      "group": "Provider Keys",
+      "pages": [
+        "cloud-api/provider-keys/user-get",
+        "cloud-api/provider-keys/user-set",
+        "cloud-api/provider-keys/user-delete",
+        "cloud-api/provider-keys/org-get",
+        "cloud-api/provider-keys/org-set",
+        "cloud-api/provider-keys/org-delete",
+        "cloud-api/provider-keys/resolved",
+        "cloud-api/provider-keys/current-plan"
+      ]
+    },
+    {
+      "group": "Activity",
+      "pages": [
+        "cloud-api/activity/personal-activity",
+        "cloud-api/activity/personal-summary",
+        "cloud-api/activity/recent-prompts",
+        "cloud-api/activity/session-usage",
+        "cloud-api/activity/team-summary",
+        "cloud-api/activity/team-activity",
+        "cloud-api/activity/team-members",
+        "cloud-api/activity/team-deploy-metrics",
+        "cloud-api/activity/team-events",
+        "cloud-api/activity/team-traces"
+      ]
+    },
+    {
+      "group": "GitHub App",
+      "pages": [
+        "cloud-api/integrations/github-app/installations-list",
+        "cloud-api/integrations/github-app/repos-list",
+        "cloud-api/integrations/github-app/installation-repos",
+        "cloud-api/integrations/github-app/installation-token",
+        "cloud-api/integrations/github-app/installation-add-repo",
+        "cloud-api/integrations/github-app/installation-delete",
+        "cloud-api/integrations/github-app/token-for-repo"
+      ]
+    },
+    {
+      "group": "GitHub User Tokens",
+      "pages": [
+        "cloud-api/integrations/github-user-tokens/authorize",
+        "cloud-api/integrations/github-user-tokens/user-token",
+        "cloud-api/integrations/github-user-tokens/user-token-status",
+        "cloud-api/integrations/github-user-tokens/user-token-validate",
+        "cloud-api/integrations/github-user-tokens/user-token-delete"
+      ]
+    },
+    {
+      "group": "Linear",
+      "pages": [
+        "cloud-api/integrations/linear/oauth-install",
+        "cloud-api/integrations/linear/integration-get",
+        "cloud-api/integrations/linear/integration-update",
+        "cloud-api/integrations/linear/integration-delete",
+        "cloud-api/integrations/linear/projects",
+        "cloud-api/integrations/linear/user-connection-get",
+        "cloud-api/integrations/linear/user-connection-delete"
+      ]
+    },
+    {
+      "group": "Slack",
+      "pages": [
+        "cloud-api/integrations/slack/oauth-install",
+        "cloud-api/integrations/slack/manifest",
+        "cloud-api/integrations/slack/integration-get",
+        "cloud-api/integrations/slack/integration-save",
+        "cloud-api/integrations/slack/integration-test",
+        "cloud-api/integrations/slack/integration-delete"
+      ]
+    },
+    {
+      "group": "WebSockets",
+      "pages": [
+        "cloud-api/websockets/overview",
+        "cloud-api/websockets/token-exchange",
+        "cloud-api/websockets/terminal",
+        "cloud-api/websockets/prompt",
+        "cloud-api/websockets/collaboration"
+      ]
+    },
+    {
+      "group": "Guides",
+      "pages": [
+        "guides/overview"
+      ]
+    },
+    {
+      "group": "Get Started",
+      "pages": [
+        "guides/authentication-walkthrough"
+      ]
+    },
+    {
+      "group": "Core API Patterns",
+      "pages": [
+        "guides/managing-sessions-at-scale",
+        "guides/streaming-prompts-over-websockets",
+        "guides/working-with-files",
+        "guides/long-running-prompts",
+        "guides/pulling-activity-and-telemetry",
+        "guides/webhooks-and-triggers"
+      ]
+    },
+    {
+      "group": "Best Practices",
+      "pages": [
+        "guides/best-practices",
+        "guides/teach-the-agent-your-codebase"
+      ]
+    },
+    {
+      "group": "Open Source",
+      "pages": [
+        "open-source/overview"
+      ]
+    },
+    {
+      "group": "Guides",
+      "pages": [
+        "open-source/guides/agent-workflow",
+        "open-source/guides/discovery",
+        "open-source/guides/logs-debugging",
+        "open-source/guides/troubleshooting"
+      ]
+    },
+    {
+      "group": "Features",
+      "pages": [
+        "open-source/features/machine-tiers",
+        "open-source/features/secrets",
+        "open-source/features/database",
+        "open-source/features/auth",
+        "open-source/features/custom-domains"
+      ]
+    },
+    {
+      "group": "OSS Templates",
+      "pages": [
+        "open-source/templates/overview",
+        "open-source/templates/backend-service",
+        "open-source/templates/static-site",
+        "open-source/templates/web-app",
+        "open-source/templates/docker"
       ]
     },
     {
       "group": "CLI Reference",
       "pages": [
-        "cli/overview",
-        "cli/session",
-        "cli/auth",
-        "cli/init",
-        "cli/run",
-        "cli/deploy",
-        "cli/validate",
-        "cli/fix",
-        "cli/status",
-        "cli/logs",
-        "cli/list",
-        "cli/search",
-        "cli/destroy",
-        "cli/secrets",
-        "cli/domain",
-        "cli/config",
-        "cli/approve"
+        "open-source/cli/overview",
+        "open-source/cli/session",
+        "open-source/cli/auth",
+        "open-source/cli/init",
+        "open-source/cli/run",
+        "open-source/cli/deploy",
+        "open-source/cli/validate",
+        "open-source/cli/fix",
+        "open-source/cli/status",
+        "open-source/cli/logs",
+        "open-source/cli/list",
+        "open-source/cli/search",
+        "open-source/cli/destroy",
+        "open-source/cli/secrets",
+        "open-source/cli/domain",
+        "open-source/cli/config",
+        "open-source/cli/approve"
       ]
     },
     {
       "group": "Self-Hosting",
       "pages": [
-        "self-hosting/overview",
-        "self-hosting/requirements",
-        "self-hosting/docker-compose",
-        "self-hosting/configuration",
-        "self-hosting/admin-commands"
+        "open-source/self-hosting/overview",
+        "open-source/self-hosting/requirements",
+        "open-source/self-hosting/docker-compose",
+        "open-source/self-hosting/configuration",
+        "open-source/self-hosting/admin-commands"
+      ]
+    },
+    {
+      "group": "OSS API",
+      "pages": [
+        "open-source/api/overview"
+      ]
+    },
+    {
+      "group": "Deployments",
+      "pages": [
+        "open-source/api/deployments/list",
+        "open-source/api/deployments/create",
+        "open-source/api/deployments/get",
+        "open-source/api/deployments/delete",
+        "open-source/api/deployments/search"
+      ]
+    },
+    {
+      "group": "Logs",
+      "pages": [
+        "open-source/api/logs"
+      ]
+    },
+    {
+      "group": "Domains",
+      "pages": [
+        "open-source/api/domains/add",
+        "open-source/api/domains/get",
+        "open-source/api/domains/remove"
+      ]
+    },
+    {
+      "group": "User",
+      "pages": [
+        "open-source/api/user/me"
       ]
     }
   ],
   "footer": {
     "socials": {
       "github": "https://github.com/runtm-ai/runtm",
-      "x": "https://twitter.com/runtm_ai",
-      "discord": "https://discord.com/invite/JUuCkUKc"
+      "x": "https://twitter.com/runtm_ai"
     }
   },
   "api": {

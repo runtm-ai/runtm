@@ -1,0 +1,48 @@
+---
+title: "Delete Token"
+api: "DELETE /api/github-app/user-token"
+description: "Revoke and delete the stored GitHub user token."
+---
+
+Deletes the stored GitHub user tokens, effectively disconnecting the user's GitHub account from Runtime.
+
+**Required scope:** `integrations:write`
+
+<ResponseField name="message" type="string" required>
+  Confirmation message.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE "https://app.runtm.com/api/github-app/user-token" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+resp = requests.delete(
+    "https://app.runtm.com/api/github-app/user-token",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+print(resp.json())
+```
+
+```javascript JavaScript
+const resp = await fetch("https://app.runtm.com/api/github-app/user-token", {
+  method: "DELETE",
+  headers: {
+    Authorization: "Bearer runtm_xxx",
+  },
+});
+const data = await resp.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "message": "GitHub account disconnected"
+}
+```
+</ResponseExample>

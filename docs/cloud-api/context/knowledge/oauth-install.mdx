@@ -1,0 +1,114 @@
+---
+title: "OAuth Install"
+api: "POST /api/knowledge/oauth/{provider_id}/{auth_method_id}/install"
+description: "Start an OAuth connection flow for a knowledge provider."
+---
+
+Generates a signed install URL for an OAuth-based knowledge provider.
+Redirect the user's browser to the returned `install_url` to begin the OAuth consent flow.
+The `state` token encodes org, user, scope, and provider metadata so the callback can route back securely.
+
+After the user grants consent, the provider redirects to the platform's callback endpoint which
+exchanges the authorization code, persists the tokens, and redirects the browser to the dashboard.
+
+**Required scope:** `integrations:write`
+
+<Note>Requires organization context via the `X-Organization-Id` header.</Note>
+
+<ParamField path="provider_id" type="string" required>
+  Provider identifier from the [catalog](/cloud-api/context/knowledge/catalog) (e.g. `"bigquery"`).
+</ParamField>
+
+<ParamField path="auth_method_id" type="string" required>
+  OAuth auth method identifier from the provider's catalog entry. Must have `auth_kind: "oauth"`.
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization to connect the integration to.
+</ParamField>
+
+<ParamField body="scope" type="string" default="org">
+  `"org"` for a shared integration or `"personal"` for a user-scoped one.
+</ParamField>
+
+<ParamField body="display_name" type="string">
+  Optional human-readable name (max 200 characters).
+</ParamField>
+
+<ParamField body="provider_metadata" type="object" default="{}">
+  Provider-specific configuration carried through the OAuth flow.
+</ParamField>
+
+<ResponseField name="install_url" type="string" required>
+  URL to redirect the user's browser to for OAuth consent.
+</ResponseField>
+
+<ResponseField name="state" type="string" required>
+  HMAC-signed state token. Passed through the OAuth flow and verified on callback.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST https://app.runtm.com/api/knowledge/oauth/bigquery/google_oauth/install \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scope": "org",
+    "display_name": "BigQuery (OAuth)",
+    "provider_metadata": {
+      "project_id": "my-gcp-project"
+    }
+  }'
+```
+
+```python Python
+import requests
+
+resp = requests.post(
+    "https://app.runtm.com/api/knowledge/oauth/bigquery/google_oauth/install",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+        "Content-Type": "application/json",
+    },
+    json={
+        "scope": "org",
+        "display_name": "BigQuery (OAuth)",
+        "provider_metadata": {"project_id": "my-gcp-project"},
+    },
+)
+data = resp.json()
+# Redirect user to data["install_url"]
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  "https://app.runtm.com/api/knowledge/oauth/bigquery/google_oauth/install",
+  {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      scope: "org",
+      display_name: "BigQuery (OAuth)",
+      provider_metadata: { project_id: "my-gcp-project" },
+    }),
+  }
+);
+const data = await resp.json();
+// Redirect user to data.install_url
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "install_url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&redirect_uri=...&state=...",
+  "state": "eyJhbGciOiJIUzI1NiJ9..."
+}
+```
+</ResponseExample>

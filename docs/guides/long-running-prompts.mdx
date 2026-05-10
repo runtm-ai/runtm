@@ -1,0 +1,227 @@
+---
+title: "Handle long-running prompts"
+description: "Cancel, rewind, replay history, and choose between REST and WebSocket for prompt control"
+---
+
+Prompts can run for seconds or minutes depending on the task. This guide covers the patterns for controlling prompts in flight: checking status, canceling early, rewinding destructive changes, replaying history after a disconnect, and choosing between REST and WebSocket delivery.
+
+## When to use this
+
+- You need to cancel a prompt that is taking too long or going off track
+- You want to undo file changes the agent made during a prompt
+- You lost a WebSocket connection and need to recover the agent's output
+- You are choosing between REST polling and WebSocket streaming for your integration
+
+## Prerequisites
+
+- An API key with `sessions:prompt` scope (and `sessions:write` for rewind)
+- A running session with at least one prompt already submitted
+
+## Check prompt status
+
+The session object includes a `last_prompt` field with the status of the most recent prompt:
+
+```bash
+curl "https://app.runtm.com/api/sessions/${SESSION_ID}" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```json
+{
+  "last_prompt": {
+    "status": "running",
+    "prompt_preview": "Add user authentication...",
+    "model": "sonnet",
+    "started_at": "2026-05-09T15:18:31Z",
+    "completed_at": null,
+    "cost_usd": null
+  }
+}
+```
+
+| Status | Meaning |
+|--------|---------|
+| `idle` | No prompt has run in this session |
+| `running` | A prompt is currently executing |
+| `completed` | The last prompt finished successfully |
+| `error` | The last prompt failed |
+| `timed_out` | The last prompt exceeded its time limit |
+
+## Cancel a running prompt
+
+`POST /api/sessions/{id}/prompt/cancel` interrupts the current prompt. The agent task is stopped, the running flag is cleared, and any event streams receive their final events.
+
+<CodeGroup>
+
+```python Python
+import requests
+
+headers = {"Authorization": "Bearer runtm_xxx"}
+resp = requests.post(
+    f"https://app.runtm.com/api/sessions/{SESSION_ID}/prompt/cancel",
+    headers=headers,
+)
+print(resp.json())  # {"status": "cancelled", "session_id": "..."}
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  `https://app.runtm.com/api/sessions/${SESSION_ID}/prompt/cancel`,
+  { method: "POST", headers: { Authorization: "Bearer runtm_xxx" } },
+);
+console.log(await resp.json());
+```
+
+</CodeGroup>
+
+This endpoint is safe to call even when no prompt is running — it returns success either way. Use it as a "make sure nothing is running" gate before submitting a new prompt.
+
+<Note>
+Canceling stops the agent, but file changes already written to disk are not reverted. Use **rewind** (below) to undo file changes.
+</Note>
+
+## Rewind file changes
+
+`POST /api/sessions/{id}/prompt/rewind` restores the filesystem to a checkpoint captured during a prior prompt. The conversation history is preserved — only file contents are reverted.
+
+```bash
+curl -X POST "https://app.runtm.com/api/sessions/${SESSION_ID}/prompt/rewind" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{"checkpoint_id": "ckpt_8f2b1c0d4a..."}'
+```
+
+Checkpoint IDs are surfaced in the agent's event stream (via `result` events) and in prompt history. Use rewind when:
+
+- The agent made destructive changes you want to undo
+- You want to try a different approach from the same starting point
+- A prompt went off track and you want to restore the workspace
+
+<Warning>
+Rewind only affects files. The agent's conversation context is preserved, so follow-up prompts retain awareness of what happened. If you want a clean slate, start a new agent session with `resume: false`.
+</Warning>
+
+## Replay prompt history
+
+`GET /api/sessions/{id}/history` returns the full parsed conversation for an agent session. Use this to reconstruct the conversation after a disconnect or to audit what the agent did.
+
+<CodeGroup>
+
+```python Python
+resp = requests.get(
+    f"https://app.runtm.com/api/sessions/{SESSION_ID}/history",
+    headers=headers,
+    params={"agent_session_id": "ses_01J9..."},
+)
+data = resp.json()
+print(f"{data['count']} events")
+for event in data["events"]:
+    if event["type"] == "user":
+        print(f"User: {event['content'][:80]}")
+    elif event["type"] == "completion":
+        print(f"Done — cost: ${event.get('cost_usd', 0):.4f}")
+```
+
+```javascript JavaScript
+const resp = await fetch(
+  `https://app.runtm.com/api/sessions/${SESSION_ID}/history?agent_session_id=ses_01J9...`,
+  { headers: { Authorization: "Bearer runtm_xxx" } },
+);
+const { events, count } = await resp.json();
+console.log(`${count} events`);
+```
+
+</CodeGroup>
+
+The events mirror the same shape as the live WebSocket stream: `user`, `assistant_text`, `tool_use`, `tool_result`, and `completion`.
+
+## REST vs WebSocket: choosing the right approach
+
+| Factor | REST (`POST /prompt` + SSE) | WebSocket |
+|--------|---------------------------|-----------|
+| **Streaming** | SSE via `GET /events` | Native WebSocket frames |
+| **Browser support** | No extra libraries | Native `WebSocket` API |
+| **Server-to-server** | Simple HTTP calls | Requires WS client library |
+| **Reconnection** | Reconnect SSE, replay with `Last-Event-ID` | Mint new token, reconnect, use `resume: true` |
+| **Multiple prompts** | Poll `last_prompt.status` between calls | One prompt per connection, open new WS for next |
+| **Cancellation** | `POST /prompt/cancel` | Same (WS disconnect does **not** cancel) |
+
+**Use REST + SSE when:**
+- You want simplicity and do not need to display streaming events in a UI
+- Your integration is a local script, coding agent, or CI pipeline
+- You only need the final result
+
+**Use WebSocket when:**
+- You are building a UI that shows live agent output
+- You want structured event types (tool calls, file edits, text deltas) as they happen
+- You need the lowest-latency path from agent to client
+
+## Common patterns
+
+### Submit → wait → collect
+
+The simplest REST pattern: submit a prompt, poll until done, read the result.
+
+```python Python
+import time
+
+requests.post(
+    f"https://app.runtm.com/api/sessions/{SESSION_ID}/prompt",
+    headers=headers,
+    json={"prompt": "Add a /health endpoint"},
+)
+
+while True:
+    session = requests.get(
+        f"https://app.runtm.com/api/sessions/{SESSION_ID}",
+        headers=headers,
+    ).json()
+    status = session.get("last_prompt", {}).get("status")
+    if status in ("completed", "error", "timed_out"):
+        break
+    time.sleep(3)
+
+print(f"Prompt finished with status: {status}")
+```
+
+### Guard against concurrent prompts
+
+Only one prompt runs per session. If you submit while one is running, you get `202` with `status: "already_running"`. Guard against this:
+
+```python Python
+resp = requests.post(
+    f"https://app.runtm.com/api/sessions/{SESSION_ID}/prompt",
+    headers=headers,
+    json={"prompt": "Fix the failing tests"},
+)
+data = resp.json()
+
+if data.get("status") == "already_running":
+    requests.post(
+        f"https://app.runtm.com/api/sessions/{SESSION_ID}/prompt/cancel",
+        headers=headers,
+    )
+    time.sleep(2)
+    resp = requests.post(
+        f"https://app.runtm.com/api/sessions/{SESSION_ID}/prompt",
+        headers=headers,
+        json={"prompt": "Fix the failing tests"},
+    )
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Stream prompts over WebSockets" icon="bolt" href="/guides/streaming-prompts-over-websockets">
+    Full WebSocket connection flow with code samples.
+  </Card>
+  <Card title="Work with session files" icon="file" href="/guides/working-with-files">
+    Read, write, and download files from the sandbox.
+  </Card>
+  <Card title="Run Prompt reference" icon="play" href="/cloud-api/sessions/prompt">
+    REST endpoint specification for submitting prompts.
+  </Card>
+  <Card title="Prompt History reference" icon="clock-rotate-left" href="/cloud-api/sessions/history">
+    Replay parsed conversation history.
+  </Card>
+</CardGroup>

@@ -1,0 +1,172 @@
+---
+title: "Webhooks and triggers"
+description: "Outbound webhook events Runtime emits and how to consume them from external systems"
+---
+
+Runtime can push notifications to external systems when certain events happen in a session. This guide covers the outbound webhook system — what events are available, the payload format, and how to use webhooks to connect Runtime to your own tools and workflows.
+
+## When to use this
+
+- You want to get notified when an agent finishes a prompt instead of polling
+- You are wiring Runtime into a Slack bot, Discord channel, or internal dashboard
+- You want to trigger downstream actions (deploy, PR review, notification) when agents complete work
+
+## Current webhook events
+
+Runtime currently emits two outbound webhook events:
+
+| Event | Fires when |
+|-------|-----------|
+| `prompt.completed` | A prompt finishes successfully |
+| `prompt.timed_out` | A prompt exceeds its time limit |
+
+<Note>
+The webhook surface is intentionally minimal today. Additional events (session lifecycle, deploy status, error conditions) will be added based on demand. The payload format is stable.
+</Note>
+
+## Webhook payload
+
+Webhooks are delivered as `POST` requests with a JSON body:
+
+```json
+{
+  "event": "prompt.completed",
+  "session_id": "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11",
+  "timestamp": "2026-05-09T15:18:54Z",
+  "data": {
+    "prompt_preview": "Add user authentication with JWT tokens",
+    "model": "sonnet",
+    "cost_usd": 0.07,
+    "duration_seconds": 23,
+    "status": "completed"
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `event` | string | Event type (`prompt.completed` or `prompt.timed_out`) |
+| `session_id` | string | UUID of the session |
+| `timestamp` | string | ISO 8601 timestamp |
+| `data` | object | Event-specific payload |
+
+## Configuring webhooks
+
+Webhook URLs are configured per user or per organization in the dashboard preferences. Once set, Runtime sends a `POST` to the URL for every qualifying event.
+
+Delivery characteristics:
+
+- **Timeout**: 5 seconds per delivery attempt
+- **Retries**: No automatic retries (fire-and-forget)
+- **Success**: Any `2xx` response is treated as successful delivery
+- **Failure**: Non-2xx responses and timeouts are logged but not retried
+
+<Warning>
+Because there are no retries, your webhook receiver should be highly available. If you need guaranteed delivery, consider polling the Activity API as a fallback.
+</Warning>
+
+## Consuming webhooks
+
+### Minimal receiver
+
+A simple webhook receiver that logs events and responds with `200`:
+
+<CodeGroup>
+
+```python Python (Flask)
+from flask import Flask, request
+
+app = Flask(__name__)
+
+@app.route("/webhooks/runtime", methods=["POST"])
+def handle_webhook():
+    event = request.json
+    print(f"[{event['event']}] session={event['session_id']} "
+          f"cost=${event['data'].get('cost_usd', 0):.4f}")
+    return "", 200
+```
+
+```javascript JavaScript (Express)
+import express from "express";
+const app = express();
+app.use(express.json());
+
+app.post("/webhooks/runtime", (req, res) => {
+  const event = req.body;
+  console.log(
+    `[${event.event}] session=${event.session_id} ` +
+    `cost=$${event.data?.cost_usd?.toFixed(4) ?? "0"}`,
+  );
+  res.sendStatus(200);
+});
+
+app.listen(3000);
+```
+
+</CodeGroup>
+
+### Posting to Slack
+
+Forward prompt completion notifications to a Slack channel:
+
+```python Python
+import httpx
+from flask import Flask, request
+
+SLACK_WEBHOOK_URL = "https://hooks.slack.com/services/T.../B.../xxx"
+
+app = Flask(__name__)
+
+@app.route("/webhooks/runtime", methods=["POST"])
+def handle_webhook():
+    event = request.json
+    if event["event"] == "prompt.completed":
+        text = (
+            f"Agent finished in session `{event['session_id'][:8]}...`\n"
+            f"*Prompt:* {event['data']['prompt_preview'][:100]}\n"
+            f"*Cost:* ${event['data']['cost_usd']:.4f} · "
+            f"*Duration:* {event['data']['duration_seconds']}s"
+        )
+        httpx.post(SLACK_WEBHOOK_URL, json={"text": text})
+    return "", 200
+```
+
+## Built-in triggers (Linear, Slack, GitHub)
+
+In addition to custom webhooks, Runtime has built-in integrations that trigger agent sessions from external events:
+
+| Source | How it works | Configuration |
+|--------|-------------|---------------|
+| **Linear** | Tag the Runtime bot on an issue; an agent session picks up the ticket | [Linear integration](/cloud-api/integrations/linear/integration-get) |
+| **Slack** | Mention the Runtime bot in a channel; an agent runs the task | [Slack integration](/cloud-api/integrations/slack/integration-get) |
+| **GitHub** | Comment on a PR or issue to launch an agent | GitHub App integration |
+| **API** | Call `POST /api/sessions` from your terminal, a coding agent, or any custom automation | [Create Session](/cloud-api/sessions/manage) |
+
+These built-in triggers handle session creation, prompt dispatch, and result reporting automatically. Use custom webhooks when you need to respond to Runtime events in systems the built-in integrations do not cover.
+
+## Polling as an alternative
+
+If you cannot run a webhook receiver, poll the session or activity endpoints instead:
+
+- **Session status**: `GET /api/sessions/{id}` — check `last_prompt.status` for `completed`, `error`, or `timed_out`
+- **Recent prompts**: `GET /sessions/telemetry/recent-prompts` — see the latest prompts across all sessions
+- **Activity**: `GET /sessions/telemetry/activity` — daily aggregate counts
+
+See [Pull activity and telemetry](/guides/pulling-activity-and-telemetry) for patterns.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Pull activity and telemetry" icon="chart-line" href="/guides/pulling-activity-and-telemetry">
+    Polling-based patterns for usage data and cost monitoring.
+  </Card>
+  <Card title="Manage sessions at scale" icon="cube" href="/guides/managing-sessions-at-scale">
+    Session lifecycle, heartbeats, and error recovery.
+  </Card>
+  <Card title="Linear integration" icon="circle-dot" href="/cloud-api/integrations/linear/integration-get">
+    Trigger agents from Linear issues automatically.
+  </Card>
+  <Card title="Slack integration" icon="hashtag" href="/cloud-api/integrations/slack/integration-get">
+    Trigger agents from Slack messages.
+  </Card>
+</CardGroup>

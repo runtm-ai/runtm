@@ -1,0 +1,111 @@
+---
+title: Coding Agents
+description: "The AI coding agents that power Runtime sessions and background runs"
+---
+
+Runtime supports seven coding agents. Every [session](/concepts/sessions) and [background agent run](/concepts/agents) is powered by one of these. Pick the agent that fits your workflow, or run different agents in parallel across sessions.
+
+## Prompt API agents
+
+These agents are orchestrated by Runtime's prompt API. You send prompts via REST or WebSocket and get back structured output. Runtime handles streaming, error recovery, and multi-step workflows.
+
+<AccordionGroup>
+  <Accordion title="Claude Code">
+    **Anthropic** · `claude-code` · [docs](https://docs.anthropic.com/en/docs/claude-code)
+
+    The most full-featured agent on Runtime. Supports plan mode, real-time streaming, task tracking, auto-fix on errors, and session continuity across prompts. The default agent for new sessions.
+
+    **Models:** Sonnet 4.6 (default), Opus 4.7, Haiku 4.5
+
+    **Key setup:** Provide your Anthropic API key on the [Integrations](/concepts/integrations) page, or use Runtime credits.
+  </Accordion>
+  <Accordion title="Codex">
+    **OpenAI** · `codex` · [docs](https://openai.com/index/introducing-codex/)
+
+    OpenAI's coding agent for autonomous development. Runs via the prompt API with auto-fix support.
+
+    **Models:** GPT-5 Codex (default), GPT-5, o4-mini
+
+    **Key setup:** Provide your OpenAI API key on the [Integrations](/concepts/integrations) page.
+  </Accordion>
+  <Accordion title="OpenCode">
+    **Open source** · `opencode` · [docs](https://opencode.ai)
+
+    Open-source coding agent with broad model support spanning both Anthropic and OpenAI providers. Runs via the prompt API with auto-fix support.
+
+    **Models:** Sonnet 4.6 (default), Opus 4.7, Haiku 4.5, GPT-5, o3, o4-mini
+
+    **Key setup:** Provide your Anthropic or OpenAI API key on the [Integrations](/concepts/integrations) page.
+  </Accordion>
+</AccordionGroup>
+
+## Interactive CLI agents
+
+These agents run their own command-line interface inside the session terminal. You interact with them through the [Terminal WebSocket](/cloud-api/websockets/terminal) or the dashboard's embedded terminal. Runtime handles sandbox setup, API key injection, and lifecycle management.
+
+<AccordionGroup>
+  <Accordion title="GitHub Copilot">
+    **GitHub** · `github-copilot` · [docs](https://githubnext.com/projects/copilot-cli)
+
+    GitHub's AI coding assistant with CLI integration. Authenticates automatically via your GitHub token.
+
+    **Models:** GPT-5, Claude Sonnet 4.6
+
+    **Key setup:** Provide a GitHub personal access token (`GH_TOKEN`) on the [Integrations](/concepts/integrations) page. Get one at [github.com/settings/tokens](https://github.com/settings/tokens).
+  </Accordion>
+  <Accordion title="Cursor">
+    **Cursor** · `cursor-cli` · [docs](https://cursor.com)
+
+    Cursor's terminal-native coding agent. Runs interactively inside the embedded terminal.
+
+    **Key setup:** Provide your Cursor API key (`CURSOR_API_KEY`) on the [Integrations](/concepts/integrations) page. Get one at [cursor.com/dashboard](https://cursor.com/dashboard/integrations#user-api-keys).
+  </Accordion>
+  <Accordion title="Devin">
+    **Cognition** · `devin-cli` · [docs](https://devin.ai)
+
+    Cognition's autonomous software engineer. Runs interactively with its own CLI flow inside the terminal.
+
+    **Key setup:** Provide your Devin API key (`DEVIN_API_KEY`) on the [Integrations](/concepts/integrations) page. Get one at [app.devin.ai/settings/api](https://app.devin.ai/settings/api).
+  </Accordion>
+  <Accordion title="Gemini">
+    **Google** · `gemini-cli` · [docs](https://ai.google.dev/gemini-api/docs/cli)
+
+    Google's Gemini coding agent for the terminal. Runs interactively with its own CLI.
+
+    **Key setup:** Provide your Gemini API key (`GEMINI_API_KEY`) on the [Integrations](/concepts/integrations) page. Get one at [aistudio.google.com](https://aistudio.google.com/app/apikey).
+  </Accordion>
+</AccordionGroup>
+
+## Capabilities at a glance
+
+| Agent | Type | Prompt API | Plan Mode | Streaming | Auto-fix | Session Continuity |
+|-------|------|:----------:|:---------:|:---------:|:--------:|:-----------------:|
+| Claude Code | Prompt API | Yes | Yes | Yes | Yes | Yes |
+| Codex | Prompt API | Yes | - | - | Yes | - |
+| OpenCode | Prompt API | Yes | - | - | Yes | - |
+| GitHub Copilot | Interactive CLI | - | - | - | - | - |
+| Cursor | Interactive CLI | - | - | - | - | - |
+| Devin | Interactive CLI | - | - | - | - | - |
+| Gemini | Interactive CLI | - | - | - | - | - |
+
+## Choosing an agent
+
+Specify the agent when creating a session or launching a background agent:
+
+```bash
+curl -X POST https://app.runtm.com/api/sessions \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "my-feature", "agent": "claude-code"}'
+```
+
+Valid values: `claude-code`, `codex`, `opencode`, `github-copilot`, `cursor-cli`, `devin-cli`, `gemini-cli`. If omitted, defaults to `claude-code`.
+
+## Where agents run
+
+Coding agents power two Runtime workflows:
+
+- **[Sessions](/concepts/sessions)** — interactive environments where you work alongside the agent in real time, sending prompts and watching output
+- **[Background agents](/concepts/agents)** — autonomous runs triggered from Linear, Slack, GitHub, or the API that produce a pull request without human intervention
+
+The same agent, same sandbox, same [context and guardrails](/concepts/context) apply in both cases. The difference is whether you're watching or not.

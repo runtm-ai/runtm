@@ -1,0 +1,118 @@
+---
+title: "Build Logs History"
+api: "GET /api/org-templates/{template_id}/build-logs-history"
+description: "Get past build log entries for a template"
+---
+
+Returns historical build log entries for a template. Unlike the streaming endpoint, this returns all stored log records at once.
+
+**Required scope:** `templates:read`
+
+## Path Parameters
+
+<ParamField path="template_id" type="string" required>
+  The template ID (e.g. `tmpl_abc123`).
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  Organization ID.
+</ParamField>
+
+## Response
+
+<ResponseField name="logs" type="array">
+  Array of build log entries ordered by timestamp.
+</ResponseField>
+
+<ResponseField name="logs[].level" type="string">
+  Log level: `info`, `warning`, `error`.
+</ResponseField>
+
+<ResponseField name="logs[].message" type="string">
+  Log message content.
+</ResponseField>
+
+<ResponseField name="logs[].timestamp" type="string">
+  ISO 8601 timestamp.
+</ResponseField>
+
+<ResponseField name="build_status" type="string">
+  Final build status.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/org-templates/tmpl_abc123/build-logs-history" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/org-templates/tmpl_abc123/build-logs-history",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+
+data = response.json()
+for log in data["logs"]:
+    print(f"[{log['level']}] {log['message']}")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/org-templates/tmpl_abc123/build-logs-history",
+  {
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  }
+);
+
+const data = await response.json();
+data.logs.forEach((log) =>
+  console.log(`[${log.level}] ${log.message}`)
+);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "logs": [
+    {
+      "level": "info",
+      "message": "Build started",
+      "timestamp": "2026-05-09T21:00:00Z"
+    },
+    {
+      "level": "info",
+      "message": "Cloning repository owner/nextjs-starter@main",
+      "timestamp": "2026-05-09T21:00:01Z"
+    },
+    {
+      "level": "info",
+      "message": "Installing dependencies (npm ci)",
+      "timestamp": "2026-05-09T21:00:15Z"
+    },
+    {
+      "level": "info",
+      "message": "Build completed successfully",
+      "timestamp": "2026-05-09T21:03:00Z"
+    }
+  ],
+  "build_status": "completed"
+}
+```
+</ResponseExample>

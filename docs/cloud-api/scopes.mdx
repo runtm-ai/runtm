@@ -1,0 +1,80 @@
+---
+title: "Scopes & Permissions"
+description: "API key scopes, what they unlock, and role ceilings"
+---
+
+Every API key carries a set of **scopes** that determine which endpoints it can call. Scopes follow the pattern `resource:action` — for example, `sessions:read` allows listing and viewing sessions but not modifying them.
+
+## Scope reference
+
+| Scope | Permissions |
+|-------|-------------|
+| `sessions:read` | List and view sessions |
+| `sessions:write` | Create, pause, resume, rename sessions |
+| `sessions:delete` | Destroy sessions |
+| `sessions:prompt` | Send prompts and cancel them |
+| `sessions:terminal` | WebSocket terminal access |
+| `context:read` | Read instructions, skills, directives |
+| `context:write` | Update instructions, manage skills |
+| `secrets:read` | List secret names (values are never returned) |
+| `secrets:write` | Set and delete secrets |
+| `deployments:read` | View deploy info and limits |
+| `deployments:write` | Run deploys |
+| `templates:read` | List and view templates |
+| `templates:write` | Create and update templates |
+| `templates:build` | Trigger template builds |
+| `templates:delete` | Delete templates |
+| `integrations:read` | View integrations |
+| `integrations:write` | Manage integrations |
+| `guardrails:read` | View org guardrails |
+| `guardrails:write` | Update org guardrails |
+| `activity:read` | View telemetry and usage |
+
+## Scope presets
+
+When creating a key in the dashboard, you can pick a preset instead of selecting individual scopes:
+
+| Preset | Included scopes |
+|--------|----------------|
+| **Session automation** | `sessions:read`, `sessions:write`, `sessions:delete`, `sessions:prompt`, `sessions:terminal`, `context:read`, `secrets:read` |
+| **Full access** | All scopes listed above |
+| **Read-only** | `sessions:read`, `context:read`, `secrets:read`, `deployments:read`, `templates:read`, `integrations:read`, `guardrails:read`, `activity:read` |
+
+<Tip>
+  Start with the narrowest preset that fits your use case. You can always create a new key with more scopes later.
+</Tip>
+
+## Role ceilings
+
+A key can never exceed the permissions of the user who created it. The user's **organization role** acts as a ceiling:
+
+| Role | Ceiling |
+|------|---------|
+| **Member** | Can create keys with any scope that applies to member-accessible resources. Cannot grant `guardrails:write` or `templates:delete`. |
+| **Admin** | Can create keys with all scopes except those reserved for owners. |
+| **Owner** | No restrictions — can create keys with any scope. |
+
+If a user's role is downgraded after a key is created, the key's effective permissions are reduced to match the new role at request time.
+
+## Checking scopes at runtime
+
+Use the [Verify endpoint](/cloud-api/authentication/verify) to inspect a key's scopes programmatically:
+
+```bash
+curl https://app.runtm.com/auth/verify \
+  -H "Authorization: Bearer runtm_sk_live_abc123..."
+```
+
+The response includes a `scopes` array you can check before making further calls.
+
+## Insufficient scope errors
+
+If a request requires a scope the key does not have, the API returns `403`:
+
+```json
+{
+  "detail": "Insufficient scope: requires sessions:write"
+}
+```
+
+See [Errors](/cloud-api/errors) for the full error reference.

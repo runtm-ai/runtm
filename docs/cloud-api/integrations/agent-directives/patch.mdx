@@ -1,0 +1,113 @@
+---
+title: "Update Agent Directive"
+api: "PATCH /agent-directives/{directive_id}"
+description: "Update an unpublished directive's metadata or content"
+---
+
+Updates a directive in place. Used to edit unpublished drafts before publishing. To create a new version of an already-published directive, call [New Version](/cloud-api/integrations/agent-directives/version) first to create a draft, then PATCH that draft.
+
+The response includes the directive's current `content` so the caller does not need a follow-up read.
+
+<Info>Required scope: `context:write`</Info>
+
+<Note>
+Agent directives are **organization-scoped**. The request must include `X-Organization-Id` (or use an org-scoped API key).
+</Note>
+
+## Path Parameters
+
+<ParamField path="directive_id" type="string" required>
+  Directive id.
+</ParamField>
+
+## Body Parameters
+
+<ParamField body="display_name" type="string">
+  Update the display name.
+</ParamField>
+
+<ParamField body="description" type="string">
+  Update the description.
+</ParamField>
+
+<ParamField body="content" type="object">
+  Replace the directive's content payload. Must match the directive's `type`.
+</ParamField>
+
+## Headers
+
+<ParamField header="X-Organization-Id" type="string" required>
+  The organization context.
+</ParamField>
+
+## Response
+
+<ResponseField name="directive" type="object">
+  The updated directive, with full `content` populated.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X PATCH "https://app.runtm.com/api/agent-directives/dir_aaa" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_456" \
+  -H "Content-Type: application/json" \
+  -d '{"description": "Run lint, typecheck, tests, and security scan before deploy."}'
+```
+
+```python Python
+import requests
+
+response = requests.patch(
+    "https://app.runtm.com/api/agent-directives/dir_aaa",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_456",
+    },
+    json={"description": "Run lint, typecheck, tests, and security scan before deploy."},
+)
+
+print(response.json())
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/agent-directives/dir_aaa",
+  {
+    method: "PATCH",
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "X-Organization-Id": "org_456",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      description: "Run lint, typecheck, tests, and security scan before deploy.",
+    }),
+  }
+);
+
+console.log(await response.json());
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "directive": {
+    "id": "dir_aaa",
+    "type": "skill_v0",
+    "name": "deploy-checks",
+    "description": "Run lint, typecheck, tests, and security scan before deploy.",
+    "version": 4,
+    "is_published": false,
+    "content": { "entry_md": "SKILL.md", "files": [/* ... */] }
+  }
+}
+```
+
+```json 404
+{
+  "detail": "Directive not found"
+}
+```
+</ResponseExample>
