@@ -218,7 +218,7 @@ timeout = "20s"
 [deploy]
 # Using default rolling strategy to preserve health check guarantees
 # (--strategy immediate breaks health check waits)
-wait_timeout = "3m"
+wait_timeout = "5m"
 
 [[vm]]
 size = "{vm_size}"
@@ -269,7 +269,7 @@ destination = "{vol.path}"
             # Build base command
             # --image-label: Tag image for rollbacks/reuse
             # --yes: Skip confirmation prompts
-            # --wait-timeout: Time to wait for health checks (3m is reasonable)
+            # --wait-timeout: Must exceed grace_period (120s) + time for app to boot and pass checks
             # Note: NO --strategy immediate (breaks health check guarantees)
             # Note: NO --remote-only (redundant with --depot)
             base_cmd = [
@@ -281,7 +281,7 @@ destination = "{vol.path}"
                 clean_id,
                 "--yes",
                 "--wait-timeout",
-                "3m",
+                "5m",
             ]
 
             # Use BuildKit directly — Depot requires mTLS/DEPOT_TOKEN auth that is

@@ -394,8 +394,8 @@ class Limits:
     MAX_ARTIFACT_SIZE_BYTES: int = 20 * 1024 * 1024  # 20 MB
 
     # Timeout limits
-    BUILD_TIMEOUT_SECONDS: int = 10 * 60  # 10 minutes
-    DEPLOY_TIMEOUT_SECONDS: int = 5 * 60  # 5 minutes
+    BUILD_TIMEOUT_SECONDS: int = 15 * 60  # 15 minutes
+    DEPLOY_TIMEOUT_SECONDS: int = 10 * 60  # 10 minutes
 
     # Resource limits (defaults for starter tier)
     DEFAULT_MEMORY_MB: int = 2048

@@ -568,7 +568,7 @@ class DeployJob:
                         image_ref,
                         "--yes",
                         "--wait-timeout",
-                        "3m",
+                        "5m",
                     ]
 
                     result = subprocess.run(
