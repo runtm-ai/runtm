@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.20] - 2026-05-09
+
+### Fixed
+
+- **Worker**: Increased `flyctl deploy --wait-timeout` from 3m to 5m to prevent spurious health check timeouts
+  - The 120s `grace_period` plus app boot time left only ~40s for health checks to pass within the old 3m window
+  - Deployments that were actually healthy would fail with `timeout reached waiting for health checks to pass` followed by `net/http: request canceled`
+  - 5m wait gives ~3 minutes after grace period for the app to start and pass checks
+- **Shared**: Fixed stale comments on `Limits.BUILD_TIMEOUT_SECONDS` (15 min, not 10) and `Limits.DEPLOY_TIMEOUT_SECONDS` (10 min, not 5)
+
 ## [0.2.19] - 2026-05-09
 
 ### Added
@@ -199,7 +209,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Build/deploy timeouts
 - Secret redaction in logs
 
-[Unreleased]: https://github.com/runtm-ai/runtm/compare/v0.2.18...HEAD
+[Unreleased]: https://github.com/runtm-ai/runtm/compare/v0.2.20...HEAD
+[0.2.20]: https://github.com/runtm-ai/runtm/compare/v0.2.19...v0.2.20
+[0.2.19]: https://github.com/runtm-ai/runtm/compare/v0.2.18...v0.2.19
 [0.2.18]: https://github.com/runtm-ai/runtm/compare/v0.2.17...v0.2.18
 [0.2.17]: https://github.com/runtm-ai/runtm/compare/v0.2.16...v0.2.17
 [0.2.16]: https://github.com/runtm-ai/runtm/compare/v0.2.15...v0.2.16
