@@ -79,7 +79,7 @@ response = requests.get(
 
 data = response.json()
 for s in data["sessions"]:
-    print(f"{s['id']} — {s['name']} ({s['state']})")
+    print(f"{s['id']} - {s['name']} ({s['state']})")
 ```
 
 ```javascript JavaScript
@@ -97,7 +97,7 @@ const response = await fetch(
 
 const data = await response.json();
 data.sessions.forEach((s) =>
-  console.log(`${s.id} — ${s.name} (${s.state})`)
+  console.log(`${s.id} - ${s.name} (${s.state})`)
 );
 ```
 </RequestExample>

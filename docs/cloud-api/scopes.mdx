@@ -3,7 +3,7 @@ title: "Scopes & Permissions"
 description: "API key scopes, what they unlock, and role ceilings"
 ---
 
-Every API key carries a set of **scopes** that determine which endpoints it can call. Scopes follow the pattern `resource:action` — for example, `sessions:read` allows listing and viewing sessions but not modifying them.
+Every API key carries a set of **scopes** that determine which endpoints it can call. Scopes follow the pattern `resource:action` - for example, `sessions:read` allows listing and viewing sessions but not modifying them.
 
 ## Scope reference
 
@@ -52,7 +52,7 @@ A key can never exceed the permissions of the user who created it. The user's **
 |------|---------|
 | **Member** | Can create keys with any scope that applies to member-accessible resources. Cannot grant `guardrails:write` or `templates:delete`. |
 | **Admin** | Can create keys with all scopes except those reserved for owners. |
-| **Owner** | No restrictions — can create keys with any scope. |
+| **Owner** | No restrictions - can create keys with any scope. |
 
 If a user's role is downgraded after a key is created, the key's effective permissions are reduced to match the new role at request time.
 

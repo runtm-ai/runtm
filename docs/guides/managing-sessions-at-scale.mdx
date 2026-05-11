@@ -3,7 +3,7 @@ title: "Manage sessions at scale"
 description: "Session lifecycle, polling, heartbeats, retries, and error recovery"
 ---
 
-Sessions are the core unit of work in Runtime. This guide covers the patterns you need when managing sessions programmatically — whether you are calling the API from your own terminal, letting a coding agent spin up cloud environments, or orchestrating sessions from a CI pipeline.
+Sessions are the core unit of work in Runtime. This guide covers the patterns you need when managing sessions programmatically - whether you are calling the API from your own terminal, letting a coding agent spin up cloud environments, or orchestrating sessions from a CI pipeline.
 
 For the full endpoint reference, see [Manage Sessions](/cloud-api/sessions/manage) and [Lifecycle](/cloud-api/sessions/lifecycle).
 
@@ -163,7 +163,7 @@ await fetch(`${BASE}/sessions/${sessionId}/resume`, { method: "POST", headers })
 Key behaviors:
 
 - Pausing an already-paused session is a no-op (returns `200`)
-- Pausing while a prompt is running returns `409` — cancel the prompt first
+- Pausing while a prompt is running returns `409` - cancel the prompt first
 - Resuming an already-running session is a no-op
 - Any mutating endpoint (prompt, file write) on a paused session triggers an automatic resume
 
@@ -219,8 +219,8 @@ Your code should catch `410` and create a fresh session.
 
 Only one prompt runs per session at a time. If you submit a prompt while one is already in flight, you get `202` with `status: "already_running"`. Two strategies:
 
-1. **Wait and retry** — poll `GET /api/sessions/{id}` until `last_prompt.status` is `completed` or `error`, then submit.
-2. **Cancel and resubmit** — call `POST /api/sessions/{id}/prompt/cancel`, then submit the new prompt.
+1. **Wait and retry** - poll `GET /api/sessions/{id}` until `last_prompt.status` is `completed` or `error`, then submit.
+2. **Cancel and resubmit** - call `POST /api/sessions/{id}/prompt/cancel`, then submit the new prompt.
 
 ## Set a TTL for unattended runs
 

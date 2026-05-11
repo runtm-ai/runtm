@@ -4,7 +4,7 @@ api: "POST /api/org-templates/{template_id}/build"
 description: "Trigger a template snapshot build"
 ---
 
-Triggers a new E2B template build for the organization template. The build runs asynchronously — use the [Build Logs](/cloud-api/templates/build-logs) endpoint to stream progress. Requires admin or owner role.
+Triggers a new template build for the organization template. The build runs asynchronously. Use the [Build Logs](/cloud-api/templates/build-logs) endpoint to stream progress. Requires admin or owner role.
 
 **Required scope:** `templates:build`
 

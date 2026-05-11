@@ -6,9 +6,9 @@ description: "Get the resolved provider key after applying the org → user fall
 
 Returns the effective provider key for the authenticated user after applying the resolution chain. The platform resolves keys in this order:
 
-1. **Org enforced key** — if the user's organization has set a key with `enforced` policy, it wins
-2. **User org key** — a personal key the user stored while in an org context
-3. **User personal key** — the user's own key outside any org
+1. **Org enforced key** - if the user's organization has set a key with `enforced` policy, it wins
+2. **User org key** - a personal key the user stored while in an org context
+3. **User personal key** - the user's own key outside any org
 
 This endpoint tells you which source won and whether a key is available, without revealing the key itself.
 
@@ -68,7 +68,7 @@ data = response.json()
 if data["has_key"]:
     print(f"Using {data['source']} key: {data['key_preview']}")
 else:
-    print("No key available — configure one in settings")
+    print("No key available - configure one in settings")
 ```
 
 ```javascript JavaScript

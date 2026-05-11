@@ -61,7 +61,7 @@ Pass `X-Organization-Id` to scope results to a specific organization. Without it
 
 ## Personal summary
 
-`GET /sessions/telemetry/summary` returns aggregate totals for a time period — total sessions, total prompts, total cost, and averages:
+`GET /sessions/telemetry/summary` returns aggregate totals for a time period - total sessions, total prompts, total cost, and averages:
 
 ```bash
 curl "https://app.runtm.com/api/sessions/telemetry/summary?days=30" \
@@ -77,11 +77,11 @@ curl "https://app.runtm.com/api/sessions/telemetry/recent-prompts?limit=10" \
   -H "Authorization: Bearer runtm_xxx"
 ```
 
-This is useful for debugging — quickly see what prompts ran, which ones failed, and how much they cost.
+This is useful for debugging - quickly see what prompts ran, which ones failed, and how much they cost.
 
 ## Per-session usage
 
-`GET /sessions/{id}/telemetry/usage` returns detailed usage for a specific session — prompt count, total cost, token usage, and per-prompt breakdown:
+`GET /sessions/{id}/telemetry/usage` returns detailed usage for a specific session - prompt count, total cost, token usage, and per-prompt breakdown:
 
 ```bash
 curl "https://app.runtm.com/api/sessions/${SESSION_ID}/telemetry/usage" \

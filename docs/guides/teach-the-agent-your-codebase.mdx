@@ -34,7 +34,7 @@ When a session boots, Runtime loads org instructions, user instructions, and tem
 
 ## AGENTS.md
 
-`AGENTS.md` is a markdown file in your repository root that teaches the agent about **this specific project**. It is read by every agent that works in the repo — Claude Code, Codex, Cursor, and others all respect it.
+`AGENTS.md` is a markdown file in your repository root that teaches the agent about **this specific project**. It is read by every agent that works in the repo - Claude Code, Codex, Cursor, and others all respect it.
 
 ### What to include
 
@@ -54,12 +54,12 @@ A good `AGENTS.md` covers:
 ## Architecture
 - FastAPI backend in `backend/app/`
 - Next.js frontend in `frontend/`
-- Routes are thin — delegate to services in `services/`
+- Routes are thin - delegate to services in `services/`
 
 ## Commands
-- `cd backend && pytest -q` — run backend tests
-- `cd frontend && npm run lint` — lint frontend
-- `cd frontend && npm run dev` — start frontend dev server
+- `cd backend && pytest -q` - run backend tests
+- `cd frontend && npm run lint` - lint frontend
+- `cd frontend && npm run dev` - start frontend dev server
 
 ## Conventions
 - Type hints on all Python functions
@@ -77,7 +77,7 @@ A good `AGENTS.md` covers:
 
 - **Keep it concise.** Agents process `AGENTS.md` on every prompt. Long files waste tokens and slow things down. Aim for 50-200 lines.
 - **Be explicit about "don'ts".** Constraints ("never do X") are often more valuable than instructions ("always do Y") because they prevent costly mistakes.
-- **Update it as the project evolves.** Treat `AGENTS.md` like documentation — it rots if you do not maintain it.
+- **Update it as the project evolves.** Treat `AGENTS.md` like documentation - it rots if you do not maintain it.
 - **Commit it to the repo.** `AGENTS.md` should live alongside the code it describes so every agent (and every team member) sees the same version.
 
 ## Org instructions
@@ -182,14 +182,14 @@ See [Skills](/concepts/skills) for the full skill format and authoring guide.
 
 When a session starts, context is assembled in this order:
 
-1. **Org instructions** load first — these are the broadest, most stable rules
-2. **User instructions** append — these add personal preferences
+1. **Org instructions** load first - these are the broadest, most stable rules
+2. **User instructions** append - these add personal preferences
 3. **Template instructions** merge in (if the session was created from a template)
 4. **Skills** are mounted into the workspace and their MCP servers configured
 5. **Knowledge sources** become available as agent tools
 6. The agent reads **AGENTS.md** from the repo root (if present)
 
-The agent sees all of this as a unified system prompt and tool catalog. There is no explicit precedence — later layers add to earlier ones. If they conflict, the agent uses its judgment, but in practice conflicts are rare because each layer serves a different scope.
+The agent sees all of this as a unified system prompt and tool catalog. There is no explicit precedence - later layers add to earlier ones. If they conflict, the agent uses its judgment, but in practice conflicts are rare because each layer serves a different scope.
 
 ### Best practices for layering
 

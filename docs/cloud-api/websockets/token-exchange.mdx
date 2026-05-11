@@ -4,7 +4,7 @@ api: "POST /api/sessions/{session_id}/ws-token"
 description: "Exchange an API key for a short-lived WebSocket token"
 ---
 
-Creates a short-lived JWT that authenticates a WebSocket connection. The token is scoped to a single session and capability. Tokens expire after 5 minutes — request a new one if the connection drops.
+Creates a short-lived JWT that authenticates a WebSocket connection. The token is scoped to a single session and capability. Tokens expire after 5 minutes - request a new one if the connection drops.
 
 **Required scope:** depends on the requested capability:
 

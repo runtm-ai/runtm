@@ -3,7 +3,7 @@ title: Background Agents
 description: "Autonomous coding runs triggered from tickets, issues, and the API"
 ---
 
-Background agents are autonomous coding runs. You hand off a task — a Linear ticket, a GitHub issue, a Slack message, or an API call — and the agent picks it up, writes code, runs tests, and reports back with a pull request. No one needs to watch.
+Background agents are autonomous coding runs. You hand off a task - a Linear ticket, a GitHub issue, a Slack message, or an API call - and the agent picks it up, writes code, runs tests, and reports back with a pull request. No one needs to watch.
 
 Background agents use the same [coding agents](/concepts/coding-agents) and sandboxed VMs as interactive [sessions](/concepts/sessions). The difference is workflow:
 
@@ -49,12 +49,12 @@ flowchart LR
     style PR fill:#18181b,stroke:#18181b,stroke-width:2px,color:#fafafa
 ```
 
-1. **Trigger fires** — a Linear ticket is tagged, a Slack message is posted, or your code calls the API
-2. **Session spawns** — Runtime boots a sandboxed VM with the chosen [coding agent](/concepts/coding-agents), optionally from a [template](/concepts/templates) snapshot
-3. **Context applies** — org and user [instructions](/concepts/context), required [skills](/concepts/skills), and [guardrails](/concepts/guardrails) are loaded
-4. **Repository clones** — the linked GitHub repo is cloned into the workspace
-5. **Agent runs** — reads the prompt, plans, writes code, runs tests, iterates on errors
-6. **Output ships** — commits, opens a PR, posts back to the trigger source (Linear, Slack, etc.)
+1. **Trigger fires** - a Linear ticket is tagged, a Slack message is posted, or your code calls the API
+2. **Session spawns** - Runtime boots a sandboxed VM with the chosen [coding agent](/concepts/coding-agents), optionally from a [template](/concepts/templates) snapshot
+3. **Context applies** - org and user [instructions](/concepts/context), required [skills](/concepts/skills), and [guardrails](/concepts/guardrails) are loaded
+4. **Repository clones** - the linked GitHub repo is cloned into the workspace
+5. **Agent runs** - reads the prompt, plans, writes code, runs tests, iterates on errors
+6. **Output ships** - commits, opens a PR, posts back to the trigger source (Linear, Slack, etc.)
 
 The whole run is logged. Every prompt, tool call, file edit, command, and cost event is captured in [activity](/concepts/observability).
 
@@ -62,9 +62,9 @@ The whole run is logged. Every prompt, tool call, file edit, command, and cost e
 
 Background agents can run in different modes depending on how much autonomy you want:
 
-- **Autopilot** — the agent runs end-to-end without stopping for input
-- **Plan mode** — the agent generates a plan first, asks for approval, then executes
-- **Interactive** — you can step in mid-run by sending follow-up prompts
+- **Autopilot** - the agent runs end-to-end without stopping for input
+- **Plan mode** - the agent generates a plan first, asks for approval, then executes
+- **Interactive** - you can step in mid-run by sending follow-up prompts
 
 Mode is set at creation time.
 

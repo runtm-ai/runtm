@@ -1,0 +1,97 @@
+---
+title: "Get Preview URL for a Service (v2)"
+api: "POST /api/v2/sessions/{session_id}/connect"
+description: "Resolve a preview URL for a specific port on the sandbox"
+---
+
+Returns a preview URL backed by a running service on the sandbox at the requested port. This powers multi-port preview tabs in the workspace UI.
+
+The endpoint is idempotent and self-healing:
+
+- Reconciles the DB state with the sandbox provider (handles raw-URL auto-resume).
+- Resumes the sandbox if the provider reports it as paused.
+- Starts or verifies the dev server (no-ops if already responding).
+- Persists `session.preview_url` and cached project metadata so Slack/agent callbacks can reuse the verified URL.
+
+The list of available named services is exposed on the session's [`services` field](/cloud-api/sessions/v2-start) (e.g. `{ "frontend": 3000, "postgres": 5432 }`).
+
+**Required scope:** `sessions:write`
+
+## Path Parameters
+
+<ParamField path="session_id" type="string" required>
+  The session ID.
+</ParamField>
+
+## Query Parameters
+
+<ParamField query="port" type="integer" required>
+  The port number to expose. Must match a port the sandbox process is actually listening on.
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string">
+  Required when the session belongs to an organization.
+</ParamField>
+
+## Response
+
+<ResponseField name="preview_url" type="string">
+  Public preview URL pointing at the sandbox port.
+</ResponseField>
+
+<ResponseField name="port" type="integer">
+  The port that was resolved.
+</ResponseField>
+
+## Errors
+
+| Status | Meaning |
+|---|---|
+| `404` | Session not found |
+| `410` | Sandbox has expired or is in an invalid state |
+| `502` | Could not resolve preview (port not listening, dev-server failed to start within 120s) |
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/v2/sessions/86e11104-.../connect?port=3000" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://app.runtm.com/api/v2/sessions/86e11104-.../connect",
+    headers={"Authorization": "Bearer runtm_xxx"},
+    params={"port": 3000},
+)
+
+data = response.json()
+print(f"Preview at {data['preview_url']}")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/v2/sessions/86e11104-.../connect?port=3000",
+  { method: "POST", headers: { "Authorization": "Bearer runtm_xxx" } }
+);
+
+const { preview_url, port } = await response.json();
+console.log(`Preview at ${preview_url} (port ${port})`);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "preview_url": "https://3000-sb-xyz.dev.runtm.com",
+  "port": 3000
+}
+```
+</ResponseExample>

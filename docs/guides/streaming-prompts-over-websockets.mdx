@@ -3,7 +3,7 @@ title: "Stream prompts over WebSockets"
 description: "Token exchange, the Prompt WebSocket protocol, event types, and reconnection handling"
 ---
 
-The Prompt WebSocket gives you real-time, bidirectional access to an agent's work — tool calls, file edits, text output, and completion status as they happen. This guide covers the connection flow, event types, and patterns for robust integration.
+The Prompt WebSocket gives you real-time, bidirectional access to an agent's work - tool calls, file edits, text output, and completion status as they happen. This guide covers the connection flow, event types, and patterns for robust integration.
 
 For the full protocol specification, see the [Prompt WebSocket](/cloud-api/websockets/prompt) reference. For the simpler REST alternative, see [Run Prompt](/cloud-api/sessions/prompt).
 
@@ -133,7 +133,7 @@ After the prompt is accepted, the server streams events until a terminal `done` 
 | `todo_update` | Agent updated its task list | `metadata.todos` |
 | `task_activity` | Subtask lifecycle event | `metadata.task_id`, `metadata.subtype` |
 | `result` | Final prompt result | `metadata.cost_usd`, `metadata.usage`, `metadata.num_turns` |
-| `done` | Terminal frame — connection will close | (none) |
+| `done` | Terminal frame - connection will close | (none) |
 | `error` | Terminal error frame | `content` (error message) |
 
 ## Full example

@@ -74,7 +74,7 @@ console.log(await resp.json());
 
 </CodeGroup>
 
-This endpoint is safe to call even when no prompt is running — it returns success either way. Use it as a "make sure nothing is running" gate before submitting a new prompt.
+This endpoint is safe to call even when no prompt is running - it returns success either way. Use it as a "make sure nothing is running" gate before submitting a new prompt.
 
 <Note>
 Canceling stops the agent, but file changes already written to disk are not reverted. Use **rewind** (below) to undo file changes.
@@ -82,7 +82,7 @@ Canceling stops the agent, but file changes already written to disk are not reve
 
 ## Rewind file changes
 
-`POST /api/sessions/{id}/prompt/rewind` restores the filesystem to a checkpoint captured during a prior prompt. The conversation history is preserved — only file contents are reverted.
+`POST /api/sessions/{id}/prompt/rewind` restores the filesystem to a checkpoint captured during a prior prompt. The conversation history is preserved - only file contents are reverted.
 
 ```bash
 curl -X POST "https://app.runtm.com/api/sessions/${SESSION_ID}/prompt/rewind" \
@@ -119,7 +119,7 @@ for event in data["events"]:
     if event["type"] == "user":
         print(f"User: {event['content'][:80]}")
     elif event["type"] == "completion":
-        print(f"Done — cost: ${event.get('cost_usd', 0):.4f}")
+        print(f"Done - cost: ${event.get('cost_usd', 0):.4f}")
 ```
 
 ```javascript JavaScript

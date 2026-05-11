@@ -3,7 +3,7 @@ title: "Webhooks and triggers"
 description: "Outbound webhook events Runtime emits and how to consume them from external systems"
 ---
 
-Runtime can push notifications to external systems when certain events happen in a session. This guide covers the outbound webhook system — what events are available, the payload format, and how to use webhooks to connect Runtime to your own tools and workflows.
+Runtime can push notifications to external systems when certain events happen in a session. This guide covers the outbound webhook system - what events are available, the payload format, and how to use webhooks to connect Runtime to your own tools and workflows.
 
 ## When to use this
 
@@ -148,9 +148,9 @@ These built-in triggers handle session creation, prompt dispatch, and result rep
 
 If you cannot run a webhook receiver, poll the session or activity endpoints instead:
 
-- **Session status**: `GET /api/sessions/{id}` — check `last_prompt.status` for `completed`, `error`, or `timed_out`
-- **Recent prompts**: `GET /sessions/telemetry/recent-prompts` — see the latest prompts across all sessions
-- **Activity**: `GET /sessions/telemetry/activity` — daily aggregate counts
+- **Session status**: `GET /api/sessions/{id}` - check `last_prompt.status` for `completed`, `error`, or `timed_out`
+- **Recent prompts**: `GET /sessions/telemetry/recent-prompts` - see the latest prompts across all sessions
+- **Activity**: `GET /sessions/telemetry/activity` - daily aggregate counts
 
 See [Pull activity and telemetry](/guides/pulling-activity-and-telemetry) for patterns.
 

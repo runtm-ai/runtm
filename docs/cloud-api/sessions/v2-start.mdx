@@ -1,0 +1,140 @@
+---
+title: "Start Sandbox (v2)"
+api: "POST /api/v2/sessions/{session_id}/start"
+description: "Ensure the sandbox is running - resumes if paused, waits if provisioning"
+---
+
+Reconciles the session's sandbox with the sandbox provider and ensures it is in `running` state. Unlike the legacy [`POST /api/sessions/{session_id}/start`](/cloud-api/sessions/start), this endpoint **only** handles sandbox lifecycle. It does not start a dev server or detect preview ports. Dev-server orchestration lives on dedicated endpoints (e.g. [`POST /api/v2/sessions/{id}/connect`](/cloud-api/sessions/v2-connect)).
+
+State transitions handled:
+
+| Current state | Action |
+|---|---|
+| `creating` | Polls until provisioning finishes (up to 120s) |
+| `paused` | Resumes the sandbox via the provider and updates the DB |
+| `running` | No-op - returns current state |
+| `destroyed` / `error` | `410 Gone` |
+| Sandbox missing in provider | Marks session destroyed and returns `410` |
+
+**Required scope:** `sessions:write`
+
+## Path Parameters
+
+<ParamField path="session_id" type="string" required>
+  The session ID.
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string">
+  Required when the session belongs to an organization.
+</ParamField>
+
+## Response
+
+`200 OK` with a `SessionV2` object.
+
+<ResponseField name="id" type="string">Session ID.</ResponseField>
+<ResponseField name="state" type="string">Live sandbox state - `running` or `paused`.</ResponseField>
+<ResponseField name="agent" type="string">Coding agent.</ResponseField>
+<ResponseField name="template" type="string | null">Template the session was scaffolded from.</ResponseField>
+<ResponseField name="name" type="string | null">Display name.</ResponseField>
+<ResponseField name="github_repo" type="string | null">GitHub `owner/repo` link.</ResponseField>
+<ResponseField name="github_branch" type="string | null">Active branch in the sandbox.</ResponseField>
+<ResponseField name="workspace_path" type="string">Working directory inside the sandbox (e.g. `/home/user`).</ResponseField>
+<ResponseField name="organization_id" type="string | null">Owning organization.</ResponseField>
+<ResponseField name="created_at" type="string">ISO 8601 creation timestamp.</ResponseField>
+<ResponseField name="updated_at" type="string | null">ISO 8601 last update timestamp.</ResponseField>
+<ResponseField name="services" type="object">
+  Named services exposed by the sandbox, e.g. `{ "frontend": 3000, "postgres": 5432 }`. Powers multi-port previews via [`/connect`](/cloud-api/sessions/v2-connect).
+</ResponseField>
+<ResponseField name="env" type="object">Env var **names** with masked values (`*****`). Secret values are never returned.</ResponseField>
+<ResponseField name="visibility" type="string">`private` or `team`.</ResponseField>
+<ResponseField name="total_cost_usd" type="number">Aggregate cost across all prompts.</ResponseField>
+<ResponseField name="tabs" type="array">
+  Ordered list of agent tabs: `[{ "id": "<uuid>", "name": "Chat 1" }]`. Defaults to one tab whose `id` equals the session id.
+</ResponseField>
+<ResponseField name="org_template_repos" type="array | null">
+  Multi-repo template entries (only set when the org template defines >1 repo).
+</ResponseField>
+
+<ResponseField name="sandbox" type="object">
+  Live sandbox info from the provider:
+
+  - **`sandbox_id`** - sandbox identifier
+  - **`state`** - `running` or `paused`
+  - **`started_at`** - ISO 8601
+  - **`end_at`** - ISO 8601 expiry
+</ResponseField>
+
+## Errors
+
+| Status | Meaning |
+|---|---|
+| `404` | Session not found or not owned by the caller |
+| `410` | Session destroyed, errored, or sandbox expired |
+| `502` | Sandbox not reachable / failed to resume |
+| `503` | Provisioning still in progress after 120s |
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/v2/sessions/86e11104-.../start" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://app.runtm.com/api/v2/sessions/86e11104-.../start",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+
+session = response.json()
+print(f"Sandbox {session['sandbox']['sandbox_id']} is {session['state']}")
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/v2/sessions/86e11104-.../start",
+  { method: "POST", headers: { "Authorization": "Bearer runtm_xxx" } }
+);
+
+const session = await response.json();
+console.log(`Sandbox ${session.sandbox.sandbox_id} is ${session.state}`);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "id": "86e11104-cdbb-42c9-bdc3-5212024ddb7b",
+  "state": "running",
+  "agent": "claude-code",
+  "template": null,
+  "name": "Refactor billing service",
+  "github_repo": "acme/billing",
+  "github_branch": "agent/86e11104",
+  "workspace_path": "/home/user",
+  "organization_id": "org_abc123",
+  "created_at": "2026-05-09T21:00:00Z",
+  "updated_at": "2026-05-09T21:30:00Z",
+  "services": { "frontend": 3000 },
+  "env": { "NODE_ENV": "*****" },
+  "visibility": "private",
+  "total_cost_usd": 0.23,
+  "tabs": [{ "id": "86e11104-cdbb-42c9-bdc3-5212024ddb7b", "name": "Chat 1" }],
+  "org_template_repos": null,
+  "sandbox": {
+    "sandbox_id": "sb_xyz",
+    "state": "running",
+    "started_at": "2026-05-09T21:00:30Z",
+    "end_at": "2026-05-09T22:00:30Z"
+  }
+}
+```
+</ResponseExample>
