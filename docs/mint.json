@@ -111,37 +111,67 @@
         "cloud-api/sessions/delete",
         "cloud-api/sessions/rename",
         "cloud-api/sessions/visibility",
-        "cloud-api/sessions/pause",
-        "cloud-api/sessions/resume",
-        "cloud-api/sessions/start",
-        "cloud-api/sessions/collaborators",
-        "cloud-api/sessions/heartbeat",
-        "cloud-api/sessions/workspace-state",
-        "cloud-api/sessions/files-list",
-        "cloud-api/sessions/files-read",
-        "cloud-api/sessions/files-write",
-        "cloud-api/sessions/files-delete",
-        "cloud-api/sessions/files-rename",
-        "cloud-api/sessions/files-mkdir",
-        "cloud-api/sessions/files-search",
-        "cloud-api/sessions/files-upload",
-        "cloud-api/sessions/files-download",
-        "cloud-api/sessions/run-server",
-        "cloud-api/sessions/env-vars-get",
-        "cloud-api/sessions/env-vars-set",
-        "cloud-api/sessions/env-vars-delete",
-        "cloud-api/sessions/detected-env-vars",
-        "cloud-api/sessions/detect-env-vars",
-        "cloud-api/sessions/prompt",
-        "cloud-api/sessions/prompt-cancel",
-        "cloud-api/sessions/prompt-rewind",
-        "cloud-api/sessions/history",
-        "cloud-api/sessions/events",
-        "cloud-api/sessions/instructions-get",
-        "cloud-api/sessions/instructions-set",
-        "cloud-api/sessions/git-clone",
-        "cloud-api/sessions/git-operation",
-        "cloud-api/sessions/git-sync"
+        {
+          "group": "Lifecycle",
+          "pages": [
+            "cloud-api/sessions/pause",
+            "cloud-api/sessions/resume",
+            "cloud-api/sessions/start",
+            "cloud-api/sessions/heartbeat",
+            "cloud-api/sessions/workspace-state",
+            "cloud-api/sessions/collaborators"
+          ]
+        },
+        {
+          "group": "Prompts",
+          "pages": [
+            "cloud-api/sessions/prompt",
+            "cloud-api/sessions/prompt-cancel",
+            "cloud-api/sessions/prompt-rewind",
+            "cloud-api/sessions/history",
+            "cloud-api/sessions/events"
+          ]
+        },
+        {
+          "group": "Files",
+          "pages": [
+            "cloud-api/sessions/files-list",
+            "cloud-api/sessions/files-read",
+            "cloud-api/sessions/files-write",
+            "cloud-api/sessions/files-delete",
+            "cloud-api/sessions/files-rename",
+            "cloud-api/sessions/files-mkdir",
+            "cloud-api/sessions/files-search",
+            "cloud-api/sessions/files-upload",
+            "cloud-api/sessions/files-download",
+            "cloud-api/sessions/run-server"
+          ]
+        },
+        {
+          "group": "Env Vars",
+          "pages": [
+            "cloud-api/sessions/env-vars-get",
+            "cloud-api/sessions/env-vars-set",
+            "cloud-api/sessions/env-vars-delete",
+            "cloud-api/sessions/detected-env-vars",
+            "cloud-api/sessions/detect-env-vars"
+          ]
+        },
+        {
+          "group": "Instructions",
+          "pages": [
+            "cloud-api/sessions/instructions-get",
+            "cloud-api/sessions/instructions-set"
+          ]
+        },
+        {
+          "group": "Git",
+          "pages": [
+            "cloud-api/sessions/git-clone",
+            "cloud-api/sessions/git-operation",
+            "cloud-api/sessions/git-sync"
+          ]
+        }
       ]
     },
     {
@@ -165,26 +195,46 @@
         "cloud-api/templates/create",
         "cloud-api/templates/update-config",
         "cloud-api/templates/delete",
-        "cloud-api/templates/build",
-        "cloud-api/templates/build-logs",
-        "cloud-api/templates/build-logs-history",
-        "cloud-api/templates/secrets-list",
-        "cloud-api/templates/secrets-update",
-        "cloud-api/templates/secret-delete",
-        "cloud-api/templates/fix-session",
-        "cloud-api/templates/save-snapshot"
+        {
+          "group": "Builds",
+          "pages": [
+            "cloud-api/templates/build",
+            "cloud-api/templates/build-logs",
+            "cloud-api/templates/build-logs-history",
+            "cloud-api/templates/fix-session",
+            "cloud-api/templates/save-snapshot"
+          ]
+        },
+        {
+          "group": "Secrets",
+          "pages": [
+            "cloud-api/templates/secrets-list",
+            "cloud-api/templates/secrets-update",
+            "cloud-api/templates/secret-delete"
+          ]
+        }
       ]
     },
     {
       "group": "Secrets",
       "pages": [
-        "cloud-api/secrets/personal-list",
-        "cloud-api/secrets/personal-set",
-        "cloud-api/secrets/personal-delete",
-        "cloud-api/secrets/team-list",
-        "cloud-api/secrets/team-set",
-        "cloud-api/secrets/team-delete",
-        "cloud-api/secrets/resolved"
+        "cloud-api/secrets/resolved",
+        {
+          "group": "Personal",
+          "pages": [
+            "cloud-api/secrets/personal-list",
+            "cloud-api/secrets/personal-set",
+            "cloud-api/secrets/personal-delete"
+          ]
+        },
+        {
+          "group": "Team",
+          "pages": [
+            "cloud-api/secrets/team-list",
+            "cloud-api/secrets/team-set",
+            "cloud-api/secrets/team-delete"
+          ]
+        }
       ]
     },
     {
@@ -194,19 +244,24 @@
         "cloud-api/context/user-instructions-set",
         "cloud-api/context/org-instructions-get",
         "cloud-api/context/org-instructions-set",
-        "cloud-api/context/skills/list",
-        "cloud-api/context/skills/create",
-        "cloud-api/context/skills/get",
-        "cloud-api/context/skills/patch",
-        "cloud-api/context/skills/delete",
-        "cloud-api/context/skills/version",
-        "cloud-api/context/skills/publish",
-        "cloud-api/context/skills/resync",
-        "cloud-api/context/skills/presign-upload",
-        "cloud-api/context/skills/discover-in-repo",
-        "cloud-api/context/skills/import",
-        "cloud-api/context/skills/attachments-list",
-        "cloud-api/context/skills/attachments-replace"
+        {
+          "group": "Skills",
+          "pages": [
+            "cloud-api/context/skills/list",
+            "cloud-api/context/skills/create",
+            "cloud-api/context/skills/get",
+            "cloud-api/context/skills/patch",
+            "cloud-api/context/skills/delete",
+            "cloud-api/context/skills/version",
+            "cloud-api/context/skills/publish",
+            "cloud-api/context/skills/resync",
+            "cloud-api/context/skills/presign-upload",
+            "cloud-api/context/skills/discover-in-repo",
+            "cloud-api/context/skills/import",
+            "cloud-api/context/skills/attachments-list",
+            "cloud-api/context/skills/attachments-replace"
+          ]
+        }
       ]
     },
     {
@@ -238,29 +293,49 @@
     {
       "group": "Provider Keys",
       "pages": [
-        "cloud-api/provider-keys/user-get",
-        "cloud-api/provider-keys/user-set",
-        "cloud-api/provider-keys/user-delete",
-        "cloud-api/provider-keys/org-get",
-        "cloud-api/provider-keys/org-set",
-        "cloud-api/provider-keys/org-delete",
         "cloud-api/provider-keys/resolved",
-        "cloud-api/provider-keys/current-plan"
+        "cloud-api/provider-keys/current-plan",
+        {
+          "group": "User Keys",
+          "pages": [
+            "cloud-api/provider-keys/user-get",
+            "cloud-api/provider-keys/user-set",
+            "cloud-api/provider-keys/user-delete"
+          ]
+        },
+        {
+          "group": "Org Keys",
+          "pages": [
+            "cloud-api/provider-keys/org-get",
+            "cloud-api/provider-keys/org-set",
+            "cloud-api/provider-keys/org-delete"
+          ]
+        }
       ]
     },
     {
       "group": "Activity",
       "pages": [
-        "cloud-api/activity/personal-activity",
-        "cloud-api/activity/personal-summary",
-        "cloud-api/activity/recent-prompts",
-        "cloud-api/activity/session-usage",
-        "cloud-api/activity/team-summary",
-        "cloud-api/activity/team-activity",
-        "cloud-api/activity/team-members",
-        "cloud-api/activity/team-deploy-metrics",
-        "cloud-api/activity/team-events",
-        "cloud-api/activity/team-traces"
+        {
+          "group": "Personal",
+          "pages": [
+            "cloud-api/activity/personal-activity",
+            "cloud-api/activity/personal-summary",
+            "cloud-api/activity/recent-prompts",
+            "cloud-api/activity/session-usage"
+          ]
+        },
+        {
+          "group": "Team",
+          "pages": [
+            "cloud-api/activity/team-summary",
+            "cloud-api/activity/team-activity",
+            "cloud-api/activity/team-members",
+            "cloud-api/activity/team-deploy-metrics",
+            "cloud-api/activity/team-events",
+            "cloud-api/activity/team-traces"
+          ]
+        }
       ]
     },
     {
