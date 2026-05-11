@@ -1,0 +1,123 @@
+---
+title: "Update Session Tabs (v2)"
+api: "PATCH /api/v2/sessions/{session_id}"
+description: "Partial update for a session — currently supports the agent tab list"
+---
+
+Partial update for a session. Currently the only supported field is `tabs` — the ordered list of agent chat tabs that appears in the workspace.
+
+The `tabs` list is a **full replacement**: include every tab you want to keep, in the desired order. Each entry must have a UUID `id` and a non-empty `name`.
+
+**Required scope:** `sessions:write`
+
+## Path Parameters
+
+<ParamField path="session_id" type="string" required>
+  The session ID.
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string">
+  Required when the session belongs to an organization.
+</ParamField>
+
+## Body
+
+<ParamField body="tabs" type="array" required>
+  Ordered list of tab objects. Full replacement — anything omitted is dropped.
+
+  Each entry:
+
+  - **`id`** (string, required) — UUID v4
+  - **`name`** (string, required) — non-empty display name
+</ParamField>
+
+## Validation rules
+
+- At least one tab must remain (empty list returns `400`).
+- Every `id` must be a valid UUID.
+- No duplicate `id`s.
+- Every `name` must be non-empty.
+
+## Response
+
+Returns the persisted tabs list.
+
+<ResponseField name="tabs" type="array">
+  The tabs after the update, in order.
+</ResponseField>
+
+## Errors
+
+| Status | Meaning |
+|---|---|
+| `400` | Empty list, invalid UUID, blank name, or duplicate id |
+| `404` | Session not found |
+
+<RequestExample>
+```bash cURL Rename a tab
+curl -X PATCH "https://app.runtm.com/api/v2/sessions/86e11104-..." \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tabs": [
+      { "id": "86e11104-cdbb-42c9-bdc3-5212024ddb7b", "name": "Backend" },
+      { "id": "9f1a3b22-1cdf-4f8e-ae06-9e4ad7a2cd11", "name": "Frontend" }
+    ]
+  }'
+```
+
+```python Python
+import requests
+
+response = requests.patch(
+    "https://app.runtm.com/api/v2/sessions/86e11104-...",
+    headers={"Authorization": "Bearer runtm_xxx"},
+    json={
+        "tabs": [
+            {"id": "86e11104-cdbb-42c9-bdc3-5212024ddb7b", "name": "Backend"},
+            {"id": "9f1a3b22-1cdf-4f8e-ae06-9e4ad7a2cd11", "name": "Frontend"},
+        ]
+    },
+)
+
+print(response.json()["tabs"])
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/v2/sessions/86e11104-...",
+  {
+    method: "PATCH",
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      tabs: [
+        { id: "86e11104-cdbb-42c9-bdc3-5212024ddb7b", name: "Backend" },
+        { id: "9f1a3b22-1cdf-4f8e-ae06-9e4ad7a2cd11", name: "Frontend" },
+      ],
+    }),
+  }
+);
+
+console.log((await response.json()).tabs);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "tabs": [
+    { "id": "86e11104-cdbb-42c9-bdc3-5212024ddb7b", "name": "Backend" },
+    { "id": "9f1a3b22-1cdf-4f8e-ae06-9e4ad7a2cd11", "name": "Frontend" }
+  ]
+}
+```
+</ResponseExample>

@@ -1,8 +1,12 @@
 ---
-title: "Heartbeat"
+title: "Heartbeat (legacy)"
 api: "POST /api/sessions/{session_id}/heartbeat"
-description: "Keep a session alive and reset the auto-pause timer"
+description: "Legacy keepalive endpoint — prefer the v2 refresh endpoint"
 ---
+
+<Warning>
+  **Deprecated.** This endpoint relies on a side-effect-based keepalive. New integrations should use [`POST /api/v2/sessions/{id}/refresh`](/cloud-api/sessions/v2-refresh), which extends the sandbox TTL explicitly via E2B's REST API.
+</Warning>
 
 Sends a heartbeat to keep the session alive. Resets the auto-pause timer so the session won't be automatically paused due to inactivity.
 

@@ -1,0 +1,85 @@
+---
+title: "Refresh Sandbox TTL (v2)"
+api: "POST /api/v2/sessions/{session_id}/refresh"
+description: "Extend the sandbox TTL — the v2 keepalive that replaces /heartbeat"
+---
+
+Extends the sandbox's idle timeout so it stays alive while the user is interacting. Call this periodically (e.g. every 5 minutes) while a workspace tab is open.
+
+This is the v2 replacement for the legacy [`POST /api/sessions/{session_id}/heartbeat`](/cloud-api/sessions/heartbeat). Unlike heartbeat, `/refresh` does not rely on `AsyncSandbox.connect()` as a side-effect-based keepalive — it explicitly extends the TTL via E2B's REST API.
+
+The session must be in `running` state.
+
+**Required scope:** `sessions:write`
+
+## Path Parameters
+
+<ParamField path="session_id" type="string" required>
+  The session ID.
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string">
+  Required when the session belongs to an organization.
+</ParamField>
+
+## Behavior
+
+- Extends the sandbox TTL by `idle_timeout_minutes * 60` seconds (default 30 minutes).
+- E2B caps duration at 3600s, so longer values are clamped.
+- Reconciles with E2B before checking state. If the sandbox has been paused or expired between calls, returns an error so the caller can re-`start` the session.
+
+## Response
+
+<ResponseField name="ok" type="boolean">
+  Always `true` on success.
+</ResponseField>
+
+## Errors
+
+| Status | Meaning |
+|---|---|
+| `400` | Session is not in `running` state, or has no sandbox |
+| `404` | Session not found |
+| `502` | E2B refresh call failed |
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/v2/sessions/86e11104-.../refresh" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests, time
+
+session_id = "86e11104-cdbb-42c9-bdc3-5212024ddb7b"
+while True:
+    requests.post(
+        f"https://app.runtm.com/api/v2/sessions/{session_id}/refresh",
+        headers={"Authorization": "Bearer runtm_xxx"},
+    )
+    time.sleep(300)  # every 5 min while the tab is open
+```
+
+```javascript JavaScript
+setInterval(async () => {
+  await fetch(
+    "https://app.runtm.com/api/v2/sessions/86e11104-.../refresh",
+    { method: "POST", headers: { "Authorization": "Bearer runtm_xxx" } }
+  );
+}, 5 * 60 * 1000);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "ok": true
+}
+```
+</ResponseExample>

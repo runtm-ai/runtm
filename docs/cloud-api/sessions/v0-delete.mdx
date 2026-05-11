@@ -1,0 +1,79 @@
+---
+title: "Destroy Session (v0)"
+api: "DELETE /api/v0/sessions/{session_id}"
+description: "Permanently destroy a session and clean up its sandbox"
+---
+
+Permanently destroys a session and tears down the underlying E2B sandbox. This is irreversible — files inside the sandbox are lost unless they were committed and pushed.
+
+For a reversible "stop" that preserves the sandbox state, use [`POST /api/sessions/{id}/pause`](/cloud-api/sessions/pause) instead.
+
+**Required scope:** `sessions:delete`
+
+## Path Parameters
+
+<ParamField path="session_id" type="string" required>
+  The session ID to destroy.
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+## Response
+
+`200 OK`.
+
+<ResponseField name="id" type="string">The destroyed session ID.</ResponseField>
+<ResponseField name="destroyed_at" type="string">ISO 8601 timestamp when destruction completed.</ResponseField>
+<ResponseField name="message" type="string">Confirmation message.</ResponseField>
+
+## Errors
+
+| Status | Meaning |
+|---|---|
+| `403` | API key does not own this session |
+| `404` | Session not found or already destroyed |
+| `500` | Sandbox teardown failed — retry once; if it persists the session may already be in a terminal state |
+
+<RequestExample>
+```bash cURL
+curl -X DELETE "https://app.runtm.com/api/v0/sessions/86e11104-..." \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```python Python
+import requests
+
+response = requests.delete(
+    "https://app.runtm.com/api/v0/sessions/86e11104-...",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+
+print(response.json()["message"])
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/v0/sessions/86e11104-...",
+  {
+    method: "DELETE",
+    headers: { "Authorization": "Bearer runtm_xxx" },
+  }
+);
+
+console.log((await response.json()).message);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "id": "86e11104-cdbb-42c9-bdc3-5212024ddb7b",
+  "destroyed_at": "2026-05-09T22:00:00Z",
+  "message": "Session destroyed successfully"
+}
+```
+</ResponseExample>

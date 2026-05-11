@@ -1,8 +1,12 @@
 ---
-title: "Start Session"
+title: "Start Session (legacy)"
 api: "POST /api/sessions/{session_id}/start"
-description: "Cold-start a session that hasn't been started yet"
+description: "Legacy cold-start endpoint — prefer the v2 sandbox lifecycle endpoint"
 ---
+
+<Warning>
+  **Deprecated.** This endpoint conflates sandbox lifecycle with dev-server orchestration. New integrations should use [`POST /api/v2/sessions/{id}/start`](/cloud-api/sessions/v2-start), which only handles sandbox lifecycle, plus [`POST /api/v2/sessions/{id}/connect`](/cloud-api/sessions/v2-connect) when you need a preview URL for a specific port.
+</Warning>
 
 Cold-starts a session that was created but hasn't been started. Provisions the sandbox and transitions the session to `active`.
 

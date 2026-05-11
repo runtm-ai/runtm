@@ -1,0 +1,135 @@
+---
+title: "Git Operation (v0)"
+api: "POST /api/v0/sessions/{session_id}/git"
+description: "Run a git operation inside the sandbox (commit, push, create PR, etc.)"
+---
+
+Executes a git operation inside the sandbox's workspace — typically used by background agents to push their work and open a pull request after completing a task.
+
+The session must be in `running` state.
+
+**Required scope:** `sessions:write`
+
+## Path Parameters
+
+<ParamField path="session_id" type="string" required>
+  The session ID.
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+## Body
+
+<ParamField body="operation" type="string" required>
+  One of: `status`, `commit`, `push`, `pull`, `sync`, `create_branch`, `switch_branch`, `list_branches`, `create_pr`, `create_branch_and_pr`, `init_repo`.
+</ParamField>
+
+<ParamField body="working_dir" type="string" default="/home/user">
+  Directory containing the git repository inside the sandbox.
+</ParamField>
+
+<ParamField body="message" type="string">
+  Commit message — required when `operation` is `commit`.
+</ParamField>
+
+<ParamField body="branch" type="string">
+  Branch name — for `create_branch` / `switch_branch`.
+</ParamField>
+
+<ParamField body="branch_search" type="string">
+  Search filter for `list_branches`.
+</ParamField>
+
+<ParamField body="pr_title" type="string">
+  Pull request title — required for `create_pr` and `create_branch_and_pr`.
+</ParamField>
+
+<ParamField body="pr_body" type="string">
+  Pull request body.
+</ParamField>
+
+<ParamField body="pr_base" type="string">
+  Base branch for the PR. Defaults to the repository's default branch.
+</ParamField>
+
+<ParamField body="branch_session_id" type="string">
+  Session ID to derive the branch name from when using `create_branch_and_pr`.
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">Whether the operation succeeded.</ResponseField>
+<ResponseField name="operation" type="string">The operation that was attempted.</ResponseField>
+<ResponseField name="output" type="string | null">Stdout/stderr from git.</ResponseField>
+<ResponseField name="error" type="string | null">Error message if `success` is false.</ResponseField>
+
+Status-specific fields populated when relevant:
+
+<ResponseField name="is_git_repo" type="boolean">For `status`: whether `working_dir` is a git repo.</ResponseField>
+<ResponseField name="current_branch" type="string">Current branch name.</ResponseField>
+<ResponseField name="default_branch" type="string">Repo's default branch.</ResponseField>
+<ResponseField name="has_changes" type="boolean">Whether there are uncommitted changes.</ResponseField>
+<ResponseField name="ahead" type="integer">Commits ahead of upstream.</ResponseField>
+<ResponseField name="behind" type="integer">Commits behind upstream.</ResponseField>
+<ResponseField name="repo_full_name" type="string">GitHub `owner/repo` (after `init_repo` or when remote is set).</ResponseField>
+<ResponseField name="repo_url" type="string">HTTPS URL of the GitHub repo.</ResponseField>
+<ResponseField name="pr_url" type="string">URL of the created PR (after `create_pr` / `create_branch_and_pr`).</ResponseField>
+<ResponseField name="pr_number" type="integer">PR number.</ResponseField>
+<ResponseField name="created_branch" type="string">Branch that was created (for `create_branch_and_pr`).</ResponseField>
+<ResponseField name="branches" type="array">List of branch names (for `list_branches`).</ResponseField>
+
+<RequestExample>
+```bash cURL Create branch and PR
+curl -X POST "https://app.runtm.com/api/v0/sessions/86e11104-.../git" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "operation": "create_branch_and_pr",
+    "working_dir": "/home/user/project",
+    "pr_title": "Add /health endpoint",
+    "pr_body": "Adds a simple health check endpoint that returns 200."
+  }'
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://app.runtm.com/api/v0/sessions/86e11104-.../git",
+    headers={"Authorization": "Bearer runtm_xxx"},
+    json={
+        "operation": "create_branch_and_pr",
+        "working_dir": "/home/user/project",
+        "pr_title": "Add /health endpoint",
+        "pr_body": "Adds a simple health check endpoint.",
+    },
+)
+
+result = response.json()
+if result["success"]:
+    print(f"PR opened: {result['pr_url']}")
+else:
+    print(f"Failed: {result['error']}")
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "success": true,
+  "operation": "create_branch_and_pr",
+  "output": "Created branch agent/86e11104 and pushed",
+  "current_branch": "agent/86e11104",
+  "default_branch": "main",
+  "repo_full_name": "acme/billing",
+  "repo_url": "https://github.com/acme/billing",
+  "created_branch": "agent/86e11104",
+  "pr_url": "https://github.com/acme/billing/pull/42",
+  "pr_number": 42
+}
+```
+</ResponseExample>
