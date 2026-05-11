@@ -62,7 +62,7 @@ response = requests.get(
 
 state = response.json()
 for port in state["detected_ports"]:
-    print(f"Port {port['port']} — {port['process']}")
+    print(f"Port {port['port']} - {port['process']}")
 ```
 
 ```javascript JavaScript
@@ -75,7 +75,7 @@ const response = await fetch(
 
 const state = await response.json();
 state.detected_ports.forEach((p) =>
-  console.log(`Port ${p.port} — ${p.process}`)
+  console.log(`Port ${p.port} - ${p.process}`)
 );
 ```
 </RequestExample>

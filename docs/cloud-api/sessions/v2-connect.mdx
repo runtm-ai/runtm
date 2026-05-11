@@ -8,8 +8,8 @@ Returns a preview URL backed by a running service on the sandbox at the requeste
 
 The endpoint is idempotent and self-healing:
 
-- Reconciles the DB state with E2B (handles raw-URL auto-resume).
-- Resumes the sandbox if E2B reports it as paused.
+- Reconciles the DB state with the sandbox provider (handles raw-URL auto-resume).
+- Resumes the sandbox if the provider reports it as paused.
 - Starts or verifies the dev server (no-ops if already responding).
 - Persists `session.preview_url` and cached project metadata so Slack/agent callbacks can reuse the verified URL.
 

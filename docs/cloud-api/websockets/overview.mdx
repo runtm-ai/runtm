@@ -53,10 +53,10 @@ WebSocket endpoints do not accept API keys directly. Instead, you exchange your 
 
 ## Connection lifecycle
 
-1. **Connect** — Open a WebSocket to the channel URL with a valid token.
-2. **Authenticate** — The server validates the token on connection. Invalid or expired tokens result in an immediate close with code `4001`.
-3. **Message flow** — Send and receive messages per the channel protocol.
-4. **Disconnect** — Either side can close the connection. The server closes idle connections after a timeout (varies by channel).
+1. **Connect** - Open a WebSocket to the channel URL with a valid token.
+2. **Authenticate** - The server validates the token on connection. Invalid or expired tokens result in an immediate close with code `4001`.
+3. **Message flow** - Send and receive messages per the channel protocol.
+4. **Disconnect** - Either side can close the connection. The server closes idle connections after a timeout (varies by channel).
 
 ## Reconnection
 
@@ -71,8 +71,8 @@ Implement exponential backoff for reconnection attempts to avoid flooding the se
 
 | WebSocket close code | Meaning |
 |---------------------|---------|
-| `4001` | Authentication failed — token is invalid or expired. |
-| `4003` | Forbidden — insufficient scope for this channel. |
+| `4001` | Authentication failed - token is invalid or expired. |
+| `4003` | Forbidden - insufficient scope for this channel. |
 | `4004` | Session not found or not accessible. |
 | `4009` | Session is in an invalid state (e.g. paused or destroyed). |
 | `1011` | Unexpected server error. |

@@ -4,7 +4,7 @@ api: "POST /api/agent-directives/{directive_id}:new-version"
 description: "Clone a directive into a new unpublished draft version"
 ---
 
-Creates a new unpublished draft by cloning the specified directive. Idempotent — repeat calls return the same draft until it is published. Attachments are copied forward so publishing lands atomically without re-attaching.
+Creates a new unpublished draft by cloning the specified directive. Idempotent - repeat calls return the same draft until it is published. Attachments are copied forward so publishing lands atomically without re-attaching.
 
 **Required scope:** `context:write`
 

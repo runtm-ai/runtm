@@ -4,7 +4,7 @@ api: "DELETE /api/v0/sessions/{session_id}"
 description: "Permanently destroy a session and clean up its sandbox"
 ---
 
-Permanently destroys a session and tears down the underlying E2B sandbox. This is irreversible — files inside the sandbox are lost unless they were committed and pushed.
+Permanently destroys a session and tears down the underlying sandbox. This is irreversible. Files inside the sandbox are lost unless they were committed and pushed.
 
 For a reversible "stop" that preserves the sandbox state, use [`POST /api/sessions/{id}/pause`](/cloud-api/sessions/pause) instead.
 
@@ -36,7 +36,7 @@ For a reversible "stop" that preserves the sandbox state, use [`POST /api/sessio
 |---|---|
 | `403` | API key does not own this session |
 | `404` | Session not found or already destroyed |
-| `500` | Sandbox teardown failed — retry once; if it persists the session may already be in a terminal state |
+| `500` | Sandbox teardown failed - retry once; if it persists the session may already be in a terminal state |
 
 <RequestExample>
 ```bash cURL

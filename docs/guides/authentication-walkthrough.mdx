@@ -9,7 +9,7 @@ For the full specification of every scope and role ceiling, see the [Scopes & Pe
 
 ## When to use this
 
-- You want to use Runtime programmatically — from your terminal, scripts, coding agents, or CI/CD pipelines
+- You want to use Runtime programmatically - from your terminal, scripts, coding agents, or CI/CD pipelines
 - You need to understand the difference between personal and organization keys
 - You want to establish a key rotation policy for your team
 
@@ -20,14 +20,14 @@ For the full specification of every scope and role ceiling, see the [Scopes & Pe
 
 ## Create a key
 
-Keys are created from the dashboard only — there is no programmatic key-creation endpoint. This prevents a compromised key from bootstrapping new credentials.
+Keys are created from the dashboard only - there is no programmatic key-creation endpoint. This prevents a compromised key from bootstrapping new credentials.
 
 <Steps>
   <Step title="Choose a context">
     Decide whether the key should act as **you personally** or as a **member of an organization**.
 
-    - **Personal key** — operates on your own sessions and secrets. Cannot touch org resources.
-    - **Organization key** — operates on resources owned by the organization. You must have the org selected in the org switcher when you create the key.
+    - **Personal key** - operates on your own sessions and secrets. Cannot touch org resources.
+    - **Organization key** - operates on resources owned by the organization. You must have the org selected in the org switcher when you create the key.
   </Step>
 
   <Step title="Pick scopes">
@@ -78,7 +78,7 @@ resp = requests.get(
     headers={"Authorization": "Bearer runtm_xxx"},
 )
 info = resp.json()
-print(f"Key {info['key_id']} — scopes: {info['scopes']}")
+print(f"Key {info['key_id']} - scopes: {info['scopes']}")
 ```
 
 ```javascript JavaScript
@@ -86,7 +86,7 @@ const resp = await fetch("https://app.runtm.com/auth/verify", {
   headers: { Authorization: "Bearer runtm_xxx" },
 });
 const info = await resp.json();
-console.log(`Key ${info.key_id} — scopes: ${info.scopes}`);
+console.log(`Key ${info.key_id} - scopes: ${info.scopes}`);
 ```
 
 </CodeGroup>
@@ -121,7 +121,7 @@ curl https://app.runtm.com/api/sessions \
 | Key type | `X-Organization-Id` header | Behavior |
 |----------|---------------------------|----------|
 | Personal | Omit or absent | Operates on personal resources |
-| Personal | Set to any value | `403` — personal keys cannot act as an org |
+| Personal | Set to any value | `403` - personal keys cannot act as an org |
 | Organization | Omit | Uses the key's org automatically |
 | Organization | Set to matching org | Works (redundant but harmless) |
 | Organization | Set to different org | `403` |
@@ -130,10 +130,10 @@ curl https://app.runtm.com/api/sessions \
 
 Apply the principle of least privilege:
 
-- Give CI keys only `sessions:read`, `sessions:write`, and `sessions:prompt` — not `sessions:delete` or `sessions:terminal`
+- Give CI keys only `sessions:read`, `sessions:write`, and `sessions:prompt` - not `sessions:delete` or `sessions:terminal`
 - Monitoring dashboards need only `sessions:read` and `activity:read`
 - Only org admins or owners should use `templates:write`, `guardrails:write`, or `integrations:write`
-- Never share a single key across multiple services — create one key per consumer
+- Never share a single key across multiple services - create one key per consumer
 
 ## Rotate a key
 
@@ -153,7 +153,7 @@ Runtime does not have a built-in "rotate" button. Instead, follow this sequence:
   </Step>
 
   <Step title="Revoke the old key">
-    In the dashboard, revoke the old key. Revocation is immediate — any in-flight requests using the old key fail with `401`.
+    In the dashboard, revoke the old key. Revocation is immediate - any in-flight requests using the old key fail with `401`.
   </Step>
 </Steps>
 
@@ -163,7 +163,7 @@ A user may have at most **3 active keys** per context (personal + each org). Key
 
 ## Revoke a key
 
-Navigate to **Settings > API Keys** in the dashboard and click **Revoke** next to the key. Revocation is immediate and permanent — the key ID is retained for audit but the key can never be used again.
+Navigate to **Settings > API Keys** in the dashboard and click **Revoke** next to the key. Revocation is immediate and permanent - the key ID is retained for audit but the key can never be used again.
 
 Revoke immediately when:
 

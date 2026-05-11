@@ -1,10 +1,10 @@
 ---
 title: "Update Session Tabs (v2)"
 api: "PATCH /api/v2/sessions/{session_id}"
-description: "Partial update for a session — currently supports the agent tab list"
+description: "Partial update for a session - currently supports the agent tab list"
 ---
 
-Partial update for a session. Currently the only supported field is `tabs` — the ordered list of agent chat tabs that appears in the workspace.
+Partial update for a session. Currently the only supported field is `tabs` - the ordered list of agent chat tabs that appears in the workspace.
 
 The `tabs` list is a **full replacement**: include every tab you want to keep, in the desired order. Each entry must have a UUID `id` and a non-empty `name`.
 
@@ -29,12 +29,12 @@ The `tabs` list is a **full replacement**: include every tab you want to keep, i
 ## Body
 
 <ParamField body="tabs" type="array" required>
-  Ordered list of tab objects. Full replacement — anything omitted is dropped.
+  Ordered list of tab objects. Full replacement - anything omitted is dropped.
 
   Each entry:
 
-  - **`id`** (string, required) — UUID v4
-  - **`name`** (string, required) — non-empty display name
+  - **`id`** (string, required) - UUID v4
+  - **`name`** (string, required) - non-empty display name
 </ParamField>
 
 ## Validation rules

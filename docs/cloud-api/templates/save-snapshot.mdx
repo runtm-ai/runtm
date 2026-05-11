@@ -4,7 +4,7 @@ api: "POST /api/org-templates/{template_id}/save-snapshot"
 description: "Save current session state as a template snapshot"
 ---
 
-Saves the current state of a template's fix session as a new E2B template snapshot. This captures the sandbox filesystem so future sessions using this template start from this point. Requires admin or owner role.
+Saves the current state of a template's fix session as a new template snapshot. This captures the sandbox filesystem so future sessions using this template start from this point. Requires admin or owner role.
 
 **Required scope:** `templates:write`
 
@@ -35,7 +35,7 @@ Saves the current state of a template's fix session as a new E2B template snapsh
 </ResponseField>
 
 <ResponseField name="e2b_template_id" type="string">
-  The new E2B template ID for the snapshot.
+  The new template ID for the snapshot.
 </ResponseField>
 
 <ResponseField name="message" type="string">

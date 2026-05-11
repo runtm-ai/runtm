@@ -68,7 +68,7 @@ data = response.json()
 if data["api_reachable"] and data["credentials_present"]:
     print(f"Ready to deploy (latency: {data['latency_ms']}ms)")
 else:
-    print("Preflight failed — check connectivity or credentials")
+    print("Preflight failed - check connectivity or credentials")
 ```
 
 ```javascript JavaScript
@@ -86,7 +86,7 @@ const data = await response.json();
 if (data.api_reachable && data.credentials_present) {
   console.log(`Ready to deploy (latency: ${data.latency_ms}ms)`);
 } else {
-  console.log("Preflight failed — check connectivity or credentials");
+  console.log("Preflight failed - check connectivity or credentials");
 }
 ```
 </RequestExample>

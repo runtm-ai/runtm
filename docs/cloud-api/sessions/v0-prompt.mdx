@@ -8,7 +8,7 @@ Sends a prompt to a session that is already in `running` state. The response is 
 
 Use this when you want to stream output in real time. If you'd rather kick off the prompt as a background task and poll for completion, [`POST /api/v0/sessions/launch`](/cloud-api/sessions/launch) and then poll [`GET /api/v0/sessions/{id}`](/cloud-api/sessions/v0-get) is the better pattern.
 
-The session must be in `running` state — call [`POST /api/v0/sessions`](/cloud-api/sessions/v0-create) first if you haven't already.
+The session must be in `running` state - call [`POST /api/v0/sessions`](/cloud-api/sessions/v0-create) first if you haven't already.
 
 **Required scope:** `sessions:prompt`
 
@@ -39,7 +39,7 @@ The session must be in `running` state — call [`POST /api/v0/sessions`](/cloud
 </ParamField>
 
 <ParamField body="plan_mode" type="boolean" default={false}>
-  Run in plan mode (read-only — agent analyzes without making changes).
+  Run in plan mode (read-only - agent analyzes without making changes).
 </ParamField>
 
 <ParamField body="continue_session" type="string">
@@ -72,7 +72,7 @@ Common `event_type` values:
 | `tool_use` | Tool invocation (file edit, bash command, etc.) |
 | `tool_result` | Tool output |
 | `result` | Final result with `cost_usd` metadata |
-| `error` | Fatal error — stream terminates |
+| `error` | Fatal error - stream terminates |
 | `done` | Stream complete (always last event) |
 
 ## Example

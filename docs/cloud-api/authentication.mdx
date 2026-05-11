@@ -14,7 +14,7 @@ curl https://app.runtm.com/api/sessions \
   -H "Authorization: Bearer runtm_sk_live_abc123..."
 ```
 
-All API keys use the prefix `runtm_sk_` followed by an opaque secret. The raw secret is shown **once** when you create the key — store it in a secrets manager or environment variable immediately.
+All API keys use the prefix `runtm_sk_` followed by an opaque secret. The raw secret is shown **once** when you create the key - store it in a secrets manager or environment variable immediately.
 
 ## Creating API keys
 
@@ -24,8 +24,8 @@ All API keys use the prefix `runtm_sk_` followed by an opaque secret. The raw se
   </Step>
 
   <Step title="Choose context">
-    - **Personal key** — created outside any org; sees only your personal sessions, secrets, and instructions.
-    - **Organization key** — switch to an org first, then create the key; it sees that org's shared resources.
+    - **Personal key** - created outside any org; sees only your personal sessions, secrets, and instructions.
+    - **Organization key** - switch to an org first, then create the key; it sees that org's shared resources.
   </Step>
 
   <Step title="Select scopes">
@@ -33,7 +33,7 @@ All API keys use the prefix `runtm_sk_` followed by an opaque secret. The raw se
   </Step>
 
   <Step title="Copy the secret">
-    The raw key is displayed once. Copy it now — you cannot retrieve it later. You can always verify a key with the [Verify endpoint](/cloud-api/authentication/verify).
+    The raw key is displayed once. Copy it now - you cannot retrieve it later. You can always verify a key with the [Verify endpoint](/cloud-api/authentication/verify).
   </Step>
 </Steps>
 
@@ -47,7 +47,7 @@ curl https://app.runtm.com/api/sessions \
   -H "X-Organization-Id: org_abc123"
 ```
 
-If the key was created in an org context, the organization is already embedded in the key. You can still pass the header explicitly — the API uses it as confirmation and will reject a mismatch.
+If the key was created in an org context, the organization is already embedded in the key. You can still pass the header explicitly - the API uses it as confirmation and will reject a mismatch.
 
 If the key was created in personal context, omitting the header returns your personal resources. Adding the header scopes the request to the specified org (provided you are a member).
 
@@ -57,7 +57,7 @@ If the key was created in personal context, omitting the header returns your per
 |--------|-------------|-----------------|
 | Created in | Personal context (no org selected) | Org context (org selected in dashboard) |
 | Default scope | Your personal sessions, secrets, instructions | The org's shared sessions, secrets, instructions |
-| `X-Organization-Id` | Optional — adds org scope if you are a member | Embedded — header is optional but must match |
+| `X-Organization-Id` | Optional - adds org scope if you are a member | Embedded - header is optional but must match |
 | Visibility | Only your resources | Resources visible to org members |
 
 ## Security best practices

@@ -4,7 +4,7 @@ api: "POST /api/v0/sessions/{session_id}/git"
 description: "Run a git operation inside the sandbox (commit, push, create PR, etc.)"
 ---
 
-Executes a git operation inside the sandbox's workspace — typically used by background agents to push their work and open a pull request after completing a task.
+Executes a git operation inside the sandbox's workspace - typically used by background agents to push their work and open a pull request after completing a task.
 
 The session must be in `running` state.
 
@@ -33,11 +33,11 @@ The session must be in `running` state.
 </ParamField>
 
 <ParamField body="message" type="string">
-  Commit message — required when `operation` is `commit`.
+  Commit message - required when `operation` is `commit`.
 </ParamField>
 
 <ParamField body="branch" type="string">
-  Branch name — for `create_branch` / `switch_branch`.
+  Branch name - for `create_branch` / `switch_branch`.
 </ParamField>
 
 <ParamField body="branch_search" type="string">
@@ -45,7 +45,7 @@ The session must be in `running` state.
 </ParamField>
 
 <ParamField body="pr_title" type="string">
-  Pull request title — required for `create_pr` and `create_branch_and_pr`.
+  Pull request title - required for `create_pr` and `create_branch_and_pr`.
 </ParamField>
 
 <ParamField body="pr_body" type="string">

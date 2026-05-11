@@ -34,7 +34,7 @@ A personal key cannot touch organization resources. An organization key cannot o
 
 ## Session lifecycle
 
-**Use `POST /sessions/{id}/start` instead of polling.** The start endpoint blocks until the session is running and the dev server is up. It is idempotent — calling it on an already-running session is a no-op.
+**Use `POST /sessions/{id}/start` instead of polling.** The start endpoint blocks until the session is running and the dev server is up. It is idempotent - calling it on an already-running session is a no-op.
 
 **Pause, don't destroy, if you might come back.** Paused sessions accrue no compute cost and resume in seconds with the filesystem intact. Destroyed sessions are permanently deleted.
 
@@ -96,11 +96,11 @@ See [Guardrails](/concepts/guardrails) for configuration details.
 
 **Use HTTPS only.** All API endpoints use TLS. Never downgrade to HTTP.
 
-**Scope org keys to the minimum role.** Member-role keys cannot mutate templates, secrets, guardrails, or integrations — even if those scopes are requested. Only admin or owner keys can.
+**Scope org keys to the minimum role.** Member-role keys cannot mutate templates, secrets, guardrails, or integrations - even if those scopes are requested. Only admin or owner keys can.
 
 **Audit with the Activity API.** The traces endpoint shows every prompt, tool call, and file change per session. Use it to audit what agents are doing in your organization.
 
-**Revoke compromised keys immediately.** Revocation is instant — any in-flight request using the old key fails with `401`.
+**Revoke compromised keys immediately.** Revocation is instant - any in-flight request using the old key fails with `401`.
 
 ## Next steps
 
@@ -109,7 +109,7 @@ See [Guardrails](/concepts/guardrails) for configuration details.
     Full key lifecycle walkthrough.
   </Card>
   <Card title="Teach the agent your codebase" icon="brain" href="/guides/teach-the-agent-your-codebase">
-    AGENTS.md, skills, and instructions — context that makes agents effective.
+    AGENTS.md, skills, and instructions - context that makes agents effective.
   </Card>
   <Card title="Scopes & Permissions" icon="shield" href="/cloud-api/scopes">
     Full scope catalog and role ceiling matrix.

@@ -58,7 +58,7 @@ response = requests.get(
 
 for v in response.json()["detected_vars"]:
     status = "set" if v["has_value"] else "missing"
-    print(f"{v['key']} ({v['source']}) — {status}")
+    print(f"{v['key']} ({v['source']}) - {status}")
 ```
 
 ```javascript JavaScript
@@ -72,7 +72,7 @@ const response = await fetch(
 const { detected_vars } = await response.json();
 detected_vars.forEach((v) => {
   const status = v.has_value ? "set" : "missing";
-  console.log(`${v.key} (${v.source}) — ${status}`);
+  console.log(`${v.key} (${v.source}) - ${status}`);
 });
 ```
 </RequestExample>

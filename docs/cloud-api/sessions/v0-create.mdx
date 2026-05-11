@@ -4,7 +4,7 @@ api: "POST /api/v0/sessions"
 description: "Create a sandbox without sending a prompt"
 ---
 
-Creates a new cloud session backed by an E2B sandbox. The session starts in `creating` state and transitions to `running` once the sandbox is provisioned.
+Creates a new cloud session backed by a sandbox. The session starts in `creating` state and transitions to `running` once the sandbox is provisioned.
 
 Use this when you need to set up a sandbox up-front and decide what prompt to send later. If you want to fire a prompt at the same time you create the session, use [`POST /api/v0/sessions/launch`](/cloud-api/sessions/launch) instead.
 
@@ -50,7 +50,7 @@ Use this when you need to set up a sandbox up-front and decide what prompt to se
 
 Returns `201` with the created session.
 
-<ResponseField name="id" type="string">Session ID — use this for subsequent prompt/git/destroy calls.</ResponseField>
+<ResponseField name="id" type="string">Session ID - use this for subsequent prompt/git/destroy calls.</ResponseField>
 <ResponseField name="state" type="string">Initial state (typically `creating`).</ResponseField>
 <ResponseField name="agent" type="string">Coding agent assigned to the session.</ResponseField>
 <ResponseField name="template" type="string | null">Template used.</ResponseField>

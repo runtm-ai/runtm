@@ -1,20 +1,20 @@
 ---
 title: "Start Sandbox (v2)"
 api: "POST /api/v2/sessions/{session_id}/start"
-description: "Ensure the sandbox is running — resumes if paused, waits if provisioning"
+description: "Ensure the sandbox is running - resumes if paused, waits if provisioning"
 ---
 
-Reconciles the session's sandbox with E2B reality and ensures it is in `running` state. Unlike the legacy [`POST /api/sessions/{session_id}/start`](/cloud-api/sessions/start), this endpoint **only** handles sandbox lifecycle — it does not start a dev server or detect preview ports. Dev-server orchestration lives on dedicated endpoints (e.g. [`POST /api/v2/sessions/{id}/connect`](/cloud-api/sessions/v2-connect)).
+Reconciles the session's sandbox with the sandbox provider and ensures it is in `running` state. Unlike the legacy [`POST /api/sessions/{session_id}/start`](/cloud-api/sessions/start), this endpoint **only** handles sandbox lifecycle. It does not start a dev server or detect preview ports. Dev-server orchestration lives on dedicated endpoints (e.g. [`POST /api/v2/sessions/{id}/connect`](/cloud-api/sessions/v2-connect)).
 
 State transitions handled:
 
 | Current state | Action |
 |---|---|
 | `creating` | Polls until provisioning finishes (up to 120s) |
-| `paused` | Resumes the sandbox via E2B and updates the DB |
-| `running` | No-op — returns current state |
+| `paused` | Resumes the sandbox via the provider and updates the DB |
+| `running` | No-op - returns current state |
 | `destroyed` / `error` | `410 Gone` |
-| Sandbox missing in E2B | Marks session destroyed and returns `410` |
+| Sandbox missing in provider | Marks session destroyed and returns `410` |
 
 **Required scope:** `sessions:write`
 
@@ -39,7 +39,7 @@ State transitions handled:
 `200 OK` with a `SessionV2` object.
 
 <ResponseField name="id" type="string">Session ID.</ResponseField>
-<ResponseField name="state" type="string">Live sandbox state — `running` or `paused`.</ResponseField>
+<ResponseField name="state" type="string">Live sandbox state - `running` or `paused`.</ResponseField>
 <ResponseField name="agent" type="string">Coding agent.</ResponseField>
 <ResponseField name="template" type="string | null">Template the session was scaffolded from.</ResponseField>
 <ResponseField name="name" type="string | null">Display name.</ResponseField>
@@ -63,12 +63,12 @@ State transitions handled:
 </ResponseField>
 
 <ResponseField name="sandbox" type="object">
-  Live E2B sandbox info:
+  Live sandbox info from the provider:
 
-  - **`sandbox_id`** — E2B sandbox identifier
-  - **`state`** — `running` or `paused`
-  - **`started_at`** — ISO 8601
-  - **`end_at`** — ISO 8601 expiry
+  - **`sandbox_id`** - sandbox identifier
+  - **`state`** - `running` or `paused`
+  - **`started_at`** - ISO 8601
+  - **`end_at`** - ISO 8601 expiry
 </ResponseField>
 
 ## Errors

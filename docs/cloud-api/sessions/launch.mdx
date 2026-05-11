@@ -4,7 +4,7 @@ api: "POST /api/v0/sessions/launch"
 description: "Create a session and fire a prompt in one call"
 ---
 
-Creates a new cloud session, configures lifecycle policy, and fires the prompt as a background task. Returns immediately with the session ID — poll [`GET /api/v0/sessions/{id}`](/cloud-api/sessions/v0-get) for status via the `last_prompt` field.
+Creates a new cloud session, configures lifecycle policy, and fires the prompt as a background task. Returns immediately with the session ID - poll [`GET /api/v0/sessions/{id}`](/cloud-api/sessions/v0-get) for status via the `last_prompt` field.
 
 This is the core "fire and forget" endpoint for programmatic agent workflows. It's the recommended entry point for Slack triggers, Linear automations, GitHub Actions, MCP servers, and any other webhook-driven integration.
 

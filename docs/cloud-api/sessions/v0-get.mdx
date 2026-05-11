@@ -6,7 +6,7 @@ description: "Polling-friendly status endpoint for background agents"
 
 Returns the current state of a session along with `last_prompt` (the polling status of the most recent prompt), `prompt_history`, and `lifecycle` policy. This is the endpoint to poll after [`POST /api/v0/sessions/launch`](/cloud-api/sessions/launch) or after sending a prompt via [`POST /api/v0/sessions/{id}/prompt`](/cloud-api/sessions/v0-prompt).
 
-The response shape is intentionally different from [`GET /api/sessions/{id}`](/cloud-api/sessions/get) — v0 includes the polling fields needed for fire-and-forget agent workflows.
+The response shape is intentionally different from [`GET /api/sessions/{id}`](/cloud-api/sessions/get) - v0 includes the polling fields needed for fire-and-forget agent workflows.
 
 **Required scope:** `sessions:read`
 
@@ -36,16 +36,16 @@ The response shape is intentionally different from [`GET /api/sessions/{id}`](/c
 <ResponseField name="github_repo" type="string | null">GitHub `owner/repo` link.</ResponseField>
 
 <ResponseField name="last_prompt" type="object | null">
-  Status of the most recent prompt — the primary polling field.
+  Status of the most recent prompt - the primary polling field.
 
-  - **`status`** — `idle`, `running`, `completed`, `error`, `timed_out`
-  - **`prompt_preview`** — first 200 chars of the prompt
-  - **`model`** — model used (e.g. `sonnet`)
-  - **`started_at`** / **`completed_at`** — ISO 8601 timestamps
-  - **`cost_usd`** — cost in USD for this prompt
-  - **`summary`** — first 500 chars of the agent's final response
-  - **`error`** — error string if `status` is `error` or `timed_out`
-  - **`plan_mode`** — whether plan mode was enabled
+  - **`status`** - `idle`, `running`, `completed`, `error`, `timed_out`
+  - **`prompt_preview`** - first 200 chars of the prompt
+  - **`model`** - model used (e.g. `sonnet`)
+  - **`started_at`** / **`completed_at`** - ISO 8601 timestamps
+  - **`cost_usd`** - cost in USD for this prompt
+  - **`summary`** - first 500 chars of the agent's final response
+  - **`error`** - error string if `status` is `error` or `timed_out`
+  - **`plan_mode`** - whether plan mode was enabled
 </ResponseField>
 
 <ResponseField name="prompt_history" type="array">
@@ -55,9 +55,9 @@ The response shape is intentionally different from [`GET /api/sessions/{id}`](/c
 <ResponseField name="lifecycle" type="object | null">
   Lifecycle policy applied at launch:
 
-  - **`on_complete`** — `pause`, `destroy`, or `keep_alive`
-  - **`ttl_minutes`** — TTL in minutes
-  - **`ttl_expires_at`** — ISO 8601 expiry timestamp
+  - **`on_complete`** - `pause`, `destroy`, or `keep_alive`
+  - **`ttl_minutes`** - TTL in minutes
+  - **`ttl_expires_at`** - ISO 8601 expiry timestamp
 </ResponseField>
 
 ## Polling pattern

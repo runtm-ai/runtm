@@ -3,7 +3,7 @@ title: "Prompt WebSocket"
 description: "Stream prompts and agent output in real-time"
 ---
 
-The prompt WebSocket lets you send prompts to the coding agent and receive streaming output — tokens, tool calls, results, and completion signals — in real time.
+The prompt WebSocket lets you send prompts to the coding agent and receive streaming output - tokens, tool calls, results, and completion signals - in real time.
 
 ## Connection
 
@@ -15,7 +15,7 @@ Obtain `ws_token` from the [Token Exchange](/cloud-api/websockets/token-exchange
 
 **Required scope:** `sessions:prompt`
 
-Each prompt tab has its own WebSocket. The `tab_id` identifies which agent tab to connect to — sessions can run multiple agents in parallel across tabs.
+Each prompt tab has its own WebSocket. The `tab_id` identifies which agent tab to connect to - sessions can run multiple agents in parallel across tabs.
 
 ## Authentication
 
@@ -159,7 +159,7 @@ ws.onmessage = (event) => {
       console.log(`[Result: ${msg.output}]`);
       break;
     case "prompt_end":
-      console.log(`\n[Done — ${msg.usage.output_tokens} tokens]`);
+      console.log(`\n[Done - ${msg.usage.output_tokens} tokens]`);
       break;
     case "error":
       console.error(`\n[Error: ${msg.message}]`);
