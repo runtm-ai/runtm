@@ -12,21 +12,15 @@ This package is intentionally separate from the pip `runtm` CLI under [`packages
 
 Requires Go 1.23+ on the customer's machine (`brew install go` / `https://go.dev/dl/`).
 
-One-liner via the install script (also drops skills into `~/.claude` / `~/.cursor`):
-
 ```bash
-curl -fsSL https://runtm.com/install | sh
+go install github.com/runtm-ai/runtm/packages/agent/cmd/runtm@latest
+runtm skills install    # auto-detects Claude Code / Cursor and writes SKILL.md files
+
 export RUNTM_API_KEY=runtm_sk_live_...   # from https://app.runtm.com Settings > API Keys
 runtm auth status
 ```
 
-Or install the binary directly:
-
-```bash
-go install github.com/runtm-ai/runtm/packages/agent/cmd/runtm@latest
-```
-
-The installer is intentionally `go install`-based: no GitHub release workflow, no per-platform binaries to host, just whatever Go produces from the module. The repo must be public (it is).
+Skills are embedded in the binary — `runtm skills install` copies them to `~/.claude/skills/runtm/` and/or `~/.cursor/skills/runtm/` with no network fetch required.
 
 ## Build from source
 
