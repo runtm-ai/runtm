@@ -9,7 +9,7 @@ metadata:
 
 # Runtm (Runtime) Cloud
 
-CLI for [Runtm Cloud](https://app.runtm.com) -- the hosted control plane for cloud sandboxes. When the user says "runtime" or "runtm" they mean this tool. The binary is `runtm`.
+CLI for [Runtm Cloud](https://app.runtm.com) -- the hosted control plane for cloud sandboxes. When the user says "runtime" or "runtm" they mean this tool. The binary is `runtm-api` (separate from the pip `runtm` CLI which handles local dev).
 
 **This CLI talks to the hosted cloud API only** (the routes under `https://app.runtm.com/api/...`). It covers the same operations the dashboard does, so AI agents can do anything a human does in the UI: create templates, fix broken ones, launch sessions, inspect files, manage secrets, deploy.
 
@@ -21,73 +21,73 @@ Full API reference: https://docs.runtm.com/cloud-api
 
 | Task | Command |
 |------|---------|
-| List sessions | `runtm session list` |
-| Launch agent + prompt | `runtm session launch --prompt "<task>"` |
-| Create blank session | `runtm session create --agent claude-code` |
-| Stream prompt | `runtm session prompt <id> "<task>"` |
-| Stream live event bus | `runtm session events <id>` |
-| Poll status (last_prompt) | `runtm session status <id>` |
-| Get canonical detail | `runtm session get <id>` |
-| Prompt history | `runtm session history <id>` |
-| Cancel a running prompt | `runtm session prompt-cancel <id>` |
-| Rewind to a prior prompt | `runtm session prompt-rewind <id> --to-index N` |
-| Inspect workspace state | `runtm session workspace-state <id>` |
-| Pause / resume / rename | `runtm session pause\|resume\|rename <id> [...]` |
-| Bump idle timer | `runtm session heartbeat <id>` |
-| Change visibility | `runtm session visibility <id> private\|team` |
-| Per-session instructions | `runtm session instructions get\|set <id> ...` |
-| Collaborators | `runtm session collaborators <id>` |
-| Start dev server | `runtm session run-server <id> [--port N]` |
-| Files: read/write/list | `runtm session file read\|write\|list <id> ...` |
-| Files: search/mkdir/rename/delete | `runtm session file search\|mkdir\|rename\|delete <id> ...` |
-| Env vars: get/set/delete | `runtm session env get\|set\|delete <id> ...` |
-| Env vars: detect / detected | `runtm session env detect\|detected <id>` |
-| Open PR with changes | `runtm session git <id> create_branch_and_pr --pr-title "..."` |
-| Generic git ops | `runtm session git <id> <op> [flags]` |
-| Deploy: info/scaffold/validate/preflight | `runtm session deploy info\|scaffold\|validate\|preflight <id>` |
-| Deploy: run (SSE) | `runtm session deploy run <id>` |
-| Destroy session | `runtm session destroy <id>` |
+| List sessions | `runtm-api session list` |
+| Launch agent + prompt | `runtm-api session launch --prompt "<task>"` |
+| Create blank session | `runtm-api session create --agent claude-code` |
+| Stream prompt | `runtm-api session prompt <id> "<task>"` |
+| Stream live event bus | `runtm-api session events <id>` |
+| Poll status (last_prompt) | `runtm-api session status <id>` |
+| Get canonical detail | `runtm-api session get <id>` |
+| Prompt history | `runtm-api session history <id>` |
+| Cancel a running prompt | `runtm-api session prompt-cancel <id>` |
+| Rewind to a prior prompt | `runtm-api session prompt-rewind <id> --to-index N` |
+| Inspect workspace state | `runtm-api session workspace-state <id>` |
+| Pause / resume / rename | `runtm-api session pause\|resume\|rename <id> [...]` |
+| Bump idle timer | `runtm-api session heartbeat <id>` |
+| Change visibility | `runtm-api session visibility <id> private\|team` |
+| Per-session instructions | `runtm-api session instructions get\|set <id> ...` |
+| Collaborators | `runtm-api session collaborators <id>` |
+| Start dev server | `runtm-api session run-server <id> [--port N]` |
+| Files: read/write/list | `runtm-api session file read\|write\|list <id> ...` |
+| Files: search/mkdir/rename/delete | `runtm-api session file search\|mkdir\|rename\|delete <id> ...` |
+| Env vars: get/set/delete | `runtm-api session env get\|set\|delete <id> ...` |
+| Env vars: detect / detected | `runtm-api session env detect\|detected <id>` |
+| Open PR with changes | `runtm-api session git <id> create_branch_and_pr --pr-title "..."` |
+| Generic git ops | `runtm-api session git <id> <op> [flags]` |
+| Deploy: info/scaffold/validate/preflight | `runtm-api session deploy info\|scaffold\|validate\|preflight <id>` |
+| Deploy: run (SSE) | `runtm-api session deploy run <id>` |
+| Destroy session | `runtm-api session destroy <id>` |
 
 ### Org templates (full lifecycle)
 
 | Task | Command |
 |------|---------|
-| List templates | `runtm template list` |
-| Get template detail | `runtm template get <tmpl_id>` |
-| Create new template | `runtm template create --display-name "..." --github-repo owner/repo` |
-| Update metadata | `runtm template update <tmpl_id> --display-name "..."` |
-| Delete template | `runtm template delete <tmpl_id> --yes` |
-| Trigger build | `runtm template build <tmpl_id>` |
-| Stream build logs | `runtm template build-logs <tmpl_id>` |
-| Past build logs | `runtm template build-logs-history <tmpl_id>` |
-| Fix a broken template (open session) | `runtm template fix-session <tmpl_id>` |
-| Save fix-session as new snapshot | `runtm template save-snapshot <tmpl_id> --session <session_id>` |
-| Discover GitHub repos eligible | `runtm template repos` |
-| List template secrets | `runtm template secrets list <tmpl_id>` |
-| Set template secrets | `runtm template secrets set <tmpl_id> KEY value [KEY value ...]` |
-| Delete a template secret | `runtm template secrets delete <tmpl_id> KEY` |
+| List templates | `runtm-api template list` |
+| Get template detail | `runtm-api template get <tmpl_id>` |
+| Create new template | `runtm-api template create --display-name "..." --github-repo owner/repo` |
+| Update metadata | `runtm-api template update <tmpl_id> --display-name "..."` |
+| Delete template | `runtm-api template delete <tmpl_id> --yes` |
+| Trigger build | `runtm-api template build <tmpl_id>` |
+| Stream build logs | `runtm-api template build-logs <tmpl_id>` |
+| Past build logs | `runtm-api template build-logs-history <tmpl_id>` |
+| Fix a broken template (open session) | `runtm-api template fix-session <tmpl_id>` |
+| Save fix-session as new snapshot | `runtm-api template save-snapshot <tmpl_id> --session <session_id>` |
+| Discover GitHub repos eligible | `runtm-api template repos` |
+| List template secrets | `runtm-api template secrets list <tmpl_id>` |
+| Set template secrets | `runtm-api template secrets set <tmpl_id> KEY value [KEY value ...]` |
+| Delete a template secret | `runtm-api template secrets delete <tmpl_id> KEY` |
 
 ### Activity (telemetry)
 
 | Task | Command |
 |------|---------|
-| Personal summary | `runtm activity summary` |
-| Recent prompts | `runtm activity recent-prompts --limit 20` |
-| Daily breakdown | `runtm activity daily --days 7` |
-| Per-session usage | `runtm activity session-usage <id>` |
-| Team summary | `runtm activity team-summary` |
-| Team activity over time | `runtm activity team-activity --days 7` |
-| Team members | `runtm activity team-members` |
+| Personal summary | `runtm-api activity summary` |
+| Recent prompts | `runtm-api activity recent-prompts --limit 20` |
+| Daily breakdown | `runtm-api activity daily --days 7` |
+| Per-session usage | `runtm-api activity session-usage <id>` |
+| Team summary | `runtm-api activity team-summary` |
+| Team activity over time | `runtm-api activity team-activity --days 7` |
+| Team members | `runtm-api activity team-members` |
 
 ### Secrets / Instructions / Guardrails / Integrations / Plan
 
 | Area | Commands |
 |------|----------|
-| Secrets | `runtm secrets list\|set\|delete\|resolved [--team]` |
-| Instructions | `runtm instructions get\|set [--org-scope] [--text "..."\|--clear]` |
-| Guardrails | `runtm guardrails limits\|allowlist get\|set`, `can-deploy`, `deploy-limits`, `cleanup --yes` |
-| Integrations | `runtm integrations anthropic\|openai get\|set\|delete\|resolved [--org-scope]` |
-| Auth | `runtm auth status` |
+| Secrets | `runtm-api secrets list\|set\|delete\|resolved [--team]` |
+| Instructions | `runtm-api instructions get\|set [--org-scope] [--text "..."\|--clear]` |
+| Guardrails | `runtm-api guardrails limits\|allowlist get\|set`, `can-deploy`, `deploy-limits`, `cleanup --yes` |
+| Integrations | `runtm-api integrations anthropic\|openai get\|set\|delete\|resolved [--org-scope]` |
+| Auth | `runtm-api auth status` |
 
 ## Endpoint Strategy
 
@@ -106,8 +106,8 @@ The CLI **does not call OSS-only routes** like `/api/v0/deployments` (that's the
 Requires Go 1.23+ on PATH (`brew install go` / https://go.dev/dl/).
 
 ```bash
-go install github.com/runtm-ai/runtm/packages/agent/cmd/runtm@latest
-runtm skills install    # auto-detects Claude Code / Cursor and installs SKILL.md files
+go install github.com/runtm-ai/runtm/packages/agent/cmd/runtm-api@latest
+runtm-api skills install    # auto-detects Claude Code / Cursor and installs SKILL.md files
 
 export RUNTM_API_KEY=runtm_sk_live_...   # from https://app.runtm.com > Settings > API Keys
 ```
@@ -122,18 +122,18 @@ export RUNTM_ORG_ID=org_abc123   # or pass --org org_abc123 per command
 
 1. Check context first (prior output, conversation, env vars).
 2. If a value is missing, run the matching `list` / `get` first:
-   - Session ID: `runtm session list`
-   - Template ID: `runtm template list`
+   - Session ID: `runtm-api session list`
+   - Template ID: `runtm-api template list`
 3. If still ambiguous, ask the user.
 4. Never run a command with an unresolved placeholder like `<id>` or `<org>`.
 
 ## Auth
 
 ```bash
-runtm auth status   # returns authenticated, scopes, org, tenant
+runtm-api auth status   # returns authenticated, scopes, org, tenant
 ```
 
-If `authenticated: false`, ask the user to set `RUNTM_API_KEY` (or run `runtm login` in the pip CLI). API keys are managed at https://app.runtm.com > Settings > API Keys.
+If `authenticated: false`, ask the user to set `RUNTM_API_KEY` (or run `runtm-api login` in the pip CLI). API keys are managed at https://app.runtm.com > Settings > API Keys.
 
 ## Output
 
@@ -147,7 +147,7 @@ If `authenticated: false`, ask the user to set `RUNTM_API_KEY` (or run `runtm lo
 | Status | Cause | Fix |
 |--------|-------|-----|
 | 401 | API key invalid or missing | `RUNTM_API_KEY` or rotate in dashboard |
-| 403 | Missing scope or wrong org | `runtm auth status` to inspect; key may need `templates:write`, `secrets:write`, `guardrails:write`, etc. |
+| 403 | Missing scope or wrong org | `runtm-api auth status` to inspect; key may need `templates:write`, `secrets:write`, `guardrails:write`, etc. |
 | 404 | Wrong ID | Run the matching `list` command first |
 | 409 | Conflict (e.g. duplicate name) | Use a different name / --name flag |
 | 422 | Body validation failed | Check the canonical endpoint schema at https://docs.runtm.com/cloud-api |
@@ -198,8 +198,8 @@ If `authenticated: false`, ask the user to set `RUNTM_API_KEY` (or run `runtm lo
 ## Subcommand Discovery
 
 ```bash
-runtm --help
-runtm <area> --help            # session, template, activity, secrets, instructions, guardrails, integrations, auth
-runtm session deploy --help    # nested subcommand trees
-runtm template fix-session --help
+runtm-api --help
+runtm-api <area> --help            # session, template, activity, secrets, instructions, guardrails, integrations, auth
+runtm-api session deploy --help    # nested subcommand trees
+runtm-api template fix-session --help
 ```

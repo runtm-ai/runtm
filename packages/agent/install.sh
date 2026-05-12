@@ -44,9 +44,9 @@ EOF
 }
 
 install_binary() {
-  info "Compiling $MODULE/cmd/runtm@$VERSION via go install..."
-  if ! GOFLAGS="-trimpath" go install "$MODULE/cmd/runtm@$VERSION"; then
-    err "go install failed. Re-run with 'go install $MODULE/cmd/runtm@$VERSION' to inspect."
+  info "Compiling $MODULE/cmd/runtm-api@$VERSION via go install..."
+  if ! GOFLAGS="-trimpath" go install "$MODULE/cmd/runtm-api@$VERSION"; then
+    err "go install failed. Re-run with 'go install $MODULE/cmd/runtm-api@$VERSION' to inspect."
   fi
 
   # Resolve install destination so we can tell the user where it landed.
@@ -60,10 +60,10 @@ install_binary() {
     fi
   fi
 
-  if [ ! -x "$gobin/runtm" ]; then
+  if [ ! -x "$gobin/runtm-api" ]; then
     err "Binary did not land in $gobin/runtm. Check 'go env GOBIN' / 'go env GOPATH'."
   fi
-  info "Installed: $gobin/runtm"
+  info "Installed: $gobin/runtm-api"
 
   case ":$PATH:" in
     *":$gobin:"*) ;;

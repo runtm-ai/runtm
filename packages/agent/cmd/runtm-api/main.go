@@ -1,12 +1,12 @@
-// Command runtm is the Runtm Cloud CLI for AI coding agents.
+// Command runtm-api is the Runtm Cloud CLI for AI coding agents.
 //
 // Build:
 //
-//	go build -o bin/runtm ./cmd/runtm
+//	go build -o bin/runtm-api ./cmd/runtm-api
 //
 // Run against a local backend:
 //
-//	RUNTM_API_URL=http://localhost:8081 ./bin/runtm auth status
+//	RUNTM_API_URL=http://localhost:8081/api ./bin/runtm-api auth status
 package main
 
 import (
