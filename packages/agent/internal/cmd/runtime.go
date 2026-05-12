@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/runtm-ai/runtm/packages/agent/internal/auth"
 	"github.com/runtm-ai/runtm/packages/agent/internal/client"
@@ -35,6 +36,14 @@ type Runtime struct {
 	Flags  *GlobalFlags
 	Stdout io.Writer
 	Stderr io.Writer
+
+	// keyOrgOnce + keyOrgID memoize the org ID embedded in the API key, so
+	// org-scoped commands like `runtm-api template list` work without the
+	// user having to set RUNTM_ORG_ID for org keys (the backend knows the
+	// org from the key, we just have to ask it once).
+	keyOrgOnce sync.Once
+	keyOrgID   string
+	keyOrgErr  error
 }
 
 // NewRuntime returns a Runtime that writes to os.Stdout / os.Stderr.
@@ -52,23 +61,60 @@ func (r *Runtime) Client() (*client.Client, *auth.Credentials, error) {
 	return client.New(creds), creds, nil
 }
 
-// requireOrgClient resolves the API client and ensures org context is set.
-// Use for routes that require X-Organization-Id (team telemetry, org
-// instructions, guardrails, team secrets, etc.). Writes a friendly silent
-// error to stdout when org is missing so the agent surfaces it cleanly.
+// resolveKeyOrgID asks the backend (once) which org this API key is bound to.
+// Returns "" when the key is personal or when verify fails (in which case the
+// caller's subsequent request will surface the real error). Memoized so a
+// single CLI invocation pays at most one extra round-trip.
+func (r *Runtime) resolveKeyOrgID(c *client.Client) (string, error) {
+	r.keyOrgOnce.Do(func() {
+		body, err := c.Get("/auth/verify", nil)
+		if err != nil {
+			r.keyOrgErr = err
+			return
+		}
+		var v struct {
+			OrganizationID string `json:"organization_id"`
+		}
+		if err := json.Unmarshal(body, &v); err != nil {
+			r.keyOrgErr = err
+			return
+		}
+		r.keyOrgID = v.OrganizationID
+	})
+	return r.keyOrgID, r.keyOrgErr
+}
+
+// requireOrgClient resolves the API client and ensures an org context is
+// available for routes that require X-Organization-Id (team telemetry, org
+// instructions, guardrails, team secrets, templates, etc.).
+//
+// Resolution order:
+//  1. --org flag / RUNTM_ORG_ID env var (already populated on creds).
+//  2. The org embedded in the API key, fetched once via /auth/verify.
+//  3. Surface a friendly silent error pointing the agent at the fix.
 func requireOrgClient(rt *Runtime, what string) (*client.Client, *auth.Credentials, error) {
 	c, creds, err := rt.Client()
 	if err != nil {
 		return nil, nil, err
 	}
-	if creds.OrganizationID == "" {
-		rt.WriteObject(map[string]any{
-			"error": what + " is org-scoped. Pass --org <id> or set RUNTM_ORG_ID.",
-			"hint":  "Switch context in the dashboard and copy the org ID, or run `runtm auth status` to inspect the active org.",
-		})
-		return nil, nil, errSilent
+	if creds.OrganizationID != "" {
+		return c, creds, nil
 	}
-	return c, creds, nil
+
+	// Try to bootstrap the org from the key itself.
+	orgID, verifyErr := rt.resolveKeyOrgID(c)
+	if verifyErr == nil && orgID != "" {
+		creds.OrganizationID = orgID
+		// Rebuild the client so the X-Organization-Id header is attached
+		// to every subsequent request in this command.
+		return client.New(creds), creds, nil
+	}
+
+	rt.WriteObject(map[string]any{
+		"error": what + " is org-scoped, but the API key has no org. Pass --org <id> or set RUNTM_ORG_ID, or create an org-scoped key in the dashboard.",
+		"hint":  "Run `runtm-api auth status` to inspect the active key and its org.",
+	})
+	return nil, nil, errSilent
 }
 
 // WriteJSON writes raw API response bytes (already JSON) to stdout with a

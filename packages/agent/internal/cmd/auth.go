@@ -54,8 +54,13 @@ func newAuthStatusCommand(rt *Runtime) *cobra.Command {
 				"api_url":       creds.APIURL,
 				"source":        creds.Source,
 			}
+			// Surface the effective org context: explicit (--org / env)
+			// first, otherwise whatever is embedded in the key (returned
+			// by /v1/me as tenant_id when the key is org-scoped).
 			if creds.OrganizationID != "" {
 				out["organization_id"] = creds.OrganizationID
+			} else if t, ok := me["tenant_id"].(string); ok && t != "" {
+				out["organization_id"] = t
 			}
 			for k, v := range me {
 				out[k] = v

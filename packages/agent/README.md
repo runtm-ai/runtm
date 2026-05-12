@@ -57,7 +57,7 @@ Run `runtm --help` or `runtm <command> --help` for full flag reference.
 |---------|---------|----------|
 | API key | `RUNTM_API_KEY` | `~/.runtm/credentials` (written by `runtm login` in the pip CLI) |
 | API URL | `RUNTM_API_URL` | `~/.runtm/config.yaml` then `https://app.runtm.com/api/cloud` |
-| Org ID  | `RUNTM_ORG_ID`  | `--org` flag |
+| Org ID  | `RUNTM_ORG_ID`  | `--org` flag, otherwise auto-resolved from the API key when it's org-scoped |
 
 API keys are managed in the dashboard at https://app.runtm.com. The same key works for both the pip CLI and this Go CLI.
 

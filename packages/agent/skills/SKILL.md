@@ -112,10 +112,12 @@ runtm-api skills install    # auto-detects Claude Code / Cursor and installs SKI
 export RUNTM_API_KEY=runtm_sk_live_...   # from https://app.runtm.com > Settings > API Keys
 ```
 
-Org context for org-scoped operations (templates, team telemetry, team secrets, org instructions, guardrails):
+Org context for org-scoped operations (templates, team telemetry, team secrets, org instructions, guardrails) is auto-discovered from the API key, so org keys "just work" with no extra setup. Only set this when using a personal key against an org you belong to, or when switching between orgs:
 
 ```bash
-export RUNTM_ORG_ID=org_abc123   # or pass --org org_abc123 per command
+export RUNTM_ORG_ID=org_abc123   # optional; usually only personal keys need this
+# or pass per command:
+runtm-api template list --org org_abc123
 ```
 
 ## Required Input Resolution
