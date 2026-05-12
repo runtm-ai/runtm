@@ -17,9 +17,11 @@ import (
 	"strings"
 )
 
-// DefaultAPIURL is the production cloud endpoint. The existing pip CLI also
-// defaults to this value.
-const DefaultAPIURL = "https://app.runtm.com/api"
+// DefaultAPIURL is the production cloud API proxy exposed by the Next.js app.
+// It rewrites /api/cloud/* to the FastAPI backend's canonical /api/* routes
+// without colliding with dashboard BFF routes under /api/sessions, /api/user,
+// etc. Local development should use RUNTM_API_URL=http://localhost:8081/api.
+const DefaultAPIURL = "https://app.runtm.com/api/cloud"
 
 // ErrNoCredentials means we could not locate an API key in env or on disk.
 var ErrNoCredentials = errors.New("no API key found. Set RUNTM_API_KEY or run: runtm login (pip CLI)")

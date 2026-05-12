@@ -11,7 +11,7 @@ metadata:
 
 CLI for [Runtm Cloud](https://app.runtm.com) -- the hosted control plane for cloud sandboxes. When the user says "runtime" or "runtm" they mean this tool. The binary is `runtm-api` (separate from the pip `runtm` CLI which handles local dev).
 
-**This CLI talks to the hosted cloud API only** (the routes under `https://app.runtm.com/api/...`). It covers the same operations the dashboard does, so AI agents can do anything a human does in the UI: create templates, fix broken ones, launch sessions, inspect files, manage secrets, deploy.
+**This CLI talks to the hosted cloud API only** (through `https://app.runtm.com/api/cloud/...`, which proxies to backend `/api/...`). It covers the same operations the dashboard does, so AI agents can do anything a human does in the UI: create templates, fix broken ones, launch sessions, inspect files, manage secrets, deploy.
 
 Full API reference: https://docs.runtm.com/cloud-api
 

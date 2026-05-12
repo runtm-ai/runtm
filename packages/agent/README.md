@@ -56,10 +56,18 @@ Run `runtm --help` or `runtm <command> --help` for full flag reference.
 | Setting | Env var | Fallback |
 |---------|---------|----------|
 | API key | `RUNTM_API_KEY` | `~/.runtm/credentials` (written by `runtm login` in the pip CLI) |
-| API URL | `RUNTM_API_URL` | `~/.runtm/config.yaml` then `https://app.runtm.com/api` |
+| API URL | `RUNTM_API_URL` | `~/.runtm/config.yaml` then `https://app.runtm.com/api/cloud` |
 | Org ID  | `RUNTM_ORG_ID`  | `--org` flag |
 
 API keys are managed in the dashboard at https://app.runtm.com. The same key works for both the pip CLI and this Go CLI.
+
+Production traffic goes through `https://app.runtm.com/api/cloud`, which the
+dashboard rewrites to the FastAPI backend's canonical `/api/*` routes. For
+local development, point directly at the backend:
+
+```bash
+export RUNTM_API_URL=http://localhost:8081/api
+```
 
 ## Output and exit codes
 
