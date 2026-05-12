@@ -8,7 +8,7 @@ metadata:
 
 # Runtm Templates
 
-Workflow recipes for `runtm template`. For endpoint reference: https://docs.runtm.com/cloud-api/templates.
+Workflow recipes for `runtm-api template`. For endpoint reference: https://docs.runtm.com/cloud-api/templates.
 
 ## What is an org template
 
@@ -30,14 +30,14 @@ A session created from a template boots instantly with the environment ready -- 
 export RUNTM_ORG_ID=org_abc123    # or pass --org org_abc123 each time
 ```
 
-Without org context, every `runtm template` command surfaces a clear error.
+Without org context, every `runtm-api template` command surfaces a clear error.
 
 ## Recipe: discover what exists
 
 ```bash
-runtm template list                 # all templates
-runtm template get <tmpl_id>        # full config for one
-runtm template repos                # GitHub repos eligible for new templates
+runtm-api template list                 # all templates
+runtm-api template get <tmpl_id>        # full config for one
+runtm-api template repos                # GitHub repos eligible for new templates
 ```
 
 Key fields to inspect:
@@ -51,10 +51,10 @@ Key fields to inspect:
 
 ```bash
 # 1. Verify the repo is accessible
-runtm template repos | jq '.repos[] | select(.full_name == "acme/my-app")'
+runtm-api template repos | jq '.repos[] | select(.full_name == "acme/my-app")'
 
 # 2. Create the template record (build_status starts as 'pending')
-runtm template create \
+runtm-api template create \
   --display-name "Internal API" \
   --name "internal-api" \
   --github-repo "acme/my-app" \
@@ -63,15 +63,15 @@ runtm template create \
 # Returns: {"id": "tmpl_abc...", "build_status": "pending", ...}
 
 # 3. Trigger the build
-runtm template build tmpl_abc...
+runtm-api template build tmpl_abc...
 # Returns 202 (build runs as background job)
 
 # 4. Stream the build progress
-runtm template build-logs tmpl_abc...
+runtm-api template build-logs tmpl_abc...
 # Streams JSON lines until event "done"
 
 # 5. Confirm completion
-runtm template get tmpl_abc... | jq '{build_status, has_all_required}'
+runtm-api template get tmpl_abc... | jq '{build_status, has_all_required}'
 ```
 
 If `--skip-agent` is passed to `build`, the agent step is skipped (faster but the user has to finish env setup inside a session).
@@ -82,22 +82,22 @@ When a template build fails OR a session born from the template can't run becaus
 
 ```bash
 # 1. Open a fix-session that boots the template's sandbox
-runtm template fix-session tmpl_abc...
+runtm-api template fix-session tmpl_abc...
 # Returns: {"session_id": "ses_xyz", "template_id": "tmpl_abc..."}
 
 # 2. Prompt the agent to diagnose + fix inside the fix-session
-runtm session prompt ses_xyz "The build is failing because of a missing dependency. Run npm install, fix the package.json, and verify the dev server starts on port 3000."
+runtm-api session prompt ses_xyz "The build is failing because of a missing dependency. Run npm install, fix the package.json, and verify the dev server starts on port 3000."
 
 # 3. Inspect what changed
-runtm session file list ses_xyz --path /home/user/project
-runtm session workspace-state ses_xyz | jq '.session.dirty_files'
+runtm-api session file list ses_xyz --path /home/user/project
+runtm-api session workspace-state ses_xyz | jq '.session.dirty_files'
 
 # 4. Once the fix-session works end-to-end, promote it to the template snapshot
-runtm template save-snapshot tmpl_abc... --session ses_xyz
+runtm-api template save-snapshot tmpl_abc... --session ses_xyz
 # Existing sessions keep using the old snapshot; new ones use the new one.
 
 # 5. Clean up the fix-session (optional -- it auto-pauses anyway)
-runtm session destroy ses_xyz
+runtm-api session destroy ses_xyz
 ```
 
 This is the agent's path to **fix template issues from the terminal sandbox** -- equivalent to what an admin does manually in the dashboard.
@@ -106,18 +106,18 @@ This is the agent's path to **fix template issues from the terminal sandbox** --
 
 ```bash
 # Stream live build logs for an in-progress build
-runtm template build-logs tmpl_abc...
+runtm-api template build-logs tmpl_abc...
 
 # Or fetch the persisted log history (after build completed)
-runtm template build-logs-history tmpl_abc... | jq '.logs[0].content'
+runtm-api template build-logs-history tmpl_abc... | jq '.logs[0].content'
 ```
 
 ## Recipe: rebuild after changes
 
 ```bash
 # Re-trigger build after the underlying repo changed (e.g. new dependency)
-runtm template build tmpl_abc...
-runtm template build-logs tmpl_abc...
+runtm-api template build tmpl_abc...
+runtm-api template build-logs tmpl_abc...
 ```
 
 The fast-rebuild path (no full reinstall) kicks in automatically when only instructions or skill files changed; otherwise the full agent build runs.
@@ -128,22 +128,22 @@ Templates declare required env-var names without storing values. Secrets resolve
 
 ```bash
 # Inspect what's required + configured
-runtm template secrets list tmpl_abc...
+runtm-api template secrets list tmpl_abc...
 # {"required_secrets": ["DATABASE_URL"], "secrets": [...], "has_all_required": true}
 
 # Set values (encrypted at rest)
-runtm template secrets set tmpl_abc... DATABASE_URL "postgres://..." STRIPE_KEY "sk_..."
+runtm-api template secrets set tmpl_abc... DATABASE_URL "postgres://..." STRIPE_KEY "sk_..."
 
 # Remove a specific secret
-runtm template secrets delete tmpl_abc... STRIPE_KEY
+runtm-api template secrets delete tmpl_abc... STRIPE_KEY
 ```
 
 ## Recipe: clean up
 
 ```bash
 # Delete must be confirmed
-runtm template delete tmpl_abc...        # blocks, shows hint
-runtm template delete tmpl_abc... --yes  # actually deletes
+runtm-api template delete tmpl_abc...        # blocks, shows hint
+runtm-api template delete tmpl_abc... --yes  # actually deletes
 ```
 
 Deletion does not affect already-running sessions that were created from the template -- those keep using their own snapshot until destroyed.
@@ -158,4 +158,4 @@ Deletion does not affect already-running sessions that were created from the tem
 | Delete | Admin or Owner | `templates:delete` |
 | Manage template secrets | Admin or Owner | `secrets:write` |
 
-If an operation fails with 403, run `runtm auth status` and verify both the API key scopes and the user's org role.
+If an operation fails with 403, run `runtm-api auth status` and verify both the API key scopes and the user's org role.

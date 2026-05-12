@@ -15,8 +15,8 @@ When a customer says something is wrong with a session ("the agent is stuck", "t
 If the user gives you a session ID, use it. Otherwise discover the most recent activity:
 
 ```bash
-runtm session list --limit 5             # all recent sessions
-runtm activity recent-prompts --limit 5  # most recent prompts across the org
+runtm-api session list --limit 5             # all recent sessions
+runtm-api activity recent-prompts --limit 5  # most recent prompts across the org
 ```
 
 ## Step 2: capture full session state in one pass
@@ -27,23 +27,23 @@ Pipe these calls together to get a complete snapshot:
 SID=<session_id>
 
 # Canonical detail (state, agent, template, sandbox URL, timestamps)
-runtm session get "$SID"
+runtm-api session get "$SID"
 
 # Polling envelope (last_prompt status + cost + summary)
-runtm session status "$SID"
+runtm-api session status "$SID"
 
 # Workspace state (dirty files, open tabs, env, auth, instructions)
-runtm session workspace-state "$SID"
+runtm-api session workspace-state "$SID"
 
 # Per-session instructions (the CLAUDE.md the agent was reading)
-runtm session instructions get "$SID"
+runtm-api session instructions get "$SID"
 
 # Prompt history (all prompts run in this session)
-runtm session history "$SID"
+runtm-api session history "$SID"
 
 # Effective env vars (names + sources, values masked)
-runtm session env get "$SID"
-runtm session env detected "$SID"
+runtm-api session env get "$SID"
+runtm-api session env detected "$SID"
 ```
 
 This is the equivalent of opening the session in the dashboard and inspecting every panel.
@@ -52,13 +52,13 @@ This is the equivalent of opening the session in the dashboard and inspecting ev
 
 ```bash
 # List top-level files
-runtm session file list "$SID" --path /home/user/project
+runtm-api session file list "$SID" --path /home/user/project
 
 # Search for something specific
-runtm session file search "$SID" --query "TODO" --path /home/user/project
+runtm-api session file search "$SID" --query "TODO" --path /home/user/project
 
 # Read a specific file
-runtm session file read "$SID" /home/user/project/package.json
+runtm-api session file read "$SID" /home/user/project/package.json
 ```
 
 ## Step 4: follow live events (if prompt is mid-run)
@@ -66,7 +66,7 @@ runtm session file read "$SID" /home/user/project/package.json
 ```bash
 # Live SSE stream of the agent's tool use, output, and result events.
 # Stops automatically when the prompt finishes.
-runtm session events "$SID"
+runtm-api session events "$SID"
 ```
 
 Each stdout line is a JSON envelope:
@@ -83,31 +83,31 @@ Each stdout line is a JSON envelope:
 
 | Symptom | Likely cause | Next move |
 |---------|--------------|-----------|
-| `state: error` + `error_message` set | Sandbox failed to provision (E2B / template / secrets) | Check `runtm template get <tmpl_id>` for `has_all_required: false`; verify team secrets via `runtm secrets list --team`. |
-| `state: paused` with no recent activity | Auto-paused after 20 min idle | `runtm session resume <id>` then re-prompt. |
-| `last_prompt.status: timed_out` | Prompt hit `prompt_timeout_minutes` cap | Use `runtm session prompt <id> "..."` to re-run, or split into smaller steps. |
-| `last_prompt.status: error` | Agent / model error | Check `last_prompt.error` field; check `runtm guardrails can-deploy` for org policy issues. |
-| Prompt running forever, no tool output | Stuck / hung | `runtm session prompt-cancel <id>`, then `runtm session status` to confirm. |
-| Files modified but no PR | Agent didn't push | Run `runtm session git <id> status` then `runtm session git <id> create_branch_and_pr --pr-title "..."`. |
-| Build failing repeatedly | Template environment broken | Use `runtm template fix-session <tmpl_id>` to enter the sandbox and repair (see runtm-templates skill). |
+| `state: error` + `error_message` set | Sandbox failed to provision (E2B / template / secrets) | Check `runtm-api template get <tmpl_id>` for `has_all_required: false`; verify team secrets via `runtm-api secrets list --team`. |
+| `state: paused` with no recent activity | Auto-paused after 20 min idle | `runtm-api session resume <id>` then re-prompt. |
+| `last_prompt.status: timed_out` | Prompt hit `prompt_timeout_minutes` cap | Use `runtm-api session prompt <id> "..."` to re-run, or split into smaller steps. |
+| `last_prompt.status: error` | Agent / model error | Check `last_prompt.error` field; check `runtm-api guardrails can-deploy` for org policy issues. |
+| Prompt running forever, no tool output | Stuck / hung | `runtm-api session prompt-cancel <id>`, then `runtm-api session status` to confirm. |
+| Files modified but no PR | Agent didn't push | Run `runtm-api session git <id> status` then `runtm-api session git <id> create_branch_and_pr --pr-title "..."`. |
+| Build failing repeatedly | Template environment broken | Use `runtm-api template fix-session <tmpl_id>` to enter the sandbox and repair (see runtm-templates skill). |
 
 ## Step 6: take corrective action
 
 ```bash
 # Cancel a runaway prompt
-runtm session prompt-cancel "$SID"
+runtm-api session prompt-cancel "$SID"
 
 # Rewind to a prior prompt (drop the failed one from history)
-runtm session prompt-rewind "$SID" --to-index 3
+runtm-api session prompt-rewind "$SID" --to-index 3
 
 # Update per-session instructions before re-prompting
-runtm session instructions set "$SID" --text "Always run `npm test` before committing."
+runtm-api session instructions set "$SID" --text "Always run `npm test` before committing."
 
 # Pause to stop spending compute while you investigate
-runtm session pause "$SID"
+runtm-api session pause "$SID"
 
 # Force-destroy if it's truly hung
-runtm session destroy "$SID"
+runtm-api session destroy "$SID"
 ```
 
 ## Step 7: when to escalate to the human
@@ -115,7 +115,7 @@ runtm session destroy "$SID"
 Stop and ask the user before:
 
 - Deleting a session that has uncommitted work (check `workspace-state`'s dirty files first)
-- Calling `runtm guardrails cleanup --yes` (destroys ALL stuck org sessions)
+- Calling `runtm-api guardrails cleanup --yes` (destroys ALL stuck org sessions)
 - Rewinding history past the user's last manual prompt
 - Saving a snapshot of a fix-session that isn't fully verified
 
@@ -124,9 +124,9 @@ Stop and ask the user before:
 If the user asks "what's going on across all our sessions?", chain:
 
 ```bash
-runtm session list --limit 50 | jq '.sessions[] | select(.state == "error" or .state == "running") | {id, state, agent, name}'
-runtm activity team-summary | jq '{total_sessions, total_cost_usd, total_prompts}'
-runtm guardrails can-deploy
+runtm-api session list --limit 50 | jq '.sessions[] | select(.state == "error" or .state == "running") | {id, state, agent, name}'
+runtm-api activity team-summary | jq '{total_sessions, total_cost_usd, total_prompts}'
+runtm-api guardrails can-deploy
 ```
 
 That gives the user a one-screen overview equivalent to the dashboard's activity tab.

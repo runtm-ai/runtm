@@ -13,7 +13,7 @@ This package is intentionally separate from the pip `runtm` CLI under [`packages
 Requires Go 1.23+ on the customer's machine (`brew install go` / `https://go.dev/dl/`).
 
 ```bash
-go install github.com/runtm-ai/runtm/packages/agent/cmd/runtm@latest
+go install github.com/runtm-ai/runtm/packages/agent/cmd/runtm-api@latest
 runtm skills install    # auto-detects Claude Code / Cursor and writes SKILL.md files
 
 export RUNTM_API_KEY=runtm_sk_live_...   # from https://app.runtm.com Settings > API Keys
@@ -81,7 +81,7 @@ These are workflow recipes, not API documentation. Full endpoint details live at
 
 ```
 packages/agent/
-  cmd/runtm/main.go           # entry point
+  cmd/runtm-api/main.go           # entry point
   internal/auth/              # credential + base URL resolution
   internal/client/            # HTTP wrapper, JSON + SSE
   internal/cmd/               # cobra subcommands

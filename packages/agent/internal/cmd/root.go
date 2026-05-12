@@ -21,9 +21,12 @@ func buildRoot() rootBuild {
 	rt := NewRuntime(flags)
 
 	root := &cobra.Command{
-		Use:   "runtm",
-		Short: "Runtm (Runtime) Cloud CLI for AI coding agents",
-		Long: `Runtm CLI - programmatic access to Runtm Cloud (also known as Runtime).
+		Use:   "runtm-api",
+		Short: "Runtm (Runtime) Cloud API CLI for AI coding agents",
+		Long: `runtm-api - programmatic access to Runtm Cloud (also known as Runtime).
+
+Separate from the pip 'runtm' CLI (which handles local dev, scaffolding, and
+deploy). This binary talks only to the hosted cloud API.
 
 Designed to be invoked by AI coding agents (Claude Code, Cursor, etc.) to
 create cloud sessions, prompt agents, inspect templates, and check deployment

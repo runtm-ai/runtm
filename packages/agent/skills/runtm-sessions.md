@@ -8,7 +8,7 @@ metadata:
 
 # Runtm Sessions
 
-Workflow recipes for the `runtm session` subcommands. For endpoint details see https://docs.runtm.com/cloud-api/sessions.
+Workflow recipes for the `runtm-api session` subcommands. For endpoint details see https://docs.runtm.com/cloud-api/sessions.
 
 ## When to use which command
 
@@ -27,7 +27,7 @@ Workflow recipes for the `runtm session` subcommands. For endpoint details see h
 
 ```bash
 # Fire-and-forget
-runtm session launch \
+runtm-api session launch \
   --prompt "Build a REST API with FastAPI that manages TODO items" \
   --agent claude-code \
   --on-complete pause \
@@ -35,10 +35,10 @@ runtm session launch \
 # Returns: {"id": "86e11104-...", "state": "creating", ...}
 
 # Poll until done (last_prompt.status -> completed | error | timed_out)
-runtm session status 86e11104-...
+runtm-api session status 86e11104-...
 
 # Open a PR with the agent's changes
-runtm session git 86e11104-... create_branch_and_pr \
+runtm-api session git 86e11104-... create_branch_and_pr \
   --pr-title "Add TODO REST API" \
   --pr-body "Implements CRUD endpoints."
 ```
@@ -47,55 +47,55 @@ runtm session git 86e11104-... create_branch_and_pr \
 
 ```bash
 # 1. Create a blank session
-runtm session create --agent claude-code --on-complete keep_alive
+runtm-api session create --agent claude-code --on-complete keep_alive
 # Returns: {"id": "...", "state": "creating", ...}
 
 # 2. Wait for it to be running
-runtm session get <id>   # poll until .state == "running"
+runtm-api session get <id>   # poll until .state == "running"
 
 # 3. First prompt (streams SSE as JSON lines)
-runtm session prompt <id> "Build a REST API for managing invoices"
+runtm-api session prompt <id> "Build a REST API for managing invoices"
 
 # 4. Follow-up
-runtm session prompt <id> "Add pagination and filtering to the list endpoint"
+runtm-api session prompt <id> "Add pagination and filtering to the list endpoint"
 
 # 5. Open PR
-runtm session git <id> create_branch_and_pr \
+runtm-api session git <id> create_branch_and_pr \
   --pr-title "Invoice API with pagination"
 
 # 6. Cleanup
-runtm session destroy <id>
+runtm-api session destroy <id>
 ```
 
 ## Recipe: pre-seed files and env, then prompt
 
 ```bash
-runtm session create --agent claude-code --on-complete keep_alive
+runtm-api session create --agent claude-code --on-complete keep_alive
 # Wait for running...
 
 # Write a config file
-runtm session file write <id> /home/user/.env --content "API_KEY=abc123\nDEBUG=1"
+runtm-api session file write <id> /home/user/.env --content "API_KEY=abc123\nDEBUG=1"
 
 # Set runtime env vars
-runtm session env set <id> NODE_ENV=development DATABASE_URL=postgres://...
+runtm-api session env set <id> NODE_ENV=development DATABASE_URL=postgres://...
 
 # Verify
-runtm session file list <id> --path /home/user
-runtm session env get <id>   # values come back masked
+runtm-api session file list <id> --path /home/user
+runtm-api session env get <id>   # values come back masked
 
 # Prompt the agent against the prepared workspace
-runtm session prompt <id> "Use the config in .env to wire the DB connection."
+runtm-api session prompt <id> "Use the config in .env to wire the DB connection."
 ```
 
 ## Recipe: pause and resume
 
 ```bash
 # Long task done, but might revisit
-runtm session pause <id>   # sandbox is frozen, no compute cost
+runtm-api session pause <id>   # sandbox is frozen, no compute cost
 
 # Later
-runtm session resume <id>  # back to running state
-runtm session prompt <id> "Continue from where we left off."
+runtm-api session resume <id>  # back to running state
+runtm-api session prompt <id> "Continue from where we left off."
 ```
 
 ## Polling pattern
@@ -137,7 +137,7 @@ For high-volume workflows prefer webhooks: https://docs.runtm.com/guides/webhook
 Read until you see an event of type `done` or `error`. Pipe through `jq` to filter:
 
 ```bash
-runtm session prompt <id> "..." | jq -c 'select(.event == "result")'
+runtm-api session prompt <id> "..." | jq -c 'select(.event == "result")'
 ```
 
 ## Lifecycle policies (`--on-complete`)
@@ -167,13 +167,13 @@ Working directory defaults to `/home/user`. Set `--working-dir` if the repo is e
 
 ```bash
 # Read a single file
-runtm session file read <id> /home/user/main.py
+runtm-api session file read <id> /home/user/main.py
 
 # Write (overwrites)
-runtm session file write <id> /home/user/main.py --content "$(cat local.py)"
+runtm-api session file write <id> /home/user/main.py --content "$(cat local.py)"
 
 # List a directory
-runtm session file list <id> --path /home/user
+runtm-api session file list <id> --path /home/user
 ```
 
 Files require `sessions:read` (list / read) or `sessions:write` (write). For binary or large files prefer the upload/download endpoints documented at https://docs.runtm.com/cloud-api/sessions (not yet exposed by this CLI).
@@ -182,13 +182,13 @@ Files require `sessions:read` (list / read) or `sessions:write` (write). For bin
 
 ```bash
 # Inspect (values are masked: "*****")
-runtm session env get <id>
+runtm-api session env get <id>
 
 # Set multiple at once
-runtm session env set <id> NODE_ENV=development DATABASE_URL=postgres://...
+runtm-api session env set <id> NODE_ENV=development DATABASE_URL=postgres://...
 
 # Remove one
-runtm session env delete <id> DATABASE_URL
+runtm-api session env delete <id> DATABASE_URL
 ```
 
-Env-var endpoints use the `secrets:read` and `secrets:write` scopes -- not `sessions:write`. Confirm the API key has those scopes via `runtm auth status` before suggesting env changes to the user.
+Env-var endpoints use the `secrets:read` and `secrets:write` scopes -- not `sessions:write`. Confirm the API key has those scopes via `runtm-api auth status` before suggesting env changes to the user.

@@ -13,8 +13,8 @@
 #   make lint     # go vet ./...
 #   make fmt      # go fmt ./...
 
-BINARY      := runtm
-PKG         := ./cmd/runtm
+BINARY      := runtm-api
+PKG         := ./cmd/runtm-api
 VERSION     ?= dev
 LDFLAGS     := -s -w -X github.com/runtm-ai/runtm/packages/agent/internal/cmd.Version=$(VERSION)
 LOCAL_API   ?= http://localhost:8081/api
