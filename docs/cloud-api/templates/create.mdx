@@ -70,7 +70,7 @@ Returns `201` with the created template resource.
 
 <RequestExample>
 ```bash cURL
-curl -X POST "https://app.runtm.com/api/org-templates" \
+curl -X POST "https://app.runtm.com/api/cloud/org-templates" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "X-Organization-Id: org_abc123" \
   -H "Content-Type: application/json" \
@@ -92,7 +92,7 @@ curl -X POST "https://app.runtm.com/api/org-templates" \
 import requests
 
 response = requests.post(
-    "https://app.runtm.com/api/org-templates",
+    "https://app.runtm.com/api/cloud/org-templates",
     headers={
         "Authorization": "Bearer runtm_xxx",
         "X-Organization-Id": "org_abc123",
@@ -118,7 +118,7 @@ print(f"Created template: {data['id']}")
 
 ```javascript JavaScript
 const response = await fetch(
-  "https://app.runtm.com/api/org-templates",
+  "https://app.runtm.com/api/cloud/org-templates",
   {
     method: "POST",
     headers: {

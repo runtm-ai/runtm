@@ -72,7 +72,7 @@ Returns the full detail of an organization template including its configuration,
 
 <RequestExample>
 ```bash cURL
-curl "https://app.runtm.com/api/org-templates/tmpl_abc123" \
+curl "https://app.runtm.com/api/cloud/org-templates/tmpl_abc123" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "X-Organization-Id: org_abc123"
 ```
@@ -81,7 +81,7 @@ curl "https://app.runtm.com/api/org-templates/tmpl_abc123" \
 import requests
 
 response = requests.get(
-    "https://app.runtm.com/api/org-templates/tmpl_abc123",
+    "https://app.runtm.com/api/cloud/org-templates/tmpl_abc123",
     headers={
         "Authorization": "Bearer runtm_xxx",
         "X-Organization-Id": "org_abc123",
@@ -94,7 +94,7 @@ print(f"{data['display_name']} (build: {data['build_status']})")
 
 ```javascript JavaScript
 const response = await fetch(
-  "https://app.runtm.com/api/org-templates/tmpl_abc123",
+  "https://app.runtm.com/api/cloud/org-templates/tmpl_abc123",
   {
     headers: {
       "Authorization": "Bearer runtm_xxx",

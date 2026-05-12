@@ -36,7 +36,7 @@ Returns a paginated list of organization templates. Templates define pre-configu
 
 <RequestExample>
 ```bash cURL
-curl "https://app.runtm.com/api/org-templates?page_size=10" \
+curl "https://app.runtm.com/api/cloud/org-templates?page_size=10" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "X-Organization-Id: org_abc123"
 ```
@@ -45,7 +45,7 @@ curl "https://app.runtm.com/api/org-templates?page_size=10" \
 import requests
 
 response = requests.get(
-    "https://app.runtm.com/api/org-templates",
+    "https://app.runtm.com/api/cloud/org-templates",
     headers={
         "Authorization": "Bearer runtm_xxx",
         "X-Organization-Id": "org_abc123",
@@ -62,7 +62,7 @@ for t in data["templates"]:
 const params = new URLSearchParams({ page_size: "10" });
 
 const response = await fetch(
-  `https://app.runtm.com/api/org-templates?${params}`,
+  `https://app.runtm.com/api/cloud/org-templates?${params}`,
   {
     headers: {
       "Authorization": "Bearer runtm_xxx",

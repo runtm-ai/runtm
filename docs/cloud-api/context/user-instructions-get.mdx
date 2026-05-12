@@ -26,7 +26,7 @@ Returns the user's custom instructions. When an organization context is provided
 
 <RequestExample>
 ```bash cURL
-curl "https://app.runtm.com/api/user/instructions" \
+curl "https://app.runtm.com/api/cloud/user/instructions" \
   -H "Authorization: Bearer runtm_xxx"
 ```
 
@@ -34,14 +34,14 @@ curl "https://app.runtm.com/api/user/instructions" \
 import requests
 
 resp = requests.get(
-    "https://app.runtm.com/api/user/instructions",
+    "https://app.runtm.com/api/cloud/user/instructions",
     headers={"Authorization": "Bearer runtm_xxx"},
 )
 print(resp.json())
 ```
 
 ```javascript JavaScript
-const resp = await fetch("https://app.runtm.com/api/user/instructions", {
+const resp = await fetch("https://app.runtm.com/api/cloud/user/instructions", {
   headers: {
     Authorization: "Bearer runtm_xxx",
   },

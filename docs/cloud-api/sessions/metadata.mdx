@@ -46,7 +46,7 @@ Toggles a session between `private` (only the owner can access) and `team`
 
 <RequestExample>
 ```bash cURL
-curl -X POST "https://app.runtm.com/api/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11/visibility" \
+curl -X POST "https://app.runtm.com/api/cloud/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11/visibility" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "Content-Type: application/json" \
   -d '{ "visibility": "team" }'
@@ -57,7 +57,7 @@ import requests
 
 session_id = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11"
 response = requests.post(
-    f"https://app.runtm.com/api/sessions/{session_id}/visibility",
+    f"https://app.runtm.com/api/cloud/sessions/{session_id}/visibility",
     headers={"Authorization": "Bearer runtm_xxx"},
     json={"visibility": "team"},
 )
@@ -67,7 +67,7 @@ print(response.json())
 ```javascript JavaScript
 const sessionId = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11";
 const res = await fetch(
-  `https://app.runtm.com/api/sessions/${sessionId}/visibility`,
+  `https://app.runtm.com/api/cloud/sessions/${sessionId}/visibility`,
   {
     method: "POST",
     headers: {
@@ -131,7 +131,7 @@ string) to clear the name and let the system fall back to default naming.
 
 <RequestExample>
 ```bash cURL
-curl -X PATCH "https://app.runtm.com/api/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11/name" \
+curl -X PATCH "https://app.runtm.com/api/cloud/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11/name" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "Content-Type: application/json" \
   -d '{ "name": "Refactor checkout page" }'
@@ -142,7 +142,7 @@ import requests
 
 session_id = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11"
 response = requests.patch(
-    f"https://app.runtm.com/api/sessions/{session_id}/name",
+    f"https://app.runtm.com/api/cloud/sessions/{session_id}/name",
     headers={"Authorization": "Bearer runtm_xxx"},
     json={"name": "Refactor checkout page"},
 )
@@ -152,7 +152,7 @@ print(response.json())
 ```javascript JavaScript
 const sessionId = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11";
 const res = await fetch(
-  `https://app.runtm.com/api/sessions/${sessionId}/name`,
+  `https://app.runtm.com/api/cloud/sessions/${sessionId}/name`,
   {
     method: "PATCH",
     headers: {
@@ -221,7 +221,7 @@ org with `visibility = "team"`.
 
 <RequestExample>
 ```bash cURL
-curl -X GET "https://app.runtm.com/api/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11/collaborators" \
+curl -X GET "https://app.runtm.com/api/cloud/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11/collaborators" \
   -H "Authorization: Bearer runtm_xxx"
 ```
 
@@ -230,7 +230,7 @@ import requests
 
 session_id = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11"
 response = requests.get(
-    f"https://app.runtm.com/api/sessions/{session_id}/collaborators",
+    f"https://app.runtm.com/api/cloud/sessions/{session_id}/collaborators",
     headers={"Authorization": "Bearer runtm_xxx"},
 )
 print(response.json())
@@ -239,7 +239,7 @@ print(response.json())
 ```javascript JavaScript
 const sessionId = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11";
 const res = await fetch(
-  `https://app.runtm.com/api/sessions/${sessionId}/collaborators`,
+  `https://app.runtm.com/api/cloud/sessions/${sessionId}/collaborators`,
   { headers: { Authorization: "Bearer runtm_xxx" } },
 );
 console.log(await res.json());

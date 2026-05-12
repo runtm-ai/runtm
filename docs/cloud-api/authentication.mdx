@@ -10,7 +10,7 @@ Every request to the Runtime Cloud API must include a valid API key. Keys are sc
 Pass your key in the `Authorization` header:
 
 ```bash
-curl https://app.runtm.com/api/sessions \
+curl https://app.runtm.com/api/cloud/sessions \
   -H "Authorization: Bearer runtm_sk_live_abc123..."
 ```
 
@@ -42,7 +42,7 @@ All API keys use the prefix `runtm_sk_` followed by an opaque secret. The raw se
 For org-scoped operations, include the `X-Organization-Id` header:
 
 ```bash
-curl https://app.runtm.com/api/sessions \
+curl https://app.runtm.com/api/cloud/sessions \
   -H "Authorization: Bearer runtm_sk_live_abc123..." \
   -H "X-Organization-Id: org_abc123"
 ```

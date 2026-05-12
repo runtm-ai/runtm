@@ -48,7 +48,7 @@ This endpoint tells you which source won and whether a key is available, without
 
 <RequestExample>
 ```bash cURL
-curl "https://app.runtm.com/api/user/provider-keys/anthropic/resolved" \
+curl "https://app.runtm.com/api/cloud/user/provider-keys/anthropic/resolved" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "X-Organization-Id: org_abc123"
 ```
@@ -57,7 +57,7 @@ curl "https://app.runtm.com/api/user/provider-keys/anthropic/resolved" \
 import requests
 
 response = requests.get(
-    "https://app.runtm.com/api/user/provider-keys/anthropic/resolved",
+    "https://app.runtm.com/api/cloud/user/provider-keys/anthropic/resolved",
     headers={
         "Authorization": "Bearer runtm_xxx",
         "X-Organization-Id": "org_abc123",
@@ -73,7 +73,7 @@ else:
 
 ```javascript JavaScript
 const response = await fetch(
-  "https://app.runtm.com/api/user/provider-keys/anthropic/resolved",
+  "https://app.runtm.com/api/cloud/user/provider-keys/anthropic/resolved",
   {
     headers: {
       "Authorization": "Bearer runtm_xxx",

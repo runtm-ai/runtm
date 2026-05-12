@@ -62,7 +62,7 @@ Updates one or more fields on a template. Only provided fields are changed; omit
 
 <RequestExample>
 ```bash cURL
-curl -X PATCH "https://app.runtm.com/api/org-templates/tmpl_abc123" \
+curl -X PATCH "https://app.runtm.com/api/cloud/org-templates/tmpl_abc123" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "X-Organization-Id: org_abc123" \
   -H "Content-Type: application/json" \
@@ -76,7 +76,7 @@ curl -X PATCH "https://app.runtm.com/api/org-templates/tmpl_abc123" \
 import requests
 
 response = requests.patch(
-    "https://app.runtm.com/api/org-templates/tmpl_abc123",
+    "https://app.runtm.com/api/cloud/org-templates/tmpl_abc123",
     headers={
         "Authorization": "Bearer runtm_xxx",
         "X-Organization-Id": "org_abc123",
@@ -94,7 +94,7 @@ print(f"Updated: {data['display_name']}")
 
 ```javascript JavaScript
 const response = await fetch(
-  "https://app.runtm.com/api/org-templates/tmpl_abc123",
+  "https://app.runtm.com/api/cloud/org-templates/tmpl_abc123",
   {
     method: "PATCH",
     headers: {

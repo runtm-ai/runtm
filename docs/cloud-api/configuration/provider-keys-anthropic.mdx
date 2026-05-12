@@ -64,7 +64,7 @@ Read the caller's stored personal Anthropic key for the current context.
 
 <RequestExample>
 ```bash cURL (read)
-curl -X GET "https://app.runtm.com/api/user/anthropic-key" \
+curl -X GET "https://app.runtm.com/api/cloud/user/anthropic-key" \
   -H "Authorization: Bearer runtm_xxx"
 ```
 
@@ -72,7 +72,7 @@ curl -X GET "https://app.runtm.com/api/user/anthropic-key" \
 import requests
 
 response = requests.get(
-    "https://app.runtm.com/api/user/anthropic-key",
+    "https://app.runtm.com/api/cloud/user/anthropic-key",
     headers={"Authorization": "Bearer runtm_xxx"},
 )
 print(response.json())
@@ -80,7 +80,7 @@ print(response.json())
 
 ```javascript JavaScript (read)
 const response = await fetch(
-  "https://app.runtm.com/api/user/anthropic-key",
+  "https://app.runtm.com/api/cloud/user/anthropic-key",
   { headers: { Authorization: "Bearer runtm_xxx" } },
 );
 console.log(await response.json());
@@ -137,7 +137,7 @@ Same shape as `GET /api/user/anthropic-key`, with `connected: true`.
 
 <RequestExample>
 ```bash cURL (write)
-curl -X PUT "https://app.runtm.com/api/user/anthropic-key" \
+curl -X PUT "https://app.runtm.com/api/cloud/user/anthropic-key" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "Content-Type: application/json" \
   -d '{"api_key": "sk-ant-..."}'
@@ -147,7 +147,7 @@ curl -X PUT "https://app.runtm.com/api/user/anthropic-key" \
 import requests
 
 response = requests.put(
-    "https://app.runtm.com/api/user/anthropic-key",
+    "https://app.runtm.com/api/cloud/user/anthropic-key",
     headers={"Authorization": "Bearer runtm_xxx"},
     json={"api_key": "sk-ant-..."},
 )
@@ -156,7 +156,7 @@ print(response.json())
 
 ```javascript JavaScript (write)
 const response = await fetch(
-  "https://app.runtm.com/api/user/anthropic-key",
+  "https://app.runtm.com/api/cloud/user/anthropic-key",
   {
     method: "PUT",
     headers: {
@@ -213,7 +213,7 @@ Same shape as `GET /api/user/anthropic-key`, always with
 
 <RequestExample>
 ```bash cURL (delete)
-curl -X DELETE "https://app.runtm.com/api/user/anthropic-key" \
+curl -X DELETE "https://app.runtm.com/api/cloud/user/anthropic-key" \
   -H "Authorization: Bearer runtm_xxx"
 ```
 
@@ -221,7 +221,7 @@ curl -X DELETE "https://app.runtm.com/api/user/anthropic-key" \
 import requests
 
 response = requests.delete(
-    "https://app.runtm.com/api/user/anthropic-key",
+    "https://app.runtm.com/api/cloud/user/anthropic-key",
     headers={"Authorization": "Bearer runtm_xxx"},
 )
 print(response.json())
@@ -229,7 +229,7 @@ print(response.json())
 
 ```javascript JavaScript (delete)
 const response = await fetch(
-  "https://app.runtm.com/api/user/anthropic-key",
+  "https://app.runtm.com/api/cloud/user/anthropic-key",
   {
     method: "DELETE",
     headers: { Authorization: "Bearer runtm_xxx" },
@@ -302,7 +302,7 @@ configured and the active policy. The actual key is never returned.
 
 <RequestExample>
 ```bash cURL (read)
-curl -X GET "https://app.runtm.com/api/organizations/org_abc123/anthropic-key" \
+curl -X GET "https://app.runtm.com/api/cloud/organizations/org_abc123/anthropic-key" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "X-Organization-Id: org_abc123"
 ```
@@ -311,7 +311,7 @@ curl -X GET "https://app.runtm.com/api/organizations/org_abc123/anthropic-key" \
 import requests
 
 response = requests.get(
-    "https://app.runtm.com/api/organizations/org_abc123/anthropic-key",
+    "https://app.runtm.com/api/cloud/organizations/org_abc123/anthropic-key",
     headers={
         "Authorization": "Bearer runtm_xxx",
         "X-Organization-Id": "org_abc123",
@@ -322,7 +322,7 @@ print(response.json())
 
 ```javascript JavaScript (read)
 const response = await fetch(
-  "https://app.runtm.com/api/organizations/org_abc123/anthropic-key",
+  "https://app.runtm.com/api/cloud/organizations/org_abc123/anthropic-key",
   {
     headers: {
       Authorization: "Bearer runtm_xxx",
@@ -382,7 +382,7 @@ Same shape as the GET response, reflecting the updated key and policy.
 
 <RequestExample>
 ```bash cURL (set)
-curl -X PUT "https://app.runtm.com/api/organizations/org_abc123/anthropic-key" \
+curl -X PUT "https://app.runtm.com/api/cloud/organizations/org_abc123/anthropic-key" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "X-Organization-Id: org_abc123" \
   -H "Content-Type: application/json" \
@@ -393,7 +393,7 @@ curl -X PUT "https://app.runtm.com/api/organizations/org_abc123/anthropic-key" \
 import requests
 
 response = requests.put(
-    "https://app.runtm.com/api/organizations/org_abc123/anthropic-key",
+    "https://app.runtm.com/api/cloud/organizations/org_abc123/anthropic-key",
     headers={
         "Authorization": "Bearer runtm_xxx",
         "X-Organization-Id": "org_abc123",
@@ -405,7 +405,7 @@ print(response.json())
 
 ```javascript JavaScript (set)
 const response = await fetch(
-  "https://app.runtm.com/api/organizations/org_abc123/anthropic-key",
+  "https://app.runtm.com/api/cloud/organizations/org_abc123/anthropic-key",
   {
     method: "PUT",
     headers: {
@@ -471,7 +471,7 @@ and `policy: "individual"`.
 
 <RequestExample>
 ```bash cURL (delete)
-curl -X DELETE "https://app.runtm.com/api/organizations/org_abc123/anthropic-key" \
+curl -X DELETE "https://app.runtm.com/api/cloud/organizations/org_abc123/anthropic-key" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "X-Organization-Id: org_abc123"
 ```
@@ -480,7 +480,7 @@ curl -X DELETE "https://app.runtm.com/api/organizations/org_abc123/anthropic-key
 import requests
 
 response = requests.delete(
-    "https://app.runtm.com/api/organizations/org_abc123/anthropic-key",
+    "https://app.runtm.com/api/cloud/organizations/org_abc123/anthropic-key",
     headers={
         "Authorization": "Bearer runtm_xxx",
         "X-Organization-Id": "org_abc123",
@@ -491,7 +491,7 @@ print(response.json())
 
 ```javascript JavaScript (delete)
 const response = await fetch(
-  "https://app.runtm.com/api/organizations/org_abc123/anthropic-key",
+  "https://app.runtm.com/api/cloud/organizations/org_abc123/anthropic-key",
   {
     method: "DELETE",
     headers: {

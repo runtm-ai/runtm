@@ -46,7 +46,7 @@ Returns `201` with the created fix session.
 
 <RequestExample>
 ```bash cURL
-curl -X POST "https://app.runtm.com/api/org-templates/tmpl_abc123/fix-session" \
+curl -X POST "https://app.runtm.com/api/cloud/org-templates/tmpl_abc123/fix-session" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "X-Organization-Id: org_abc123"
 ```
@@ -55,7 +55,7 @@ curl -X POST "https://app.runtm.com/api/org-templates/tmpl_abc123/fix-session" \
 import requests
 
 response = requests.post(
-    "https://app.runtm.com/api/org-templates/tmpl_abc123/fix-session",
+    "https://app.runtm.com/api/cloud/org-templates/tmpl_abc123/fix-session",
     headers={
         "Authorization": "Bearer runtm_xxx",
         "X-Organization-Id": "org_abc123",
@@ -68,7 +68,7 @@ print(f"Fix session created: {data['id']}")
 
 ```javascript JavaScript
 const response = await fetch(
-  "https://app.runtm.com/api/org-templates/tmpl_abc123/fix-session",
+  "https://app.runtm.com/api/cloud/org-templates/tmpl_abc123/fix-session",
   {
     method: "POST",
     headers: {

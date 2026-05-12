@@ -42,7 +42,7 @@ Creates or overwrites a file at the specified path in the sandbox.
 
 <RequestExample>
 ```bash cURL
-curl -X POST "https://app.runtm.com/api/sessions/ses_abc123/file" \
+curl -X POST "https://app.runtm.com/api/cloud/sessions/ses_abc123/file" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "Content-Type: application/json" \
   -d '{
@@ -55,7 +55,7 @@ curl -X POST "https://app.runtm.com/api/sessions/ses_abc123/file" \
 import requests
 
 response = requests.post(
-    "https://app.runtm.com/api/sessions/ses_abc123/file",
+    "https://app.runtm.com/api/cloud/sessions/ses_abc123/file",
     headers={
         "Authorization": "Bearer runtm_xxx",
         "Content-Type": "application/json",
@@ -71,7 +71,7 @@ print(response.json()["path"])
 
 ```javascript JavaScript
 const response = await fetch(
-  "https://app.runtm.com/api/sessions/ses_abc123/file",
+  "https://app.runtm.com/api/cloud/sessions/ses_abc123/file",
   {
     method: "POST",
     headers: {

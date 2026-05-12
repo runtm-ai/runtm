@@ -64,7 +64,7 @@ described below.
 
 <RequestExample>
 ```bash cURL
-curl -X GET "https://app.runtm.com/api/organizations/org_abc123/can-deploy" \
+curl -X GET "https://app.runtm.com/api/cloud/organizations/org_abc123/can-deploy" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "X-Organization-Id: org_abc123"
 ```
@@ -73,7 +73,7 @@ curl -X GET "https://app.runtm.com/api/organizations/org_abc123/can-deploy" \
 import requests
 
 response = requests.get(
-    "https://app.runtm.com/api/organizations/org_abc123/can-deploy",
+    "https://app.runtm.com/api/cloud/organizations/org_abc123/can-deploy",
     headers={
         "Authorization": "Bearer runtm_xxx",
         "X-Organization-Id": "org_abc123",
@@ -86,7 +86,7 @@ if not data["allowed"]:
 
 ```javascript JavaScript
 const response = await fetch(
-  "https://app.runtm.com/api/organizations/org_abc123/can-deploy",
+  "https://app.runtm.com/api/cloud/organizations/org_abc123/can-deploy",
   {
     headers: {
       Authorization: "Bearer runtm_xxx",

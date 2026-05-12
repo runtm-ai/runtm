@@ -82,7 +82,7 @@ sandbox sizing for the caller. The exact response is contextual:
 
 <RequestExample>
 ```bash cURL
-curl -X GET "https://app.runtm.com/api/user/current-plan" \
+curl -X GET "https://app.runtm.com/api/cloud/user/current-plan" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "X-Organization-Id: org_abc123"
 ```
@@ -91,7 +91,7 @@ curl -X GET "https://app.runtm.com/api/user/current-plan" \
 import requests
 
 response = requests.get(
-    "https://app.runtm.com/api/user/current-plan",
+    "https://app.runtm.com/api/cloud/user/current-plan",
     headers={
         "Authorization": "Bearer runtm_xxx",
         "X-Organization-Id": "org_abc123",
@@ -104,7 +104,7 @@ print(f"Allowed tiers: {plan['allowed_deployment_tiers']}")
 
 ```javascript JavaScript
 const response = await fetch(
-  "https://app.runtm.com/api/user/current-plan",
+  "https://app.runtm.com/api/cloud/user/current-plan",
   {
     headers: {
       Authorization: "Bearer runtm_xxx",

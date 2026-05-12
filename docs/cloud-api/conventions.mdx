@@ -32,7 +32,7 @@ all_sessions = []
 
 while True:
     response = requests.get(
-        "https://app.runtm.com/api/sessions",
+        "https://app.runtm.com/api/cloud/sessions",
         headers=headers,
         params={"limit": 100, "offset": offset},
     )
@@ -69,7 +69,7 @@ Endpoint pages specify which pagination style they use.
 Include `X-Organization-Id` to scope requests to an organization's resources:
 
 ```bash
-curl https://app.runtm.com/api/sessions \
+curl https://app.runtm.com/api/cloud/sessions \
   -H "Authorization: Bearer runtm_sk_live_abc123..." \
   -H "X-Organization-Id: org_abc123"
 ```
@@ -102,7 +102,7 @@ Most endpoints accept and return `application/json`. File upload endpoints (e.g.
 For `POST` requests that create resources, you can include an `Idempotency-Key` header to prevent duplicate creation on retries:
 
 ```bash
-curl -X POST https://app.runtm.com/api/sessions \
+curl -X POST https://app.runtm.com/api/cloud/sessions \
   -H "Authorization: Bearer runtm_sk_live_abc123..." \
   -H "Idempotency-Key: req_unique_abc123" \
   -H "Content-Type: application/json" \

@@ -32,7 +32,7 @@ In organization context, any org member can view usage for sessions belonging to
 
 <RequestExample>
 ```bash cURL
-curl "https://app.runtm.com/api/sessions/ses_abc123/usage" \
+curl "https://app.runtm.com/api/cloud/sessions/ses_abc123/usage" \
   -H "Authorization: Bearer runtm_xxx"
 ```
 
@@ -42,7 +42,7 @@ import requests
 session_id = "ses_abc123"
 
 resp = requests.get(
-    f"https://app.runtm.com/api/sessions/{session_id}/usage",
+    f"https://app.runtm.com/api/cloud/sessions/{session_id}/usage",
     headers={"Authorization": "Bearer runtm_xxx"},
 )
 print(resp.json())
@@ -52,7 +52,7 @@ print(resp.json())
 const sessionId = "ses_abc123";
 
 const resp = await fetch(
-  `https://app.runtm.com/api/sessions/${sessionId}/usage`,
+  `https://app.runtm.com/api/cloud/sessions/${sessionId}/usage`,
   {
     headers: {
       Authorization: "Bearer runtm_xxx",

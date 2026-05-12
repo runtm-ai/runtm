@@ -42,7 +42,7 @@ Returns `202 Accepted` when the build is queued.
 
 <RequestExample>
 ```bash cURL
-curl -X POST "https://app.runtm.com/api/org-templates/tmpl_abc123/build" \
+curl -X POST "https://app.runtm.com/api/cloud/org-templates/tmpl_abc123/build" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "X-Organization-Id: org_abc123"
 ```
@@ -51,7 +51,7 @@ curl -X POST "https://app.runtm.com/api/org-templates/tmpl_abc123/build" \
 import requests
 
 response = requests.post(
-    "https://app.runtm.com/api/org-templates/tmpl_abc123/build",
+    "https://app.runtm.com/api/cloud/org-templates/tmpl_abc123/build",
     headers={
         "Authorization": "Bearer runtm_xxx",
         "X-Organization-Id": "org_abc123",
@@ -64,7 +64,7 @@ print(f"Build started: {data['build_id']}")
 
 ```javascript JavaScript
 const response = await fetch(
-  "https://app.runtm.com/api/org-templates/tmpl_abc123/build",
+  "https://app.runtm.com/api/cloud/org-templates/tmpl_abc123/build",
   {
     method: "POST",
     headers: {

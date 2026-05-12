@@ -34,7 +34,7 @@ Returns whether the authenticated user has permission to deploy applications wit
 
 <RequestExample>
 ```bash cURL
-curl "https://app.runtm.com/api/organizations/org_abc123/can-deploy" \
+curl "https://app.runtm.com/api/cloud/organizations/org_abc123/can-deploy" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "X-Organization-Id: org_abc123"
 ```
@@ -43,7 +43,7 @@ curl "https://app.runtm.com/api/organizations/org_abc123/can-deploy" \
 import requests
 
 response = requests.get(
-    "https://app.runtm.com/api/organizations/org_abc123/can-deploy",
+    "https://app.runtm.com/api/cloud/organizations/org_abc123/can-deploy",
     headers={
         "Authorization": "Bearer runtm_xxx",
         "X-Organization-Id": "org_abc123",
@@ -59,7 +59,7 @@ else:
 
 ```javascript JavaScript
 const response = await fetch(
-  "https://app.runtm.com/api/organizations/org_abc123/can-deploy",
+  "https://app.runtm.com/api/cloud/organizations/org_abc123/can-deploy",
   {
     headers: {
       "Authorization": "Bearer runtm_xxx",

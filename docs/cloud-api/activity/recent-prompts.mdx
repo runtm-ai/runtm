@@ -74,7 +74,7 @@ Returns a list of recent prompts with content previews, cost, model, and token u
 
 <RequestExample>
 ```bash cURL
-curl "https://app.runtm.com/api/sessions/telemetry/prompts?limit=5" \
+curl "https://app.runtm.com/api/cloud/sessions/telemetry/prompts?limit=5" \
   -H "Authorization: Bearer runtm_xxx"
 ```
 
@@ -82,7 +82,7 @@ curl "https://app.runtm.com/api/sessions/telemetry/prompts?limit=5" \
 import requests
 
 resp = requests.get(
-    "https://app.runtm.com/api/sessions/telemetry/prompts",
+    "https://app.runtm.com/api/cloud/sessions/telemetry/prompts",
     params={"limit": 5},
     headers={"Authorization": "Bearer runtm_xxx"},
 )
@@ -91,7 +91,7 @@ print(resp.json())
 
 ```javascript JavaScript
 const resp = await fetch(
-  "https://app.runtm.com/api/sessions/telemetry/prompts?limit=5",
+  "https://app.runtm.com/api/cloud/sessions/telemetry/prompts?limit=5",
   {
     headers: {
       Authorization: "Bearer runtm_xxx",

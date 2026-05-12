@@ -44,7 +44,7 @@ Returns the connection status and masked preview for a specific provider key bel
 
 <RequestExample>
 ```bash cURL
-curl "https://app.runtm.com/api/organizations/org_abc123/provider-keys/anthropic" \
+curl "https://app.runtm.com/api/cloud/organizations/org_abc123/provider-keys/anthropic" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "X-Organization-Id: org_abc123"
 ```
@@ -56,7 +56,7 @@ org_id = "org_abc123"
 provider = "anthropic"
 
 resp = requests.get(
-    f"https://app.runtm.com/api/organizations/{org_id}/provider-keys/{provider}",
+    f"https://app.runtm.com/api/cloud/organizations/{org_id}/provider-keys/{provider}",
     headers={
         "Authorization": "Bearer runtm_xxx",
         "X-Organization-Id": org_id,
@@ -70,7 +70,7 @@ const orgId = "org_abc123";
 const provider = "anthropic";
 
 const resp = await fetch(
-  `https://app.runtm.com/api/organizations/${orgId}/provider-keys/${provider}`,
+  `https://app.runtm.com/api/cloud/organizations/${orgId}/provider-keys/${provider}`,
   {
     headers: {
       Authorization: "Bearer runtm_xxx",

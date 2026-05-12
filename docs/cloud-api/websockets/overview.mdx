@@ -22,7 +22,7 @@ WebSocket endpoints do not accept API keys directly. Instead, you exchange your 
     Call the [Token Exchange](/cloud-api/websockets/token-exchange) endpoint with the desired capability:
 
     ```bash
-    curl -X POST "https://app.runtm.com/api/sessions/ses_abc123/ws-token" \
+    curl -X POST "https://app.runtm.com/api/cloud/sessions/ses_abc123/ws-token" \
       -H "Authorization: Bearer runtm_sk_live_abc123..." \
       -H "Content-Type: application/json" \
       -d '{"capability": "terminal"}'
@@ -42,7 +42,7 @@ WebSocket endpoints do not accept API keys directly. Instead, you exchange your 
     Pass the token as a query parameter when opening the WebSocket:
 
     ```
-    wss://app.runtm.com/api/sessions/ses_abc123/terminal?token=eyJhbGciOiJIUzI1NiIs...
+    wss://app.runtm.com/api/cloud/sessions/ses_abc123/terminal?token=eyJhbGciOiJIUzI1NiIs...
     ```
   </Step>
 

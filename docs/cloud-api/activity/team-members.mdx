@@ -60,7 +60,7 @@ Returns usage statistics broken down by individual team member, including sessio
 
 <RequestExample>
 ```bash cURL
-curl "https://app.runtm.com/api/sessions/telemetry/team/members?days=30" \
+curl "https://app.runtm.com/api/cloud/sessions/telemetry/team/members?days=30" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "X-Organization-Id: org_abc123"
 ```
@@ -69,7 +69,7 @@ curl "https://app.runtm.com/api/sessions/telemetry/team/members?days=30" \
 import requests
 
 resp = requests.get(
-    "https://app.runtm.com/api/sessions/telemetry/team/members",
+    "https://app.runtm.com/api/cloud/sessions/telemetry/team/members",
     params={"days": 30},
     headers={
         "Authorization": "Bearer runtm_xxx",
@@ -81,7 +81,7 @@ print(resp.json())
 
 ```javascript JavaScript
 const resp = await fetch(
-  "https://app.runtm.com/api/sessions/telemetry/team/members?days=30",
+  "https://app.runtm.com/api/cloud/sessions/telemetry/team/members?days=30",
   {
     headers: {
       Authorization: "Bearer runtm_xxx",

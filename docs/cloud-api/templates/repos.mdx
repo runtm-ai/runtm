@@ -42,7 +42,7 @@ Returns a flat, deduplicated list of repositories referenced by the organization
 
 <RequestExample>
 ```bash cURL
-curl "https://app.runtm.com/api/org-templates/repos" \
+curl "https://app.runtm.com/api/cloud/org-templates/repos" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "X-Organization-Id: org_abc123"
 ```
@@ -51,7 +51,7 @@ curl "https://app.runtm.com/api/org-templates/repos" \
 import requests
 
 response = requests.get(
-    "https://app.runtm.com/api/org-templates/repos",
+    "https://app.runtm.com/api/cloud/org-templates/repos",
     headers={
         "Authorization": "Bearer runtm_xxx",
         "X-Organization-Id": "org_abc123",
@@ -65,7 +65,7 @@ for repo in data["repos"]:
 
 ```javascript JavaScript
 const response = await fetch(
-  "https://app.runtm.com/api/org-templates/repos",
+  "https://app.runtm.com/api/cloud/org-templates/repos",
   {
     headers: {
       "Authorization": "Bearer runtm_xxx",

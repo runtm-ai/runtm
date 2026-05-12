@@ -108,7 +108,7 @@ Returns a paginated list of sessions visible to the caller. Personal keys see on
 
 <RequestExample>
 ```bash cURL
-curl -X GET "https://app.runtm.com/api/sessions?limit=20&offset=0" \
+curl -X GET "https://app.runtm.com/api/cloud/sessions?limit=20&offset=0" \
   -H "Authorization: Bearer runtm_xxx"
 ```
 
@@ -116,7 +116,7 @@ curl -X GET "https://app.runtm.com/api/sessions?limit=20&offset=0" \
 import requests
 
 response = requests.get(
-    "https://app.runtm.com/api/sessions",
+    "https://app.runtm.com/api/cloud/sessions",
     headers={"Authorization": "Bearer runtm_xxx"},
     params={"limit": 20, "offset": 0},
 )
@@ -128,7 +128,7 @@ for s in data["sessions"]:
 
 ```javascript JavaScript
 const res = await fetch(
-  "https://app.runtm.com/api/sessions?limit=20&offset=0",
+  "https://app.runtm.com/api/cloud/sessions?limit=20&offset=0",
   { headers: { Authorization: "Bearer runtm_xxx" } },
 );
 const data = await res.json();
@@ -264,7 +264,7 @@ until `state = "running"`.
 
 <RequestExample>
 ```bash cURL
-curl -X POST "https://app.runtm.com/api/sessions" \
+curl -X POST "https://app.runtm.com/api/cloud/sessions" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "Content-Type: application/json" \
   -d '{
@@ -280,7 +280,7 @@ curl -X POST "https://app.runtm.com/api/sessions" \
 import requests
 
 response = requests.post(
-    "https://app.runtm.com/api/sessions",
+    "https://app.runtm.com/api/cloud/sessions",
     headers={"Authorization": "Bearer runtm_xxx"},
     json={
         "agent": "claude-code",
@@ -295,7 +295,7 @@ print(f"Created session {data['id']} (state: {data['state']})")
 ```
 
 ```javascript JavaScript
-const res = await fetch("https://app.runtm.com/api/sessions", {
+const res = await fetch("https://app.runtm.com/api/cloud/sessions", {
   method: "POST",
   headers: {
     Authorization: "Bearer runtm_xxx",
@@ -365,7 +365,7 @@ Same shape as the items in [List Sessions](#list-sessions).
 
 <RequestExample>
 ```bash cURL
-curl -X GET "https://app.runtm.com/api/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11" \
+curl -X GET "https://app.runtm.com/api/cloud/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11" \
   -H "Authorization: Bearer runtm_xxx"
 ```
 
@@ -374,7 +374,7 @@ import requests
 
 session_id = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11"
 response = requests.get(
-    f"https://app.runtm.com/api/sessions/{session_id}",
+    f"https://app.runtm.com/api/cloud/sessions/{session_id}",
     headers={"Authorization": "Bearer runtm_xxx"},
 )
 print(response.json())
@@ -383,7 +383,7 @@ print(response.json())
 ```javascript JavaScript
 const sessionId = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11";
 const res = await fetch(
-  `https://app.runtm.com/api/sessions/${sessionId}`,
+  `https://app.runtm.com/api/cloud/sessions/${sessionId}`,
   { headers: { Authorization: "Bearer runtm_xxx" } },
 );
 console.log(await res.json());
@@ -451,7 +451,7 @@ preserve filesystem and memory state, use [Pause](/cloud-api/sessions/lifecycle#
 
 <RequestExample>
 ```bash cURL
-curl -X DELETE "https://app.runtm.com/api/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11" \
+curl -X DELETE "https://app.runtm.com/api/cloud/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11" \
   -H "Authorization: Bearer runtm_xxx"
 ```
 
@@ -460,7 +460,7 @@ import requests
 
 session_id = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11"
 response = requests.delete(
-    f"https://app.runtm.com/api/sessions/{session_id}",
+    f"https://app.runtm.com/api/cloud/sessions/{session_id}",
     headers={"Authorization": "Bearer runtm_xxx"},
 )
 print(response.json())
@@ -469,7 +469,7 @@ print(response.json())
 ```javascript JavaScript
 const sessionId = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11";
 const res = await fetch(
-  `https://app.runtm.com/api/sessions/${sessionId}`,
+  `https://app.runtm.com/api/cloud/sessions/${sessionId}`,
   { method: "DELETE", headers: { Authorization: "Bearer runtm_xxx" } },
 );
 console.log(await res.json());

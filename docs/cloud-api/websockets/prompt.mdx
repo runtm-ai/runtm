@@ -8,7 +8,7 @@ The prompt WebSocket lets you send prompts to the coding agent and receive strea
 ## Connection
 
 ```
-wss://app.runtm.com/api/sessions/{session_id}/tabs/{tab_id}/prompt?token={ws_token}
+wss://app.runtm.com/api/cloud/sessions/{session_id}/tabs/{tab_id}/prompt?token={ws_token}
 ```
 
 Obtain `ws_token` from the [Token Exchange](/cloud-api/websockets/token-exchange) endpoint with `capability: "prompt"`.
@@ -122,7 +122,7 @@ The server sends a final `prompt_end` message after cancellation.
 
 ```javascript
 const tokenResponse = await fetch(
-  "https://app.runtm.com/api/sessions/ses_abc123/ws-token",
+  "https://app.runtm.com/api/cloud/sessions/ses_abc123/ws-token",
   {
     method: "POST",
     headers: {
@@ -135,7 +135,7 @@ const tokenResponse = await fetch(
 const { token } = await tokenResponse.json();
 
 const ws = new WebSocket(
-  `wss://app.runtm.com/api/sessions/ses_abc123/tabs/tab_0/prompt?token=${token}`
+  `wss://app.runtm.com/api/cloud/sessions/ses_abc123/tabs/tab_0/prompt?token=${token}`
 );
 
 ws.onopen = () => {

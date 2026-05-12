@@ -40,7 +40,7 @@ Sets the organization's shared custom instructions that apply to all members. Pa
 
 <RequestExample>
 ```bash cURL
-curl -X PUT "https://app.runtm.com/api/organizations/org_abc123/instructions" \
+curl -X PUT "https://app.runtm.com/api/cloud/organizations/org_abc123/instructions" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "X-Organization-Id: org_abc123" \
   -H "Content-Type: application/json" \
@@ -55,7 +55,7 @@ import requests
 org_id = "org_abc123"
 
 resp = requests.put(
-    f"https://app.runtm.com/api/organizations/{org_id}/instructions",
+    f"https://app.runtm.com/api/cloud/organizations/{org_id}/instructions",
     headers={
         "Authorization": "Bearer runtm_xxx",
         "X-Organization-Id": org_id,
@@ -70,7 +70,7 @@ print(resp.json())
 const orgId = "org_abc123";
 
 const resp = await fetch(
-  `https://app.runtm.com/api/organizations/${orgId}/instructions`,
+  `https://app.runtm.com/api/cloud/organizations/${orgId}/instructions`,
   {
     method: "PUT",
     headers: {

@@ -34,7 +34,7 @@ Deletes the provider API key for the authenticated user. After deletion, the use
 
 <RequestExample>
 ```bash cURL
-curl -X DELETE "https://app.runtm.com/api/user/provider-keys/anthropic" \
+curl -X DELETE "https://app.runtm.com/api/cloud/user/provider-keys/anthropic" \
   -H "Authorization: Bearer runtm_xxx"
 ```
 
@@ -44,7 +44,7 @@ import requests
 provider = "anthropic"
 
 resp = requests.delete(
-    f"https://app.runtm.com/api/user/provider-keys/{provider}",
+    f"https://app.runtm.com/api/cloud/user/provider-keys/{provider}",
     headers={"Authorization": "Bearer runtm_xxx"},
 )
 print(resp.json())
@@ -54,7 +54,7 @@ print(resp.json())
 const provider = "anthropic";
 
 const resp = await fetch(
-  `https://app.runtm.com/api/user/provider-keys/${provider}`,
+  `https://app.runtm.com/api/cloud/user/provider-keys/${provider}`,
   {
     method: "DELETE",
     headers: {

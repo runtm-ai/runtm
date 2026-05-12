@@ -56,7 +56,7 @@ Validates the provided API key and returns its metadata, including the scopes it
 
 <RequestExample>
 ```bash cURL
-curl https://app.runtm.com/auth/verify \
+curl https://app.runtm.com/api/cloud/auth/verify \
   -H "Authorization: Bearer runtm_sk_live_abc123..."
 ```
 
@@ -64,7 +64,7 @@ curl https://app.runtm.com/auth/verify \
 import requests
 
 response = requests.get(
-    "https://app.runtm.com/auth/verify",
+    "https://app.runtm.com/api/cloud/auth/verify",
     headers={"Authorization": "Bearer runtm_sk_live_abc123..."},
 )
 
@@ -73,7 +73,7 @@ print(f"User: {data['email']}, Scopes: {data['scopes']}")
 ```
 
 ```javascript JavaScript
-const response = await fetch("https://app.runtm.com/auth/verify", {
+const response = await fetch("https://app.runtm.com/api/cloud/auth/verify", {
   headers: {
     "Authorization": "Bearer runtm_sk_live_abc123...",
   },

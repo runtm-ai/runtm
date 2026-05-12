@@ -78,7 +78,7 @@ Returns the organization's usage limits including session caps, spending control
 
 <RequestExample>
 ```bash cURL
-curl "https://app.runtm.com/api/organizations/org_abc123/limits" \
+curl "https://app.runtm.com/api/cloud/organizations/org_abc123/limits" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "X-Organization-Id: org_abc123"
 ```
@@ -89,7 +89,7 @@ import requests
 org_id = "org_abc123"
 
 resp = requests.get(
-    f"https://app.runtm.com/api/organizations/{org_id}/limits",
+    f"https://app.runtm.com/api/cloud/organizations/{org_id}/limits",
     headers={
         "Authorization": "Bearer runtm_xxx",
         "X-Organization-Id": org_id,
@@ -105,7 +105,7 @@ print(f"Enforcement: {limits['enforcement']}")
 const orgId = "org_abc123";
 
 const resp = await fetch(
-  `https://app.runtm.com/api/organizations/${orgId}/limits`,
+  `https://app.runtm.com/api/cloud/organizations/${orgId}/limits`,
   {
     headers: {
       Authorization: "Bearer runtm_xxx",

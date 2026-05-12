@@ -38,7 +38,7 @@ Stores a provider API key for the authenticated user. If a key already exists fo
 
 <RequestExample>
 ```bash cURL
-curl -X PUT "https://app.runtm.com/api/user/provider-keys/anthropic" \
+curl -X PUT "https://app.runtm.com/api/cloud/user/provider-keys/anthropic" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "Content-Type: application/json" \
   -d '{
@@ -52,7 +52,7 @@ import requests
 provider = "anthropic"
 
 resp = requests.put(
-    f"https://app.runtm.com/api/user/provider-keys/{provider}",
+    f"https://app.runtm.com/api/cloud/user/provider-keys/{provider}",
     headers={
         "Authorization": "Bearer runtm_xxx",
         "Content-Type": "application/json",
@@ -66,7 +66,7 @@ print(resp.json())
 const provider = "anthropic";
 
 const resp = await fetch(
-  `https://app.runtm.com/api/user/provider-keys/${provider}`,
+  `https://app.runtm.com/api/cloud/user/provider-keys/${provider}`,
   {
     method: "PUT",
     headers: {

@@ -82,7 +82,7 @@ Updates the organization's usage limits. All fields in the `limits` object are o
 
 <RequestExample>
 ```bash cURL
-curl -X PUT "https://app.runtm.com/api/organizations/org_abc123/limits" \
+curl -X PUT "https://app.runtm.com/api/cloud/organizations/org_abc123/limits" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "X-Organization-Id: org_abc123" \
   -H "Content-Type: application/json" \
@@ -108,7 +108,7 @@ import requests
 org_id = "org_abc123"
 
 resp = requests.put(
-    f"https://app.runtm.com/api/organizations/{org_id}/limits",
+    f"https://app.runtm.com/api/cloud/organizations/{org_id}/limits",
     headers={
         "Authorization": "Bearer runtm_xxx",
         "X-Organization-Id": org_id,
@@ -136,7 +136,7 @@ print(resp.json())
 const orgId = "org_abc123";
 
 const resp = await fetch(
-  `https://app.runtm.com/api/organizations/${orgId}/limits`,
+  `https://app.runtm.com/api/cloud/organizations/${orgId}/limits`,
   {
     method: "PUT",
     headers: {

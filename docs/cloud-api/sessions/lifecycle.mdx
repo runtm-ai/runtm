@@ -45,7 +45,7 @@ Calling pause while a prompt is actively running returns `409`.
 
 <RequestExample>
 ```bash cURL
-curl -X POST "https://app.runtm.com/api/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11/pause" \
+curl -X POST "https://app.runtm.com/api/cloud/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11/pause" \
   -H "Authorization: Bearer runtm_xxx"
 ```
 
@@ -54,7 +54,7 @@ import requests
 
 session_id = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11"
 response = requests.post(
-    f"https://app.runtm.com/api/sessions/{session_id}/pause",
+    f"https://app.runtm.com/api/cloud/sessions/{session_id}/pause",
     headers={"Authorization": "Bearer runtm_xxx"},
 )
 print(response.json())
@@ -63,7 +63,7 @@ print(response.json())
 ```javascript JavaScript
 const sessionId = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11";
 const res = await fetch(
-  `https://app.runtm.com/api/sessions/${sessionId}/pause`,
+  `https://app.runtm.com/api/cloud/sessions/${sessionId}/pause`,
   { method: "POST", headers: { Authorization: "Bearer runtm_xxx" } },
 );
 console.log(await res.json());
@@ -114,7 +114,7 @@ re-injected. Calling resume on an already-running session is a no-op.
 
 <RequestExample>
 ```bash cURL
-curl -X POST "https://app.runtm.com/api/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11/resume" \
+curl -X POST "https://app.runtm.com/api/cloud/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11/resume" \
   -H "Authorization: Bearer runtm_xxx"
 ```
 
@@ -123,7 +123,7 @@ import requests
 
 session_id = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11"
 response = requests.post(
-    f"https://app.runtm.com/api/sessions/{session_id}/resume",
+    f"https://app.runtm.com/api/cloud/sessions/{session_id}/resume",
     headers={"Authorization": "Bearer runtm_xxx"},
 )
 print(response.json())
@@ -132,7 +132,7 @@ print(response.json())
 ```javascript JavaScript
 const sessionId = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11";
 const res = await fetch(
-  `https://app.runtm.com/api/sessions/${sessionId}/resume`,
+  `https://app.runtm.com/api/cloud/sessions/${sessionId}/resume`,
   { method: "POST", headers: { Authorization: "Bearer runtm_xxx" } },
 );
 console.log(await res.json());
@@ -190,7 +190,7 @@ Use this from automation that doesn't want to track state machines manually.
 
 <RequestExample>
 ```bash cURL
-curl -X POST "https://app.runtm.com/api/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11/start" \
+curl -X POST "https://app.runtm.com/api/cloud/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11/start" \
   -H "Authorization: Bearer runtm_xxx"
 ```
 
@@ -199,7 +199,7 @@ import requests
 
 session_id = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11"
 response = requests.post(
-    f"https://app.runtm.com/api/sessions/{session_id}/start",
+    f"https://app.runtm.com/api/cloud/sessions/{session_id}/start",
     headers={"Authorization": "Bearer runtm_xxx"},
 )
 data = response.json()
@@ -209,7 +209,7 @@ print(f"{data['state']} preview={data.get('preview_url')}")
 ```javascript JavaScript
 const sessionId = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11";
 const res = await fetch(
-  `https://app.runtm.com/api/sessions/${sessionId}/start`,
+  `https://app.runtm.com/api/cloud/sessions/${sessionId}/start`,
   { method: "POST", headers: { Authorization: "Bearer runtm_xxx" } },
 );
 const data = await res.json();
@@ -271,7 +271,7 @@ free plan, indefinite on paid plans (configured per session at pause time).
 
 <RequestExample>
 ```bash cURL
-curl -X POST "https://app.runtm.com/api/sessions/cleanup" \
+curl -X POST "https://app.runtm.com/api/cloud/sessions/cleanup" \
   -H "Authorization: Bearer runtm_xxx"
 ```
 
@@ -279,14 +279,14 @@ curl -X POST "https://app.runtm.com/api/sessions/cleanup" \
 import requests
 
 response = requests.post(
-    "https://app.runtm.com/api/sessions/cleanup",
+    "https://app.runtm.com/api/cloud/sessions/cleanup",
     headers={"Authorization": "Bearer runtm_xxx"},
 )
 print(response.json())
 ```
 
 ```javascript JavaScript
-const res = await fetch("https://app.runtm.com/api/sessions/cleanup", {
+const res = await fetch("https://app.runtm.com/api/cloud/sessions/cleanup", {
   method: "POST",
   headers: { Authorization: "Bearer runtm_xxx" },
 });

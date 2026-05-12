@@ -55,7 +55,7 @@ Read the caller's custom instructions for the current context.
 
 <RequestExample>
 ```bash cURL (read)
-curl -X GET "https://app.runtm.com/api/user/instructions" \
+curl -X GET "https://app.runtm.com/api/cloud/user/instructions" \
   -H "Authorization: Bearer runtm_xxx"
 ```
 
@@ -63,7 +63,7 @@ curl -X GET "https://app.runtm.com/api/user/instructions" \
 import requests
 
 response = requests.get(
-    "https://app.runtm.com/api/user/instructions",
+    "https://app.runtm.com/api/cloud/user/instructions",
     headers={"Authorization": "Bearer runtm_xxx"},
 )
 print(response.json()["instructions"])
@@ -71,7 +71,7 @@ print(response.json()["instructions"])
 
 ```javascript JavaScript (read)
 const response = await fetch(
-  "https://app.runtm.com/api/user/instructions",
+  "https://app.runtm.com/api/cloud/user/instructions",
   { headers: { Authorization: "Bearer runtm_xxx" } },
 );
 console.log((await response.json()).instructions);
@@ -125,7 +125,7 @@ The same shape as `GET /api/user/instructions`, reflecting the updated value.
 
 <RequestExample>
 ```bash cURL (write)
-curl -X PUT "https://app.runtm.com/api/user/instructions" \
+curl -X PUT "https://app.runtm.com/api/cloud/user/instructions" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "Content-Type: application/json" \
   -d '{"instructions": "Always write tests using pytest.\nPrefer concise commit messages."}'
@@ -135,7 +135,7 @@ curl -X PUT "https://app.runtm.com/api/user/instructions" \
 import requests
 
 response = requests.put(
-    "https://app.runtm.com/api/user/instructions",
+    "https://app.runtm.com/api/cloud/user/instructions",
     headers={"Authorization": "Bearer runtm_xxx"},
     json={"instructions": "Always write tests using pytest."},
 )
@@ -144,7 +144,7 @@ print(response.json())
 
 ```javascript JavaScript (write)
 const response = await fetch(
-  "https://app.runtm.com/api/user/instructions",
+  "https://app.runtm.com/api/cloud/user/instructions",
   {
     method: "PUT",
     headers: {

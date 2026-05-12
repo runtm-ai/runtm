@@ -48,7 +48,7 @@ and [Org Instructions](/cloud-api/configuration/org-instructions).
 
 <RequestExample>
 ```bash cURL
-curl -X GET "https://app.runtm.com/api/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11/instructions" \
+curl -X GET "https://app.runtm.com/api/cloud/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11/instructions" \
   -H "Authorization: Bearer runtm_xxx"
 ```
 
@@ -57,7 +57,7 @@ import requests
 
 session_id = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11"
 response = requests.get(
-    f"https://app.runtm.com/api/sessions/{session_id}/instructions",
+    f"https://app.runtm.com/api/cloud/sessions/{session_id}/instructions",
     headers={"Authorization": "Bearer runtm_xxx"},
 )
 print(response.json())
@@ -66,7 +66,7 @@ print(response.json())
 ```javascript JavaScript
 const sessionId = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11";
 const res = await fetch(
-  `https://app.runtm.com/api/sessions/${sessionId}/instructions`,
+  `https://app.runtm.com/api/cloud/sessions/${sessionId}/instructions`,
   { headers: { Authorization: "Bearer runtm_xxx" } },
 );
 console.log(await res.json());
@@ -116,7 +116,7 @@ characters**.
 
 <RequestExample>
 ```bash cURL
-curl -X PUT "https://app.runtm.com/api/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11/instructions" \
+curl -X PUT "https://app.runtm.com/api/cloud/sessions/9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11/instructions" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "Content-Type: application/json" \
   -d '{ "instructions": "Use TypeScript strict mode for any new files." }'
@@ -127,7 +127,7 @@ import requests
 
 session_id = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11"
 response = requests.put(
-    f"https://app.runtm.com/api/sessions/{session_id}/instructions",
+    f"https://app.runtm.com/api/cloud/sessions/{session_id}/instructions",
     headers={"Authorization": "Bearer runtm_xxx"},
     json={"instructions": "Use TypeScript strict mode for any new files."},
 )
@@ -137,7 +137,7 @@ print(response.json())
 ```javascript JavaScript
 const sessionId = "9f3a3f22-1d4e-4a9a-9a1f-3e5c6b1a0c11";
 const res = await fetch(
-  `https://app.runtm.com/api/sessions/${sessionId}/instructions`,
+  `https://app.runtm.com/api/cloud/sessions/${sessionId}/instructions`,
   {
     method: "PUT",
     headers: {

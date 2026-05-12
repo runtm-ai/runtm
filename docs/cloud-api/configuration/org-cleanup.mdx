@@ -67,7 +67,7 @@ returns zeros for the conversion counts and `false` for `preferences_deleted`.
 
 <RequestExample>
 ```bash cURL
-curl -X DELETE "https://app.runtm.com/api/organizations/org_abc123/cleanup" \
+curl -X DELETE "https://app.runtm.com/api/cloud/organizations/org_abc123/cleanup" \
   -H "Authorization: Bearer runtm_xxx"
 ```
 
@@ -75,7 +75,7 @@ curl -X DELETE "https://app.runtm.com/api/organizations/org_abc123/cleanup" \
 import requests
 
 response = requests.delete(
-    "https://app.runtm.com/api/organizations/org_abc123/cleanup",
+    "https://app.runtm.com/api/cloud/organizations/org_abc123/cleanup",
     headers={"Authorization": "Bearer runtm_xxx"},
 )
 print(response.json())
@@ -83,7 +83,7 @@ print(response.json())
 
 ```javascript JavaScript
 const response = await fetch(
-  "https://app.runtm.com/api/organizations/org_abc123/cleanup",
+  "https://app.runtm.com/api/cloud/organizations/org_abc123/cleanup",
   {
     method: "DELETE",
     headers: { Authorization: "Bearer runtm_xxx" },

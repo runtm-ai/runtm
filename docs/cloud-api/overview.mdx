@@ -21,10 +21,10 @@ It is designed for:
 All endpoints share the same base URL:
 
 ```
-https://app.runtm.com/api
+https://app.runtm.com/api/cloud
 ```
 
-For self-hosted instances, substitute your own host. Endpoint paths shown in this documentation always start with `/api/...`, `/api/v1/...`, `/api/v2/...`, or `/auth/...` - append them to the host above.
+This proxies to the backend's canonical `/api/*` routes. For self-hosted instances where you call the backend directly, use `https://your-host/api` instead.
 
 ## Quick start
 
@@ -41,7 +41,7 @@ For self-hosted instances, substitute your own host. Endpoint paths shown in thi
     Confirm the key is valid and inspect its scopes:
 
     ```bash
-    curl https://app.runtm.com/auth/verify \
+    curl https://app.runtm.com/api/cloud/auth/verify \
       -H "Authorization: Bearer runtm_xxx"
     ```
 
@@ -52,7 +52,7 @@ For self-hosted instances, substitute your own host. Endpoint paths shown in thi
     List the sessions the key can see:
 
     ```bash
-    curl https://app.runtm.com/api/sessions \
+    curl https://app.runtm.com/api/cloud/sessions \
       -H "Authorization: Bearer runtm_xxx"
     ```
   </Step>

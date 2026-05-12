@@ -32,7 +32,7 @@ Returns the deployment limits for the authenticated user based on their billing 
 
 <RequestExample>
 ```bash cURL
-curl "https://app.runtm.com/api/deploy/limits" \
+curl "https://app.runtm.com/api/cloud/deploy/limits" \
   -H "Authorization: Bearer runtm_xxx"
 ```
 
@@ -40,7 +40,7 @@ curl "https://app.runtm.com/api/deploy/limits" \
 import requests
 
 response = requests.get(
-    "https://app.runtm.com/api/deploy/limits",
+    "https://app.runtm.com/api/cloud/deploy/limits",
     headers={"Authorization": "Bearer runtm_xxx"},
 )
 
@@ -54,7 +54,7 @@ print(f"Allowed tiers: {', '.join(data['allowed_tiers'])}")
 
 ```javascript JavaScript
 const response = await fetch(
-  "https://app.runtm.com/api/deploy/limits",
+  "https://app.runtm.com/api/cloud/deploy/limits",
   {
     headers: {
       "Authorization": "Bearer runtm_xxx",

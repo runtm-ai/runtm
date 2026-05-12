@@ -8,7 +8,7 @@ The terminal WebSocket provides full PTY access to the sandbox shell. It behaves
 ## Connection
 
 ```
-wss://app.runtm.com/api/sessions/{session_id}/terminal?token={ws_token}
+wss://app.runtm.com/api/cloud/sessions/{session_id}/terminal?token={ws_token}
 ```
 
 Obtain `ws_token` from the [Token Exchange](/cloud-api/websockets/token-exchange) endpoint with `capability: "terminal"`.
@@ -67,7 +67,7 @@ The server resizes the PTY to match. Send a resize message whenever the user's t
 
 ```javascript
 const tokenResponse = await fetch(
-  "https://app.runtm.com/api/sessions/ses_abc123/ws-token",
+  "https://app.runtm.com/api/cloud/sessions/ses_abc123/ws-token",
   {
     method: "POST",
     headers: {
@@ -80,7 +80,7 @@ const tokenResponse = await fetch(
 const { token } = await tokenResponse.json();
 
 const ws = new WebSocket(
-  `wss://app.runtm.com/api/sessions/ses_abc123/terminal?token=${token}`
+  `wss://app.runtm.com/api/cloud/sessions/ses_abc123/terminal?token=${token}`
 );
 
 ws.onopen = () => {
@@ -104,7 +104,7 @@ import websockets
 import requests
 
 response = requests.post(
-    "https://app.runtm.com/api/sessions/ses_abc123/ws-token",
+    "https://app.runtm.com/api/cloud/sessions/ses_abc123/ws-token",
     headers={
         "Authorization": "Bearer runtm_sk_live_abc123...",
         "Content-Type": "application/json",
@@ -114,7 +114,7 @@ response = requests.post(
 token = response.json()["token"]
 
 async def terminal():
-    uri = f"wss://app.runtm.com/api/sessions/ses_abc123/terminal?token={token}"
+    uri = f"wss://app.runtm.com/api/cloud/sessions/ses_abc123/terminal?token={token}"
     async with websockets.connect(uri) as ws:
         await ws.send(json.dumps({"type": "resize", "cols": 80, "rows": 24}))
         await ws.send("echo 'Hello from the API'\r")

@@ -534,7 +534,7 @@
     }
   },
   "api": {
-    "baseUrl": "https://app.runtm.com/api",
+    "baseUrl": "https://app.runtm.com/api/cloud",
     "auth": {
       "method": "bearer"
     }

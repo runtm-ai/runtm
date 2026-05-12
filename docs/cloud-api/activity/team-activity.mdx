@@ -44,7 +44,7 @@ Returns daily activity data aggregated across all members of the organization, s
 
 <RequestExample>
 ```bash cURL
-curl "https://app.runtm.com/api/sessions/telemetry/team/activity?days=30" \
+curl "https://app.runtm.com/api/cloud/sessions/telemetry/team/activity?days=30" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "X-Organization-Id: org_abc123"
 ```
@@ -53,7 +53,7 @@ curl "https://app.runtm.com/api/sessions/telemetry/team/activity?days=30" \
 import requests
 
 resp = requests.get(
-    "https://app.runtm.com/api/sessions/telemetry/team/activity",
+    "https://app.runtm.com/api/cloud/sessions/telemetry/team/activity",
     params={"days": 30},
     headers={
         "Authorization": "Bearer runtm_xxx",
@@ -65,7 +65,7 @@ print(resp.json())
 
 ```javascript JavaScript
 const resp = await fetch(
-  "https://app.runtm.com/api/sessions/telemetry/team/activity?days=30",
+  "https://app.runtm.com/api/cloud/sessions/telemetry/team/activity?days=30",
   {
     headers: {
       Authorization: "Bearer runtm_xxx",
