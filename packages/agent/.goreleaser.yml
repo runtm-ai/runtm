@@ -1,0 +1,89 @@
+# goreleaser config for the runtm-api Go CLI.
+#
+# This is a monorepo under packages/agent/, but goreleaser's `monorepo:` block
+# is Pro-only. We work around that by:
+#   1. Letting CI compute a clean semver (e.g. `v0.0.1`) from the prefixed tag
+#      `packages/agent/v0.0.1` and pass it via GORELEASER_CURRENT_TAG.
+#   2. Running goreleaser with `--skip=publish` so it builds, archives, and
+#      checksums but does NOT try to create the GitHub release (which it would
+#      attempt under the wrong tag name).
+#   3. Publishing the artifacts in a follow-up workflow step via `gh release
+#      create <full-prefixed-tag>`, so the assets land on the actual Go-module-
+#      compatible tag `packages/agent/v0.0.1`.
+#
+# The path-prefixed tag is non-negotiable: Go's module proxy requires
+# `<subdir>/vX.Y.Z` to resolve `go install .../packages/agent/cmd/runtm-api@vX.Y.Z`.
+#
+# Local snapshot (no tag, no publish):
+#   cd packages/agent && goreleaser release --snapshot --clean --skip=publish
+#
+# See .github/workflows/release-agent.yml for the full release pipeline.
+
+version: 2
+
+project_name: runtm-api
+
+before:
+  hooks:
+    # Mirror skills/ -> internal/skills/files/ so the //go:embed copy in the
+    # binary matches what we ship in the release tarball under skills/.
+    - sh -c "mkdir -p internal/skills/files && cp skills/*.md internal/skills/files/"
+
+builds:
+  - id: runtm-api
+    main: ./cmd/runtm-api
+    binary: runtm-api
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/runtm-ai/runtm/packages/agent/internal/cmd.Version={{ .Tag }}
+
+archives:
+  - id: runtm-api
+    ids:
+      - runtm-api
+    name_template: "runtm-api_{{ .Os }}_{{ .Arch }}"
+    formats:
+      - tar.gz
+    files:
+      - README.md
+      - src: skills/*.md
+        dst: skills
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  use: github
+  sort: asc
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\([[:alnum:]]+\))??!?:.+$'
+      order: 0
+    - title: Bug fixes
+      regexp: '^.*?fix(\([[:alnum:]]+\))??!?:.+$'
+      order: 1
+    - title: Other
+      order: 999
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
+      - "^style:"
+      - "Merge pull request"
+      - "Merge branch"

@@ -1,0 +1,108 @@
+name: release-agent
+
+# Cross-compiles `runtm-api` and publishes pre-built binaries to GitHub Releases
+# whenever a tag of the form `packages/agent/vX.Y.Z` is pushed.
+#
+# The path-prefixed tag is required by Go's module proxy so that
+#   go install github.com/runtm-ai/runtm/packages/agent/cmd/runtm-api@vX.Y.Z
+# continues to resolve.
+#
+# goreleaser OSS doesn't have a monorepo mode, so we split the work:
+#   1. Compute a clean `vX.Y.Z` from the prefixed tag.
+#   2. Run goreleaser with GORELEASER_CURRENT_TAG=<clean> and --skip=publish
+#      so it produces binaries+archives+checksums (with the clean version
+#      embedded in --version), but does NOT try to create a GitHub release.
+#   3. Publish the artifacts via `gh release create <full-prefixed-tag>` so
+#      the assets land on the actual Go-compatible tag.
+
+on:
+  push:
+    tags:
+      - 'packages/agent/v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish runtm-api
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history needed for goreleaser changelog generation.
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache-dependency-path: packages/agent/go.sum
+
+      - name: Compute clean version
+        id: version
+        # Strip the `packages/agent/` prefix so goreleaser sees a parseable
+        # semver tag. We keep the full prefixed name for the actual release.
+        run: |
+          TAG_FULL="${GITHUB_REF#refs/tags/}"
+          CLEAN_TAG="${TAG_FULL#packages/agent/}"
+          echo "tag_full=${TAG_FULL}" >> "$GITHUB_OUTPUT"
+          echo "clean_tag=${CLEAN_TAG}" >> "$GITHUB_OUTPUT"
+          echo "Release tag (Go-compatible): ${TAG_FULL}"
+          echo "Embedded version:            ${CLEAN_TAG}"
+
+      - name: Build and archive with goreleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: '~> v2'
+          workdir: packages/agent
+          args: release --clean --skip=publish,validate,announce
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_CURRENT_TAG: ${{ steps.version.outputs.clean_tag }}
+
+      - name: Determine prerelease status
+        id: prerelease
+        # v0.x.x or any tag with a `-suffix` (e.g. v1.0.0-rc1) ships as prerelease.
+        run: |
+          CLEAN="${{ steps.version.outputs.clean_tag }}"
+          if [[ "${CLEAN}" =~ ^v0\. ]] || [[ "${CLEAN}" =~ - ]]; then
+            echo "flag=--prerelease" >> "$GITHUB_OUTPUT"
+          else
+            echo "flag=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Write release notes
+        env:
+          CLEAN_TAG: ${{ steps.version.outputs.clean_tag }}
+          TAG_FULL: ${{ steps.version.outputs.tag_full }}
+        run: |
+          {
+            printf 'Install on macOS / Linux:\n\n'
+            printf '```bash\n'
+            printf 'curl -fsSL https://runtm.com/install | bash\n'
+            printf '```\n\n'
+            printf 'Pin this version:\n\n'
+            printf '```bash\n'
+            printf 'curl -fsSL https://runtm.com/install | RUNTM_VERSION=%s bash\n' "${CLEAN_TAG}"
+            printf '```\n\n'
+            printf '**Full diff**: https://github.com/runtm-ai/runtm/commits/%s\n' "${TAG_FULL}"
+          } > /tmp/release-notes.md
+          cat /tmp/release-notes.md
+
+      - name: Publish to GitHub Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd packages/agent
+          gh release create "${{ steps.version.outputs.tag_full }}" \
+            --title "runtm-api ${{ steps.version.outputs.clean_tag }}" \
+            --notes-file /tmp/release-notes.md \
+            ${{ steps.prerelease.outputs.flag }} \
+            dist/runtm-api_darwin_amd64.tar.gz \
+            dist/runtm-api_darwin_arm64.tar.gz \
+            dist/runtm-api_linux_amd64.tar.gz \
+            dist/runtm-api_linux_arm64.tar.gz \
+            dist/checksums.txt
