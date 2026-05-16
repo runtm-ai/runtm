@@ -10,27 +10,49 @@ This package is intentionally separate from the pip `runtm` CLI under [`packages
 
 ## Install
 
-Requires Go 1.23+ on the customer's machine (`brew install go` / `https://go.dev/dl/`).
+```bash
+curl -fsSL https://runtm.com/install | bash
+```
+
+Downloads a pre-built binary for your platform (macOS / Linux × amd64 / arm64), verifies its SHA-256 checksum, and installs `runtm-api` to `/usr/local/bin` (override with `RUNTM_INSTALL_DIR`). If Claude Code or Cursor is present on the machine, the agent skill files are auto-installed too.
+
+```bash
+export RUNTM_API_KEY=runtm_sk_live_...   # from https://app.runtm.com → Settings → API Keys
+runtm-api auth status
+```
+
+Skills are embedded in the binary — you can re-install them at any time via `runtm-api skills install`. No network fetch required.
+
+### Install a specific version
+
+```bash
+curl -fsSL https://runtm.com/install | RUNTM_VERSION=0.1.0 bash
+```
+
+### Install via `go install` (Go developers)
+
+If you already have Go 1.23+ and prefer to compile from source:
 
 ```bash
 go install github.com/runtm-ai/runtm/packages/agent/cmd/runtm-api@latest
-runtm skills install    # auto-detects Claude Code / Cursor and writes SKILL.md files
-
-export RUNTM_API_KEY=runtm_sk_live_...   # from https://app.runtm.com Settings > API Keys
-runtm auth status
+runtm-api skills install
 ```
-
-Skills are embedded in the binary — `runtm skills install` copies them to `~/.claude/skills/runtm/` and/or `~/.cursor/skills/runtm/` with no network fetch required.
 
 ## Build from source
 
 ```bash
-make build              # ./bin/runtm
+make build              # ./bin/runtm-api
 make dev                # build + --help against http://localhost:8081
-make release            # cross-compile to ./dist
+make release            # cross-compile to ./dist (local snapshot)
 ```
 
-Requires Go 1.23+.
+For a full cross-platform release via goreleaser (mirrors what CI runs):
+
+```bash
+cd packages/agent && goreleaser release --snapshot --clean
+```
+
+Requires Go 1.23+ and `goreleaser` installed locally (only for the snapshot path).
 
 ## Commands
 
@@ -89,14 +111,17 @@ These are workflow recipes, not API documentation. Full endpoint details live at
 
 ```
 packages/agent/
-  cmd/runtm-api/main.go           # entry point
+  cmd/runtm-api/main.go       # entry point
   internal/auth/              # credential + base URL resolution
   internal/client/            # HTTP wrapper, JSON + SSE
   internal/cmd/               # cobra subcommands
-  skills/                     # SKILL.md files for AI agents
-  install.sh                  # one-liner installer
-  Makefile                    # build / dev / release
+  internal/skills/            # //go:embed wrapper for skills/
+  skills/                     # SKILL.md files (embedded into binary)
+  .goreleaser.yml             # cross-compile + GitHub Releases config
+  Makefile                    # local build / dev targets
 ```
+
+The hosted installer script lives in `runtm-landing/public/install` and is served at `https://runtm.com/install`. It downloads the tarball published by `.github/workflows/release-agent.yml`.
 
 ## Roadmap
 

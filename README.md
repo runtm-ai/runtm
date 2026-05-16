@@ -84,6 +84,8 @@ runtm session deploy
 
 ## Installation
 
+The pip CLI (`runtm`) for local sandboxes, scaffolding, and deploys:
+
 ```bash
 # Recommended
 uv tool install runtm
@@ -94,6 +96,14 @@ pipx install runtm
 # Or with pip
 pip install runtm
 ```
+
+The Go CLI (`runtm-api`) is a separate, lighter tool for AI coding agents driving the hosted Cloud API:
+
+```bash
+curl -fsSL https://runtm.com/install | bash
+```
+
+It is JSON-in / JSON-out, has stable exit codes, and ships with embedded skill files for Claude Code, Cursor, and Codex. See [Agent CLI docs](https://docs.runtm.com/cloud-api/agent-cli) and the [`packages/agent/`](packages/agent/) source for details. The pip and Go CLIs share the same API key.
 
 ## Commands
 
@@ -144,7 +154,8 @@ packages/
   agents/     # AI coding agent adapters (Claude Code, Codex, etc.)
   api/        # FastAPI control plane
   worker/     # Build + deploy pipeline
-  cli/        # Python CLI (Typer)
+  cli/        # Python CLI (Typer) - `runtm` (local sandbox + deploy)
+  agent/      # Go CLI (Cobra) - `runtm-api` (hosted Cloud API for AI agents)
 
 templates/    # Starter projects (backend, static, fullstack)
 ```

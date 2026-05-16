@@ -94,6 +94,7 @@
       "group": "API Reference",
       "pages": [
         "cloud-api/overview",
+        "cloud-api/agent-cli",
         "cloud-api/authentication",
         "cloud-api/authentication/verify",
         "cloud-api/scopes",

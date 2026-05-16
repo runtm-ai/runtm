@@ -103,13 +103,20 @@ The CLI **does not call OSS-only routes** like `/api/v0/deployments` (that's the
 
 ## Prerequisites
 
-Requires Go 1.23+ on PATH (`brew install go` / https://go.dev/dl/).
+Install the pre-built binary (macOS / Linux × amd64 / arm64, no Go required):
+
+```bash
+curl -fsSL https://runtm.com/install | bash
+export RUNTM_API_KEY=runtm_sk_live_...   # from https://app.runtm.com > Settings > API Keys
+```
+
+The installer drops `runtm-api` in `/usr/local/bin` (override with `RUNTM_INSTALL_DIR=$HOME/.local/bin`) and auto-installs these skill files into `~/.claude/skills/runtm/` and `~/.cursor/skills/runtm/` when those directories exist.
+
+If you already have Go 1.23+ and prefer to compile from source:
 
 ```bash
 go install github.com/runtm-ai/runtm/packages/agent/cmd/runtm-api@latest
-runtm-api skills install    # auto-detects Claude Code / Cursor and installs SKILL.md files
-
-export RUNTM_API_KEY=runtm_sk_live_...   # from https://app.runtm.com > Settings > API Keys
+runtm-api skills install
 ```
 
 Org context for org-scoped operations (templates, team telemetry, team secrets, org instructions, guardrails) is auto-discovered from the API key, so org keys "just work" with no extra setup. Only set this when using a personal key against an org you belong to, or when switching between orgs:

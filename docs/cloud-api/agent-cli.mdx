@@ -1,0 +1,122 @@
+---
+title: "Agent CLI (runtm-api)"
+description: "Thin Go wrapper around the Cloud API, designed for AI coding agents"
+---
+
+`runtm-api` is a small Go CLI that wraps the Runtime Cloud API. It is intentionally separate from the pip [`runtm` CLI](/open-source/cli/overview) (which handles local sandboxes, scaffolding, and deploys):
+
+| | Pip `runtm` CLI | Go `runtm-api` CLI |
+|---|---|---|
+| Surface | Local sandbox + deploy | Hosted Cloud API only |
+| Audience | Humans + occasional scripts | AI coding agents (Claude Code, Cursor, Codex, ...) |
+| Output | Pretty TTY | JSON to stdout, structured errors to stderr |
+| Exit codes | Generic | `0` ok / `1` API / `2` auth / `3` usage |
+| Distribution | PyPI (`uv tool install runtm`) | Pre-built binary (`curl ... \| bash`) |
+
+Most humans use both — the pip CLI for day-to-day work, the Go CLI when an agent needs to act on the hosted platform programmatically.
+
+## Install
+
+```bash
+curl -fsSL https://runtm.com/install | bash
+```
+
+This downloads a pre-built binary for your platform (macOS / Linux × amd64 / arm64), verifies its SHA-256 checksum, and installs `runtm-api` to `/usr/local/bin`. If Claude Code or Cursor is detected, the bundled agent skill files are auto-installed too.
+
+```bash
+export RUNTM_API_KEY=runtm_sk_live_...   # from app.runtm.com → Settings → API Keys
+runtm-api auth status
+```
+
+### Install a specific version
+
+```bash
+curl -fsSL https://runtm.com/install | RUNTM_VERSION=0.1.0 bash
+```
+
+### Install into a directory you own (no sudo prompt)
+
+```bash
+curl -fsSL https://runtm.com/install | RUNTM_INSTALL_DIR="$HOME/.local/bin" bash
+```
+
+### Installer environment variables
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `RUNTM_VERSION` | `latest` | Version to install. Accepts `latest`, `0.0.1`, `v0.0.1`, or `packages/agent/v0.0.1`. |
+| `RUNTM_INSTALL_DIR` | `/usr/local/bin` | Where the binary lands. |
+| `RUNTM_REPO` | `runtm-ai/runtm` | Source repository (override for forks / mirrors). |
+| `RUNTM_SKIP_SKILLS` | unset | Set to `1` to skip the post-install skill install. |
+
+### Install via `go install` (Go developers)
+
+If you already have Go 1.23+ and prefer to compile from source:
+
+```bash
+go install github.com/runtm-ai/runtm/packages/agent/cmd/runtm-api@latest
+runtm-api skills install
+```
+
+## Auth and config
+
+| Setting | Env var | Fallback |
+|---|---|---|
+| API key | `RUNTM_API_KEY` | `~/.runtm/credentials` (written by `runtm login` in the pip CLI) |
+| API URL | `RUNTM_API_URL` | `~/.runtm/config.yaml`, then `https://app.runtm.com/api/cloud` |
+| Org ID | `RUNTM_ORG_ID` | `--org` flag; auto-resolved when the key is org-scoped |
+
+The same API key works for both this CLI and the pip CLI.
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `runtm-api auth status` | Verify the API key against `/api/v1/me`. |
+| `runtm-api session create` | Create a sandbox (no prompt). |
+| `runtm-api session launch` | Create + fire a prompt as a background task. |
+| `runtm-api session list` | List sessions for the API key. |
+| `runtm-api session status <id>` | Get state + `last_prompt` polling fields. |
+| `runtm-api session prompt <id> <text>` | Stream a prompt as SSE → JSON lines. |
+| `runtm-api session destroy <id>` | Tear down a sandbox. |
+| `runtm-api session git <id> <op>` | Run a git operation (commit, push, create_branch_and_pr, ...). |
+| `runtm-api template list` | List org templates (requires `--org` / `RUNTM_ORG_ID`). |
+| `runtm-api template get <id>` | Inspect one template. |
+| `runtm-api deploy list` | List deployments. |
+| `runtm-api deploy get <id>` | Inspect one deployment. |
+| `runtm-api skills install` | Install the agent skill files into `~/.claude/skills/runtm/` and/or `~/.cursor/skills/runtm/`. |
+
+Run `runtm-api --help` or `runtm-api <command> --help` for full flag reference.
+
+## Output and exit codes
+
+- Stdout is always JSON. For `session prompt`, stdout is JSON lines (one per SSE event).
+- Stderr carries structured error JSON: `{"error": "...", "status": 401, "hint": "..."}`.
+- Exit codes:
+
+| Code | Meaning |
+|---|---|
+| `0` | Success |
+| `1` | API error (4xx / 5xx response) |
+| `2` | Auth error (missing or invalid key) |
+| `3` | Usage error (bad flags) |
+
+## Agent skills
+
+The CLI ships with three SKILL.md files **embedded into the binary** ([`packages/agent/skills/`](https://github.com/runtm-ai/runtm/tree/main/packages/agent/skills)):
+
+- `SKILL.md` — command cheat sheet, auth, error recovery, trigger words (`runtm`, `runtime`).
+- `runtm-sessions.md` — multi-step workflows (launch from template, iterate, poll, open PR).
+- `runtm-templates.md` — discovering and inspecting org templates.
+
+These are workflow recipes that teach the agent how to use the CLI. They are auto-installed by the one-liner installer when `~/.claude` or `~/.cursor` exists, and can be re-installed any time with:
+
+```bash
+runtm-api skills install
+```
+
+## Source
+
+The CLI lives at [`packages/agent/`](https://github.com/runtm-ai/runtm/tree/main/packages/agent) in the open-source `runtm-ai/runtm` repository. Releases are cut by pushing a `packages/agent/vX.Y.Z` tag, which triggers a GitHub Actions workflow that publishes pre-built binaries to GitHub Releases.
+
+Apache-2.0 licensed (same as the pip CLI).

@@ -1,14 +1,18 @@
 # Runtm agent CLI build targets.
 #
-# Customers install via `go install github.com/runtm-ai/runtm/packages/agent/cmd/runtm@latest`
-# (also wrapped by install.sh). These targets exist for local development +
-# the optional `make release` cross-compile if we ever ship pre-built binaries.
+# Production installs go through the hosted one-liner:
+#   curl -fsSL https://runtm.com/install | bash
+# which downloads a pre-built binary published by .github/workflows/release-agent.yml
+# (driven by .goreleaser.yml). Go developers can also `go install` from source.
+#
+# These targets are for local development -- `make release` is the same
+# cross-compile that goreleaser does in CI, useful when iterating offline.
 #
 # Common workflows:
-#   make build    # local binary at ./bin/runtm
+#   make build    # local binary at ./bin/runtm-api
 #   make dev      # build + run --help, pointing at local backend
-#   make install  # `go install` to $GOBIN -- same path customers use
-#   make release  # cross-compile for darwin/linux x amd64/arm64 to ./dist (optional)
+#   make install  # `go install` to $GOBIN
+#   make release  # cross-compile for darwin/linux x amd64/arm64 to ./dist
 #   make test     # go test ./...
 #   make lint     # go vet ./...
 #   make fmt      # go fmt ./...
@@ -19,8 +23,15 @@ VERSION     ?= dev
 LDFLAGS     := -s -w -X github.com/runtm-ai/runtm/packages/agent/internal/cmd.Version=$(VERSION)
 LOCAL_API   ?= http://localhost:8081/api
 
+.PHONY: sync-skills
+sync-skills:
+	@# Mirror skills/ -> internal/skills/files/ so the //go:embed copy in the
+	@# binary matches what we ship in the release tarball under skills/.
+	@mkdir -p internal/skills/files
+	@cp skills/*.md internal/skills/files/
+
 .PHONY: build
-build:
+build: sync-skills
 	mkdir -p bin
 	go build -trimpath -ldflags '$(LDFLAGS)' -o bin/$(BINARY) $(PKG)
 
@@ -73,12 +84,13 @@ release: clean
 .PHONY: help
 help:
 	@echo "Targets:"
-	@echo "  build    Build local binary to ./bin/runtm"
-	@echo "  dev      Build and print --help against local backend"
-	@echo "  run      Build and run with ARGS=\"...\" against local backend"
-	@echo "  install  go install into GOPATH"
-	@echo "  test     go test ./..."
-	@echo "  lint     go vet ./..."
-	@echo "  fmt      go fmt ./..."
-	@echo "  release  Cross-compile to ./dist"
-	@echo "  clean    Remove bin/ and dist/"
+	@echo "  build         Build local binary to ./bin/runtm-api (auto-syncs skills)"
+	@echo "  dev           Build and print --help against local backend"
+	@echo "  run           Build and run with ARGS=\"...\" against local backend"
+	@echo "  install       go install into GOPATH"
+	@echo "  test          go test ./..."
+	@echo "  lint          go vet ./..."
+	@echo "  fmt           go fmt ./..."
+	@echo "  release       Cross-compile to ./dist"
+	@echo "  sync-skills   Copy skills/*.md to internal/skills/files/ (for //go:embed)"
+	@echo "  clean         Remove bin/ and dist/"
