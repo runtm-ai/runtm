@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Agent CLI**: `runtm-api session list` now uses the hosted cloud proxy URL consistently instead of leaking the internal `localhost:8081` backend URL when listing sessions through `https://app.runtm.com/api/cloud`
+
 ## [0.2.21] - 2026-05-10
 
 ### Fixed
