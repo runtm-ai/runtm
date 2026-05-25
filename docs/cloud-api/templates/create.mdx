@@ -4,7 +4,7 @@ api: "POST /api/org-templates"
 description: "Create a new organization template"
 ---
 
-Creates a new organization template. Templates define pre-configured sandbox environments that auto-match to repositories based on glob patterns. Requires admin or owner role.
+Creates a new organization template from a GitHub repository. Templates define pre-configured sandbox environments that auto-match to repositories based on repository patterns. Requires admin or owner role.
 
 **Required scope:** `templates:write`
 
@@ -20,8 +20,8 @@ Creates a new organization template. Templates define pre-configured sandbox env
 
 ## Body
 
-<ParamField body="name" type="string" required>
-  Template slug name (must be unique within the org).
+<ParamField body="name" type="string">
+  Optional template slug name. If omitted, Runtime derives one from the repository and branch. Must be unique within the organization.
 </ParamField>
 
 <ParamField body="display_name" type="string" required>
@@ -32,21 +32,31 @@ Creates a new organization template. Templates define pre-configured sandbox env
   Template description.
 </ParamField>
 
-<ParamField body="repo_url" type="string">
-  GitHub repository URL to use as the template source.
+<ParamField body="github_repo" type="string" required>
+  GitHub repository in `owner/repo` form to use as the template source.
 </ParamField>
 
-<ParamField body="branch" type="string">
+<ParamField body="github_branch" type="string" default="main">
   Branch to use from the source repository.
 </ParamField>
 
-<ParamField body="agent" type="string" default="claude-code">
-  Default agent for sessions using this template.
+<ParamField body="agents" type="array" default='["claude-code"]'>
+  Coding agents this template should support. Use an array, even for one agent. Valid values: `claude-code`, `codex`, `github-copilot`, `opencode`.
 </ParamField>
 
-<ParamField body="config" type="object">
-  Template configuration including tier, repo patterns, and build spec.
+<ParamField body="tier" type="string" default="basic">
+  Resource tier for template sessions. Valid values: `basic`, `standard`, `max`.
 </ParamField>
+
+<ParamField body="build_spec" type="object">
+  Optional seed build spec. Runtime may rewrite this during the template build.
+</ParamField>
+
+<ParamField body="github_repos" type="array">
+  Optional multi-repo configuration. Each entry includes `full_name`, `branch`, optional `workdir`, and optional `is_primary`.
+</ParamField>
+
+`agent` is not a create-template field. To create a Codex template, send `"agents": ["codex"]`.
 
 ## Response
 
@@ -64,8 +74,20 @@ Returns `201` with the created template resource.
   Human-readable name.
 </ResponseField>
 
+<ResponseField name="github_repo" type="string">
+  GitHub repository used as the template source.
+</ResponseField>
+
 <ResponseField name="build_status" type="string">
   Initial build status.
+</ResponseField>
+
+<ResponseField name="framework" type="string">
+  Detected framework, or `null` when it has not been detected yet.
+</ResponseField>
+
+<ResponseField name="agents" type="array">
+  Agents configured for the template.
 </ResponseField>
 
 <RequestExample>
@@ -78,13 +100,10 @@ curl -X POST "https://app.runtm.com/api/cloud/org-templates" \
     "name": "nextjs-starter",
     "display_name": "Next.js Starter",
     "description": "Pre-configured Next.js with Tailwind CSS",
-    "repo_url": "https://github.com/owner/nextjs-starter",
-    "branch": "main",
-    "agent": "claude-code",
-    "config": {
-      "tier": "starter",
-      "repo_patterns": ["owner/nextjs-*"]
-    }
+    "github_repo": "owner/nextjs-starter",
+    "github_branch": "main",
+    "tier": "basic",
+    "agents": ["codex"]
   }'
 ```
 
@@ -102,13 +121,10 @@ response = requests.post(
         "name": "nextjs-starter",
         "display_name": "Next.js Starter",
         "description": "Pre-configured Next.js with Tailwind CSS",
-        "repo_url": "https://github.com/owner/nextjs-starter",
-        "branch": "main",
-        "agent": "claude-code",
-        "config": {
-            "tier": "starter",
-            "repo_patterns": ["owner/nextjs-*"],
-        },
+        "github_repo": "owner/nextjs-starter",
+        "github_branch": "main",
+        "tier": "basic",
+        "agents": ["codex"],
     },
 )
 
@@ -130,13 +146,10 @@ const response = await fetch(
       name: "nextjs-starter",
       display_name: "Next.js Starter",
       description: "Pre-configured Next.js with Tailwind CSS",
-      repo_url: "https://github.com/owner/nextjs-starter",
-      branch: "main",
-      agent: "claude-code",
-      config: {
-        tier: "starter",
-        repo_patterns: ["owner/nextjs-*"],
-      },
+      github_repo: "owner/nextjs-starter",
+      github_branch: "main",
+      tier: "basic",
+      agents: ["codex"],
     }),
   }
 );
@@ -152,9 +165,10 @@ console.log(`Created template: ${data.id}`);
   "id": "tmpl_abc123",
   "name": "nextjs-starter",
   "display_name": "Next.js Starter",
-  "description": "Pre-configured Next.js with Tailwind CSS",
+  "github_repo": "owner/nextjs-starter",
   "build_status": "pending",
-  "created_at": "2026-05-09T21:00:00Z"
+  "framework": null,
+  "agents": ["codex"]
 }
 ```
 </ResponseExample>
