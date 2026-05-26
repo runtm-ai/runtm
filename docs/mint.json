@@ -176,6 +176,27 @@
       ]
     },
     {
+      "group": "Programmatic Agents (v0)",
+      "pages": [
+        "cloud-api/sessions/launch",
+        "cloud-api/sessions/v0-list",
+        "cloud-api/sessions/v0-create",
+        "cloud-api/sessions/v0-get",
+        "cloud-api/sessions/v0-prompt",
+        "cloud-api/sessions/v0-git",
+        "cloud-api/sessions/v0-delete"
+      ]
+    },
+    {
+      "group": "Sandbox Lifecycle (v2)",
+      "pages": [
+        "cloud-api/sessions/v2-start",
+        "cloud-api/sessions/v2-refresh",
+        "cloud-api/sessions/v2-patch",
+        "cloud-api/sessions/v2-connect"
+      ]
+    },
+    {
       "group": "Deploy",
       "pages": [
         "cloud-api/deploy/info",
