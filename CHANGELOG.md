@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Agent CLI**: `runtm-api session list` now uses the hosted cloud proxy URL consistently instead of leaking the internal `localhost:8081` backend URL when listing sessions through `https://app.runtm.com/api/cloud`
+- **API**: Reworked DB connection pool config to stop recurring `SSL connection has been closed unexpectedly` errors behind Fly MPG's PgBouncer
+  - Lowered `pool_recycle` from 1800s to 300s so connections are recycled well before the upstream pooler closes idle server connections — previously ~1/3 of `pool_pre_ping` probes were hitting dead connections
+  - Added TCP keepalives (`keepalives_idle=30`, `keepalives_interval=10`, `keepalives_count=3`) so the kernel detects half-open connections instead of failing on next use
+  - Reverted `pool_size` from 10 back to 5; the 0.2.18 bump to 10 did not resolve the SSL drops, and the recycle + keepalives changes address the root cause instead
+- **API**: Fixed N+1 query in `list_deployments` — eager-load `Deployment.provider_resource` via `joinedload` so `DeploymentResponse.from_db()` no longer issues one extra query per deployment to read `provider_resource.app_name`
 
 ## [0.2.21] - 2026-05-10
 
