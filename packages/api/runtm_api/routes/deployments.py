@@ -18,7 +18,7 @@ from fastapi import (
 )
 from pydantic import BaseModel
 from sqlalchemy import and_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from runtm_api.auth import get_auth_context, require_scope
 from runtm_api.core.config import Settings, get_settings
@@ -360,8 +360,17 @@ async def list_deployments(
     # Get total count
     total = query.count()
 
-    # Apply pagination and ordering
-    deployments = query.order_by(Deployment.created_at.desc()).offset(offset).limit(limit).all()
+    # Apply pagination and ordering.
+    # joinedload(provider_resource) eager-loads the one-to-one relationship in the
+    # same SELECT -- DeploymentResponse.from_db() reads provider_resource.app_name,
+    # which otherwise lazy-loads one extra query per row (N+1).
+    deployments = (
+        query.options(joinedload(Deployment.provider_resource))
+        .order_by(Deployment.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
 
     return DeploymentsListResponse(
         deployments=[DeploymentResponse.from_db(dep) for dep in deployments],

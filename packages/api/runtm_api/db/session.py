@@ -30,14 +30,26 @@ def get_engine():
         _engine = create_engine(
             settings.database_url,
             pool_pre_ping=True,
-            pool_size=10,
+            pool_size=5,
             max_overflow=10,
             pool_timeout=30,
-            pool_recycle=1800,
+            # Recycle well below the upstream pooler's idle timeout. In prod the DB
+            # sits behind Fly MPG's PgBouncer, which closes idle server connections
+            # long before the previous 1800s -- ~1/3 of pre-ping probes were hitting
+            # dead connections ("SSL connection has been closed unexpectedly").
+            pool_recycle=300,
             pool_use_lifo=True,
-            connect_args={"connect_timeout": 5},
+            connect_args={
+                "connect_timeout": 5,
+                # TCP keepalives so the kernel notices half-open connections that
+                # the pooler/network dropped, instead of failing on next use.
+                "keepalives": 1,
+                "keepalives_idle": 30,
+                "keepalives_interval": 10,
+                "keepalives_count": 3,
+            },
         )
-        logger.info("Created SQLAlchemy engine (pool_size=10, max_overflow=10, lifo=True)")
+        logger.info("Created SQLAlchemy engine (pool_size=5, max_overflow=10, lifo=True)")
     return _engine
 
 
