@@ -2,7 +2,7 @@
 name: runtm-templates
 description: "Full lifecycle workflows for Runtm Cloud org templates: discover, create, build, monitor builds, fix broken templates via fix-session, save snapshots, manage template secrets."
 metadata:
-  version: "0.2.0"
+  version: "0.4.0"
   tags: runtm,runtime,templates,org,workflows
 ---
 
@@ -74,7 +74,75 @@ runtm-api template build-logs tmpl_abc...
 runtm-api template get tmpl_abc... | jq '{build_status, has_all_required}'
 ```
 
-If `--skip-agent` is passed to `build`, the agent step is skipped (faster but the user has to finish env setup inside a session).
+### Faster: create + clone-only build in one call (`--skip-agent`)
+
+`--skip-agent` on `template create` runs a clone-only build with no AI step, and **implies `--build`** -- so steps 2 and 3 above collapse into a single command. Best when the repo just needs cloning and you'll finish setup inside a session.
+
+```bash
+runtm-api template create \
+  --display-name "NuvoOS Dev Environment" \
+  --github-repo runtm-ai/landing-page \
+  --github-branch main \
+  --tier standard \
+  --name template \
+  --skip-agent
+# -> {"id": "28f6e6e6-d73d-4f21-8b1f-312e17e8f47b", "build_status": "pending", ...}
+
+# Poll until ready, then boot a session from it:
+runtm-api template get 28f6e6e6-... | jq -r .build_status   # wait for "ready"
+runtm-api session create --template-id 28f6e6e6-...
+# Then drive the session with `session exec <id> -- <cmd>` or `session connect <id>`
+# (see the runtm-sessions skill).
+```
+
+`--display-name` and `--github-repo` are required. `--name` sets the slug (auto-derived from the repo if omitted); `--tier` is one of basic / standard / max. Passing `--skip-agent` to the standalone `template build` command skips the AI step on a rebuild the same way.
+
+## Recipe: declare session arguments
+
+Session arguments are values collected when a member launches a session from the template; each is injected into the sandbox as an **environment variable**. Declare them on `template create` or `template update` with the repeatable `--session-arg` flag.
+
+Two forms per `--session-arg`:
+
+| Form | Meaning |
+|------|---------|
+| `KEY=DEFAULT` | Optional text arg, defaulting to `DEFAULT` |
+| `KEY` (no `=`) | **Required** text arg, no default |
+| `'{"key":...}'` (JSON) | Full control: type (`text`/`select`/`boolean`), `options`, `default`, `required`, `label`, `help_text` |
+
+A `select` arg requires a non-empty `options` array. `label` defaults to the key.
+
+```bash
+# Create a template that declares three session args
+runtm-api template create --display-name 'Rich Args Demo' \
+  --github-repo runtm-ai/landing-page --tier standard \
+  --session-arg BRANCH=main \
+  --session-arg '{"key":"ENV","type":"select","options":["dev","staging","prod"],"default":"dev","required":true,"label":"Environment","help_text":"Target deploy env"}' \
+  --session-arg '{"key":"VERBOSE","type":"boolean","default":"false","label":"Verbose logging"}' \
+  --skip-agent
+# BRANCH -> optional text (default "main"); ENV -> required dropdown; VERBOSE -> checkbox.
+```
+
+On `create`, session args are applied via a follow-up `PATCH` (the create endpoint doesn't accept them directly), so the create works with or without `--build` / `--skip-agent`.
+
+On `update`, `--session-arg` **replaces the entire set** (it's not additive). Pass every arg you want to keep:
+
+```bash
+# Replace the template's session args with a single BRANCH arg
+runtm-api template update 9ff0e46a-ff1f-4440-b2ee-410b07984584 --session-arg BRANCH=main
+```
+
+### Supplying values at launch
+
+When booting a session from a template, pass values for its declared args with `--template-args KEY=VALUE` (repeatable / comma-separated; only valid with `--template-id`). Omitted optional args fall back to their default; missing required args are rejected.
+
+```bash
+runtm-api session create \
+  --template-id 9ff0e46a-ff1f-4440-b2ee-410b07984584 \
+  --template-args BRANCH=dev \
+  --agent claude-code \
+  --mode interactive
+# The sandbox boots with BRANCH=dev (plus ENV/VERBOSE defaults) in its environment.
+```
 
 ## Recipe: fix a broken template
 

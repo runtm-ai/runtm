@@ -81,6 +81,10 @@ from runtm_cli.commands import (
     secrets_unset_command,
     session_app,
     status_command,
+    template_create_command,
+    template_edit_command,
+    template_list_command,
+    template_show_command,
     validate_command,
 )
 from runtm_cli.commands.admin import admin_app
@@ -581,6 +585,104 @@ def secrets_unset(
     from pathlib import Path
 
     secrets_unset_command(key=key, path=Path(path))
+
+
+# Template subcommand group
+template_app = typer.Typer(
+    name="template",
+    help="Manage org templates and their session arguments.",
+    no_args_is_help=True,
+)
+app.add_typer(template_app, name="template")
+
+_ARG_HELP = (
+    "Session arg as 'key=...,label=...,type=text|select|boolean,"
+    "required=true,default=...,options=a|b|c,help=...'. Repeatable."
+)
+
+
+@template_app.command("list")
+def template_list(
+    org: str = typer.Option(None, "--org", help="Organization ID (defaults to the API key's org)"),
+) -> None:
+    """List org templates.
+
+    Example:
+        runtm template list
+    """
+    template_list_command(org_id=org)
+
+
+@template_app.command("show")
+def template_show(
+    template_id: str = typer.Argument(..., help="Template ID"),
+    org: str = typer.Option(None, "--org", help="Organization ID (defaults to the API key's org)"),
+) -> None:
+    """Show a template's details and session arguments.
+
+    Example:
+        runtm template show 1a2b3c
+    """
+    template_show_command(template_id, org_id=org)
+
+
+@template_app.command("create")
+def template_create(
+    display_name: str = typer.Argument(..., help="Human-friendly template name"),
+    repo: str = typer.Option(
+        None, "--repo", help="GitHub repo (owner/repo). Omit for a repo-less template"
+    ),
+    branch: str = typer.Option("main", "--branch", help="Git branch"),
+    tier: str = typer.Option("basic", "--tier", help="Sandbox tier: basic, standard, max"),
+    agent: list[str] = typer.Option(
+        None, "--agent", help="Coding agent(s) to build for. Repeatable"
+    ),
+    description: str = typer.Option(None, "--description", help="Template description"),
+    name: str = typer.Option(None, "--name", help="Template slug (auto-derived if omitted)"),
+    arg: list[str] = typer.Option(None, "--arg", "-a", help=_ARG_HELP),
+    org: str = typer.Option(None, "--org", help="Organization ID (defaults to the API key's org)"),
+) -> None:
+    """Create an org template, optionally with session arguments.
+
+    Example:
+        runtm template create "My Template" --repo acme/app \\
+          --arg 'key=BRANCH,label=Git Branch,type=select,options=main|staging,default=main' \\
+          --arg 'key=DEBUG,label=Debug mode,type=boolean,default=false'
+    """
+    template_create_command(
+        display_name,
+        repo=repo,
+        branch=branch,
+        tier=tier,
+        agents=agent or None,
+        description=description,
+        name=name,
+        arg_specs=arg or [],
+        org_id=org,
+    )
+
+
+@template_app.command("edit")
+def template_edit(
+    template_id: str = typer.Argument(..., help="Template ID"),
+    arg: list[str] = typer.Option(None, "--arg", "-a", help=_ARG_HELP + " Replaces the full set"),
+    clear_args: bool = typer.Option(False, "--clear-args", help="Remove all session arguments"),
+    display_name: str = typer.Option(None, "--display-name", help="New display name"),
+    org: str = typer.Option(None, "--org", help="Organization ID (defaults to the API key's org)"),
+) -> None:
+    """Edit a template's session arguments (replaces the full set).
+
+    Example:
+        runtm template edit 1a2b3c --arg 'key=BRANCH,label=Branch,default=main'
+        runtm template edit 1a2b3c --clear-args
+    """
+    template_edit_command(
+        template_id,
+        arg_specs=arg or [],
+        clear_args=clear_args,
+        display_name=display_name,
+        org_id=org,
+    )
 
 
 # Config subcommand group

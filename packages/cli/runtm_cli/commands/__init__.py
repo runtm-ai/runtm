@@ -22,6 +22,12 @@ from runtm_cli.commands.secrets import (
 )
 from runtm_cli.commands.session import session_app
 from runtm_cli.commands.status import status_command
+from runtm_cli.commands.template import (
+    template_create_command,
+    template_edit_command,
+    template_list_command,
+    template_show_command,
+)
 from runtm_cli.commands.validate import validate_command
 
 __all__ = [
@@ -43,5 +49,9 @@ __all__ = [
     "secrets_unset_command",
     "session_app",
     "status_command",
+    "template_create_command",
+    "template_edit_command",
+    "template_list_command",
+    "template_show_command",
     "validate_command",
 ]
