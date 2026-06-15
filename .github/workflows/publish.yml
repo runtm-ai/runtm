@@ -16,6 +16,21 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
 
+      - name: Compute version
+        id: version
+        # Build-number versioning: 0.2.<run_number>. run_number is monotonic per
+        # workflow; the +100 floor keeps it safely above the last hand-published
+        # 0.2.21. Bump the "0.2" prefix below by hand when cutting a new minor.
+        run: echo "value=0.2.$((100 + ${{ github.run_number }}))" >> "$GITHUB_OUTPUT"
+
+      - name: Set package versions
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          for pkg in cli worker api; do
+            (cd "packages/$pkg" && uv version "$VERSION")
+          done
+
       - name: Build runtm (CLI)
         working-directory: packages/cli
         run: uv build
@@ -29,6 +44,8 @@ jobs:
         run: uv build
 
       - name: Publish to PyPI
-        run: uv publish packages/cli/dist/* packages/worker/dist/* packages/api/dist/*
+        # --check-url lets uv skip files already present on the index instead of
+        # failing the job, so pushes to main that don't bump the version are no-ops.
+        run: uv publish --check-url https://pypi.org/simple/ packages/cli/dist/* packages/worker/dist/* packages/api/dist/*
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}

@@ -65,10 +65,11 @@ jobs:
 
       - name: Determine prerelease status
         id: prerelease
-        # v0.x.x or any tag with a `-suffix` (e.g. v1.0.0-rc1) ships as prerelease.
+        # Only tags with a `-suffix` (e.g. v1.0.0-rc1) ship as prerelease.
+        # Normal releases — including v0.x — publish as full releases.
         run: |
           CLEAN="${{ steps.version.outputs.clean_tag }}"
-          if [[ "${CLEAN}" =~ ^v0\. ]] || [[ "${CLEAN}" =~ - ]]; then
+          if [[ "${CLEAN}" =~ - ]]; then
             echo "flag=--prerelease" >> "$GITHUB_OUTPUT"
           else
             echo "flag=" >> "$GITHUB_OUTPUT"
