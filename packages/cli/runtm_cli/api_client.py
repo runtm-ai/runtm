@@ -828,9 +828,7 @@ class APIClient:
             self._handle_error(response)
         return response.json().get("templates", [])
 
-    def get_org_template(
-        self, template_id: str, org_id: str | None = None
-    ) -> dict[str, Any]:
+    def get_org_template(self, template_id: str, org_id: str | None = None) -> dict[str, Any]:
         """Get a single org template's full detail (including session args)."""
         response = httpx.get(
             f"{self.api_url}/v0/org-templates/{template_id}",

@@ -629,10 +629,14 @@ def template_show(
 @template_app.command("create")
 def template_create(
     display_name: str = typer.Argument(..., help="Human-friendly template name"),
-    repo: str = typer.Option(None, "--repo", help="GitHub repo (owner/repo). Omit for a repo-less template"),
+    repo: str = typer.Option(
+        None, "--repo", help="GitHub repo (owner/repo). Omit for a repo-less template"
+    ),
     branch: str = typer.Option("main", "--branch", help="Git branch"),
     tier: str = typer.Option("basic", "--tier", help="Sandbox tier: basic, standard, max"),
-    agent: list[str] = typer.Option(None, "--agent", help="Coding agent(s) to build for. Repeatable"),
+    agent: list[str] = typer.Option(
+        None, "--agent", help="Coding agent(s) to build for. Repeatable"
+    ),
     description: str = typer.Option(None, "--description", help="Template description"),
     name: str = typer.Option(None, "--name", help="Template slug (auto-derived if omitted)"),
     arg: list[str] = typer.Option(None, "--arg", "-a", help=_ARG_HELP),

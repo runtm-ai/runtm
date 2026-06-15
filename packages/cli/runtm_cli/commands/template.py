@@ -74,9 +74,7 @@ def _parse_arg_spec(spec: str) -> dict:
         if not pair:
             continue
         if "=" not in pair:
-            console.print(
-                f"[red]✗[/red] Bad --arg segment {pair!r}: expected field=value."
-            )
+            console.print(f"[red]✗[/red] Bad --arg segment {pair!r}: expected field=value.")
             raise typer.Exit(1)
         name, value = pair.split("=", 1)
         name = name.strip().lower()
@@ -114,9 +112,7 @@ def _parse_arg_spec(spec: str) -> dict:
     if arg_type == "select":
         options = [o.strip() for o in fields.get("options", "").split("|") if o.strip()]
         if not options:
-            console.print(
-                f"[red]✗[/red] select arg '{key}' needs options=a|b|c."
-            )
+            console.print(f"[red]✗[/red] select arg '{key}' needs options=a|b|c.")
             raise typer.Exit(1)
         out["options"] = options
     return out
@@ -296,8 +292,7 @@ def template_edit_command(
 
         if not payload:
             console.print(
-                "[yellow]Nothing to update.[/yellow] Pass --arg, --clear-args, "
-                "or --display-name."
+                "[yellow]Nothing to update.[/yellow] Pass --arg, --clear-args, or --display-name."
             )
             raise typer.Exit(1)
 
