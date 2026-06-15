@@ -27,8 +27,11 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.value }}
         run: |
+          # --frozen edits pyproject.toml only; without it newer uv re-locks the
+          # project and fails resolving the unpublished dev extras (runtm-agents,
+          # runtm-sandbox), which are workspace-only and not on PyPI.
           for pkg in cli worker api; do
-            (cd "packages/$pkg" && uv version "$VERSION")
+            (cd "packages/$pkg" && uv version --frozen "$VERSION")
           done
 
       - name: Build runtm (CLI)
