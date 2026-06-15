@@ -2,7 +2,7 @@
 name: runtm-sessions
 description: "Multi-step workflow recipes for Runtm Cloud sessions: launching agents, iterating with prompts, polling status, reading/writing files, managing env vars, and opening PRs."
 metadata:
-  version: "0.2.0"
+  version: "0.4.0"
   tags: runtm,runtime,sessions,workflows,sandboxes
 ---
 
@@ -14,6 +14,9 @@ Workflow recipes for the `runtm-api session` subcommands. For endpoint details s
 
 | Goal | Use |
 |------|-----|
+| Boot a session from a prebuilt org template | `session create --template-id <uuid>` |
+| Run a single shell command in a session | `session exec <id> -- <command>` (scripted, returns its exit code) |
+| Open a live interactive shell | `session connect <id>` (raw PTY; needs a TTY) |
 | Fire-and-forget background task | `session launch` (v0 -- creates + prompts in one call) |
 | Interactive, streaming response right now | `session create` then `session prompt` |
 | Iterate on the same session across prompts | `session prompt` repeatedly with the same `<id>` |
@@ -22,6 +25,59 @@ Workflow recipes for the `runtm-api session` subcommands. For endpoint details s
 | Hold a sandbox without spending | `session pause` then `session resume` later |
 | Edit files programmatically | `session file write` |
 | Inject configuration | `session env set <id> KEY=VAL ...` |
+
+## Recipe: boot a session from a template, then run commands
+
+This is the most common path -- create a template once, then spin up sessions from it and drive them with `connect` / `exec`.
+
+```bash
+# 1. Create a template (clone-only build; --skip-agent implies --build)
+runtm-api template create \
+  --display-name "NuvoOS Dev Environment" \
+  --github-repo runtm-ai/landing-page \
+  --github-branch main \
+  --tier standard \
+  --name template \
+  --skip-agent
+# -> {"id": "28f6e6e6-d73d-4f21-8b1f-312e17e8f47b", "build_status": "pending", ...}
+
+# 2. Wait until it is ready (only "ready" templates boot)
+runtm-api template get 28f6e6e6-d73d-4f21-8b1f-312e17e8f47b | jq -r .build_status
+
+# 3. Create a session from the template
+runtm-api session create --template-id 28f6e6e6-d73d-4f21-8b1f-312e17e8f47b
+# -> {"id": "a6414511-4430-4e1f-8c51-8ea8824dadec", "state": "creating", ...}
+# If the template declares session args, supply values with --template-args
+# (repeatable / comma-separated), e.g. --template-args BRANCH=dev,ENV=staging.
+# See the runtm-templates skill for declaring args with --session-arg.
+
+# 4. Run a command non-interactively (waits for it to finish, prints output)
+runtm-api session exec a6414511-4430-4e1f-8c51-8ea8824dadec -- pwd
+
+# 5. Or attach a live interactive shell
+runtm-api session connect a6414511-4430-4e1f-8c51-8ea8824dadec
+```
+
+## Recipe: run commands in a session (connect vs exec)
+
+Two ways to get a shell against a session's sandbox, both over the same terminal WebSocket the dashboard uses (scope: `sessions:terminal`):
+
+```bash
+# Non-interactive: run one command, stream its output, exit with its exit code.
+# A throwaway PTY is used, so it never disturbs interactive terminals. Put the
+# command after `--` so runtm-api does not parse its flags.
+runtm-api session exec <id> -- pwd
+runtm-api session exec <id> -- ls -la /workspace
+runtm-api session exec <id> -- "npm test"
+runtm-api session exec <id> --timeout 120 -- ./long-build.sh   # abort after N seconds
+
+# Interactive: attach a raw PTY. Keystrokes (incl. Ctrl-C) pass through; window
+# resizes follow. Requires a TTY on stdin. Exit the remote shell to disconnect.
+runtm-api session connect <id>
+runtm-api session connect <id> --terminal default   # share the dashboard terminal
+```
+
+Use `exec` for automation and scripted checks; use `connect` only when a human is at a real terminal. `exec` output is the raw PTY stream and may contain minor terminal formatting.
 
 ## Recipe: launch an agent from scratch
 

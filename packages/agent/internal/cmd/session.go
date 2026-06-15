@@ -54,22 +54,30 @@ See https://docs.runtm.com/cloud-api/sessions for endpoint details.`,
 
 func newSessionCreate(rt *Runtime) *cobra.Command {
 	var (
-		agent      string
-		template   string
-		mode       string
-		onComplete string
-		ttlMinutes int
-		repoFull   string
-		repoSize   int
-		source     string
+		agent        string
+		template     string
+		templateID   string
+		templateArgs map[string]string
+		mode         string
+		onComplete   string
+		ttlMinutes   int
+		repoFull     string
+		repoSize     int
+		source       string
 	)
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "Create a session (POST /api/sessions/)",
-		Long: `Creates a session backed by an E2B sandbox. Without --template the session
-boots with a blank sandbox; pass --template to scaffold a project. Sessions
-booted from org templates today flow through the dashboard which sets the
-internal org_template metadata; the API CLI does not yet expose that path.
+		Long: `Creates a session backed by an E2B sandbox. With no flags the session boots
+a blank sandbox.
+
+Boot sources (highest precedence first):
+  --template-id <uuid>   Launch from a pre-built org template (use
+                         'runtm-api template list' to find the id). Pass
+                         per-session args with --template-args key=value.
+  --repo owner/repo      Clone a GitHub repo into a fresh sandbox.
+  --template <scaffold>  Scaffold a starter project (web-app, backend-service,
+                         static-site).
 
 See https://docs.runtm.com/cloud-api/sessions/create for the full schema.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -86,6 +94,16 @@ See https://docs.runtm.com/cloud-api/sessions/create for the full schema.`,
 			}
 			if template != "" {
 				body["template"] = template
+			}
+			if templateID != "" {
+				body["template_id"] = templateID
+			}
+			if len(templateArgs) > 0 {
+				args := make(map[string]any, len(templateArgs))
+				for k, v := range templateArgs {
+					args[k] = v
+				}
+				body["template_args"] = args
 			}
 			if mode != "" {
 				body["mode"] = mode
@@ -114,6 +132,8 @@ See https://docs.runtm.com/cloud-api/sessions/create for the full schema.`,
 	}
 	cmd.Flags().StringVar(&agent, "agent", "", "Coding agent (claude-code, codex, opencode, github-copilot, cursor-cli, devin-cli, gemini-cli)")
 	cmd.Flags().StringVar(&template, "template", "", "Project template scaffold (web-app, backend-service, static-site)")
+	cmd.Flags().StringVar(&templateID, "template-id", "", "Org template UUID to boot from (takes precedence over --template and --repo)")
+	cmd.Flags().StringToStringVar(&templateArgs, "template-args", nil, "Org template session args as key=value pairs (only with --template-id)")
 	cmd.Flags().StringVar(&mode, "mode", "", "Session mode: autopilot (default) or interactive")
 	cmd.Flags().StringVar(&onComplete, "on-complete", "", "Lifecycle action after prompts complete: pause, destroy, keep_alive")
 	cmd.Flags().IntVar(&ttlMinutes, "ttl-minutes", 0, "Max session lifetime in minutes (1-1440)")

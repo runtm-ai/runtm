@@ -2,7 +2,7 @@
 name: runtm
 description: "Runtm (Runtime) Cloud CLI for AI agents. Full cloud-API surface: sessions (CRUD + files + env + deploy + lifecycle + history + events + visibility + collaborators), org templates (CRUD + build + fix-session + snapshot + secrets), activity telemetry, secrets, instructions, guardrails, integrations. Trigger on: runtm, runtime, runtm cloud, runtime cloud, runtm session, runtime session, cloud sandbox."
 metadata:
-  version: "0.4.0"
+  version: "0.6.0"
   repository: https://github.com/runtm-ai/runtm
   tags: runtm,runtime,cli,sandboxes,coding-agents
 ---
@@ -15,6 +15,40 @@ CLI for [Runtm Cloud](https://app.runtm.com) -- the hosted control plane for clo
 
 Full API reference: https://docs.runtm.com/cloud-api
 
+## Most common path: template → session → run commands
+
+The everyday loop is **create a template, boot a session from it, then connect or exec into it**. Memorize this:
+
+```bash
+# 1. Create a template from a repo. --skip-agent does a clone-only build (no AI
+#    step -> fast) and implies --build, so the build kicks off immediately.
+runtm-api template create \
+  --display-name "NuvoOS Dev Environment" \
+  --github-repo runtm-ai/landing-page \
+  --github-branch main \
+  --tier standard \
+  --name template \
+  --skip-agent
+# -> {"id": "28f6e6e6-d73d-4f21-8b1f-312e17e8f47b", "build_status": "pending", ...}
+
+# 2. Wait until the template is ready (only "ready" templates can boot sessions)
+runtm-api template get 28f6e6e6-d73d-4f21-8b1f-312e17e8f47b | jq -r .build_status
+
+# 3. Boot a session from the template
+runtm-api session create --template-id 28f6e6e6-d73d-4f21-8b1f-312e17e8f47b
+# -> {"id": "a6414511-4430-4e1f-8c51-8ea8824dadec", "state": "creating", ...}
+
+# 4a. Attach an interactive shell (raw PTY; requires a TTY on stdin)
+runtm-api session connect a6414511-4430-4e1f-8c51-8ea8824dadec
+
+# 4b. Or run one command non-interactively and capture its output + exit code
+runtm-api session exec a6414511-4430-4e1f-8c51-8ea8824dadec -- pwd
+```
+
+Use `session connect` when a human wants a live shell; use `session exec` for scripted, one-shot commands (it streams stdout and exits with the command's exit code). Both need the `sessions:terminal` scope. See the `runtm-sessions` skill for the full recipe.
+
+To parameterize a template, declare **session arguments** with `--session-arg` (each becomes an env var in the session); supply values at boot with `session create --template-id <uuid> --template-args KEY=VALUE`. See the `runtm-templates` skill.
+
 ## Quick Reference
 
 ### Sessions
@@ -24,6 +58,10 @@ Full API reference: https://docs.runtm.com/cloud-api
 | List sessions | `runtm-api session list` |
 | Launch agent + prompt | `runtm-api session launch --prompt "<task>"` |
 | Create blank session | `runtm-api session create --agent claude-code` |
+| Create session from org template | `runtm-api session create --template-id <uuid>` |
+| Boot template session with arg values | `runtm-api session create --template-id <uuid> --template-args KEY=VALUE` |
+| Attach interactive terminal (PTY) | `runtm-api session connect <id>` |
+| Run one command (scripted) | `runtm-api session exec <id> -- <command>` |
 | Stream prompt | `runtm-api session prompt <id> "<task>"` |
 | Stream live event bus | `runtm-api session events <id>` |
 | Poll status (last_prompt) | `runtm-api session status <id>` |
@@ -55,6 +93,8 @@ Full API reference: https://docs.runtm.com/cloud-api
 | List templates | `runtm-api template list` |
 | Get template detail | `runtm-api template get <tmpl_id>` |
 | Create new template | `runtm-api template create --display-name "..." --github-repo owner/repo` |
+| Create + clone-only build (no AI step) | `runtm-api template create --display-name "..." --github-repo owner/repo --skip-agent` |
+| Declare session args (create/update) | `runtm-api template create ... --session-arg KEY=DEFAULT --session-arg '{"key":"ENV","type":"select","options":["dev","prod"]}'` |
 | Update metadata | `runtm-api template update <tmpl_id> --display-name "..."` |
 | Delete template | `runtm-api template delete <tmpl_id> --yes` |
 | Trigger build | `runtm-api template build <tmpl_id>` |
@@ -170,6 +210,7 @@ If `authenticated: false`, ask the user to set `RUNTM_API_KEY` (or run `runtm-ap
 | `session list\|get\|status\|history\|workspace-state\|collaborators` | `sessions:read` |
 | `session create\|destroy\|rename\|pause\|resume\|git\|visibility\|heartbeat\|run-server` | `sessions:write` (`sessions:delete` for destroy) |
 | `session launch` | `sessions:write` + `sessions:prompt` |
+| `session connect\|exec` | `sessions:terminal` |
 | `session prompt\|prompt-cancel\|events` | `sessions:prompt` |
 | `session prompt-rewind` | `sessions:write` |
 | `session file read\|list\|search` | `sessions:read` |

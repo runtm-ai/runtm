@@ -802,6 +802,73 @@ class APIClient:
             check_url=data.get("check_url"),
         )
 
+    # ------------------------------------------------------------------
+    # Org templates (CLI-facing /api/v0/org-templates surface)
+    # ------------------------------------------------------------------
+
+    def _org_headers(self, org_id: str | None = None) -> dict[str, str]:
+        """Headers for org-scoped calls, adding X-Organization-Id when set.
+
+        When omitted, the backend derives the org from the API key's own
+        organization association, so org-scoped keys work without a flag.
+        """
+        headers = self._headers()
+        if org_id:
+            headers["X-Organization-Id"] = org_id
+        return headers
+
+    def list_org_templates(self, org_id: str | None = None) -> list[dict[str, Any]]:
+        """List org templates. Returns the raw template dicts."""
+        response = httpx.get(
+            f"{self.api_url}/v0/org-templates",
+            headers=self._org_headers(org_id),
+            timeout=self.timeout,
+        )
+        if response.status_code >= 400:
+            self._handle_error(response)
+        return response.json().get("templates", [])
+
+    def get_org_template(
+        self, template_id: str, org_id: str | None = None
+    ) -> dict[str, Any]:
+        """Get a single org template's full detail (including session args)."""
+        response = httpx.get(
+            f"{self.api_url}/v0/org-templates/{template_id}",
+            headers=self._org_headers(org_id),
+            timeout=self.timeout,
+        )
+        if response.status_code >= 400:
+            self._handle_error(response)
+        return response.json()
+
+    def create_org_template(
+        self, payload: dict[str, Any], org_id: str | None = None
+    ) -> dict[str, Any]:
+        """Create an org template (optionally with session_args)."""
+        response = httpx.post(
+            f"{self.api_url}/v0/org-templates",
+            json=payload,
+            headers=self._org_headers(org_id),
+            timeout=self.timeout,
+        )
+        if response.status_code >= 400:
+            self._handle_error(response)
+        return response.json()
+
+    def update_org_template(
+        self, template_id: str, payload: dict[str, Any], org_id: str | None = None
+    ) -> dict[str, Any]:
+        """Update an org template's config (including session_args)."""
+        response = httpx.patch(
+            f"{self.api_url}/v0/org-templates/{template_id}",
+            json=payload,
+            headers=self._org_headers(org_id),
+            timeout=self.timeout,
+        )
+        if response.status_code >= 400:
+            self._handle_error(response)
+        return response.json()
+
 
 ALWAYS_EXCLUDE_PATTERNS = [
     # Git

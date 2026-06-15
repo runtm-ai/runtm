@@ -1,13 +1,124 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/runtm-ai/runtm/packages/agent/internal/client"
 	"github.com/spf13/cobra"
 )
+
+// sessionArgInput is the JSON form accepted by --session-arg for full control
+// over a session argument (matches the backend SessionArgSchema). Pointers
+// distinguish "absent" from "explicit zero value" so defaults apply correctly.
+type sessionArgInput struct {
+	Key      string   `json:"key"`
+	Label    string   `json:"label"`
+	Type     string   `json:"type"`
+	Required *bool    `json:"required"`
+	Default  *string  `json:"default"`
+	Options  []string `json:"options"`
+	HelpText *string  `json:"help_text"`
+}
+
+// buildSessionArg normalizes and validates one session argument into the map
+// shape the PATCH /api/org-templates/{id} endpoint expects.
+func buildSessionArg(key, label, typ string, required bool, def any, options []string, helpText any) (map[string]any, error) {
+	key = strings.TrimSpace(key)
+	if key == "" {
+		return nil, fmt.Errorf("session arg: key must not be empty")
+	}
+	if typ == "" {
+		typ = "text"
+	}
+	switch typ {
+	case "text", "select", "boolean":
+	default:
+		return nil, fmt.Errorf("session arg %q: type must be text, select, or boolean (got %q)", key, typ)
+	}
+	if label == "" {
+		label = key
+	}
+	if options == nil {
+		options = []string{}
+	}
+	if typ == "select" && len(options) == 0 {
+		return nil, fmt.Errorf("session arg %q: select type requires non-empty options", key)
+	}
+	return map[string]any{
+		"key":       key,
+		"label":     label,
+		"type":      typ,
+		"required":  required,
+		"default":   def,
+		"options":   options,
+		"help_text": helpText,
+	}, nil
+}
+
+// parseSessionArgs converts repeatable --session-arg specs into the session_args
+// payload. Each becomes an argument collected when a member launches a session
+// from the template and injected into the sandbox as an environment variable.
+//
+// Two forms are accepted per spec:
+//
+//	Shorthand (text args):
+//	  "KEY=DEFAULT"  -> optional text arg, defaulting to DEFAULT
+//	  "KEY"          -> required text arg, no default
+//
+//	JSON (full control over type/options/label/help_text/required):
+//	  '{"key":"ENV","type":"select","options":["dev","prod"],"default":"dev","required":true,"label":"Environment","help_text":"Target env"}'
+//	  '{"key":"VERBOSE","type":"boolean","default":"false"}'
+func parseSessionArgs(specs []string) ([]map[string]any, error) {
+	out := make([]map[string]any, 0, len(specs))
+	for _, spec := range specs {
+		s := strings.TrimSpace(spec)
+
+		if strings.HasPrefix(s, "{") {
+			var in sessionArgInput
+			if err := json.Unmarshal([]byte(s), &in); err != nil {
+				return nil, fmt.Errorf("invalid --session-arg JSON %q: %w", spec, err)
+			}
+			required := false
+			if in.Required != nil {
+				required = *in.Required
+			}
+			var def any
+			if in.Default != nil {
+				def = *in.Default
+			}
+			var help any
+			if in.HelpText != nil {
+				help = *in.HelpText
+			}
+			arg, err := buildSessionArg(in.Key, in.Label, in.Type, required, def, in.Options, help)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, arg)
+			continue
+		}
+
+		// Shorthand: KEY=DEFAULT (optional) or KEY (required), always text.
+		key := s
+		var def any
+		required := true
+		if i := strings.IndexByte(s, '='); i >= 0 {
+			key = s[:i]
+			def = s[i+1:]
+			required = false
+		}
+		arg, err := buildSessionArg(key, "", "text", required, def, nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, arg)
+	}
+	return out, nil
+}
 
 // NewTemplateCommand returns `runtm template` for full org-template lifecycle.
 //
@@ -121,12 +232,22 @@ func newTemplateCreate(rt *Runtime) *cobra.Command {
 		githubRepo  string
 		branch      string
 		tier        string
+		build       bool
+		skipAgent   bool
+		sessionArgs []string
 	)
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "Create a template from a GitHub repo (POST /api/org-templates)",
 		Long: `Creates the template record in 'pending' state. Trigger the build with
-'runtm template build <id>' after creation. The template is org-scoped.`,
+'runtm template build <id>' after creation, or pass --build to kick it off in
+the same call. --skip-agent (which implies --build) runs a clone-only build with
+no AI step -- the same "Skip AI setup" path the dashboard uses.
+
+Declare per-session arguments with --session-arg KEY=DEFAULT (repeatable); each
+is collected when a member launches a session from the template and injected as
+an environment variable. They are applied via a follow-up PATCH because the
+create endpoint does not accept them directly. The template is org-scoped.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if displayName == "" || githubRepo == "" {
 				return fmt.Errorf("--display-name and --github-repo are required")
@@ -148,7 +269,43 @@ func newTemplateCreate(rt *Runtime) *cobra.Command {
 				body["description"] = description
 			}
 			resp, err := c.PostJSON("/org-templates", body)
-			return runJSON(rt, resp, err)
+			if err != nil {
+				return runJSON(rt, resp, err)
+			}
+
+			// Nothing else to do -- emit the created template as-is.
+			if len(sessionArgs) == 0 && !build && !skipAgent {
+				return runJSON(rt, resp, nil)
+			}
+
+			var created struct {
+				ID string `json:"id"`
+			}
+			if jerr := json.Unmarshal(resp, &created); jerr != nil || created.ID == "" {
+				return fmt.Errorf("template created but its id could not be read for follow-up actions (set session args / build manually): %w", jerr)
+			}
+			path := "/org-templates/" + url.PathEscape(created.ID)
+
+			// Session args can't be set at create time -- PATCH them in.
+			if len(sessionArgs) > 0 {
+				parsed, perr := parseSessionArgs(sessionArgs)
+				if perr != nil {
+					return perr
+				}
+				patchResp, patchErr := c.PatchJSON(path, map[string]any{"session_args": parsed})
+				if patchErr != nil {
+					return runJSON(rt, patchResp, patchErr)
+				}
+				// The PATCH response carries the session_args; surface it unless
+				// we're also building (build response wins as the final state).
+				if !build && !skipAgent {
+					return runJSON(rt, patchResp, nil)
+				}
+			}
+
+			// --skip-agent only makes sense alongside a build, so it implies it.
+			buildResp, berr := c.PostJSON(path+"/build", map[string]any{"skip_agent": skipAgent})
+			return runJSON(rt, buildResp, berr)
 		},
 	}
 	cmd.Flags().StringVar(&displayName, "display-name", "", "Human-readable name (required)")
@@ -157,6 +314,9 @@ func newTemplateCreate(rt *Runtime) *cobra.Command {
 	cmd.Flags().StringVar(&githubRepo, "github-repo", "", "GitHub repo in owner/repo form (required)")
 	cmd.Flags().StringVar(&branch, "github-branch", "main", "Branch to clone")
 	cmd.Flags().StringVar(&tier, "tier", "basic", "Resource tier: basic, standard, max")
+	cmd.Flags().BoolVar(&build, "build", false, "Trigger the build immediately after creating")
+	cmd.Flags().BoolVar(&skipAgent, "skip-agent", false, "Clone-only build, no AI step (implies --build)")
+	cmd.Flags().StringArrayVar(&sessionArgs, "session-arg", nil, `Declare a session argument (repeatable). Shorthand: KEY=DEFAULT (optional text) or KEY (required text). For select/boolean/label/help, pass JSON: '{"key":"ENV","type":"select","options":["dev","prod"],"default":"dev"}'.`)
 	_ = cmd.MarkFlagRequired("display-name")
 	_ = cmd.MarkFlagRequired("github-repo")
 	return cmd
@@ -164,13 +324,21 @@ func newTemplateCreate(rt *Runtime) *cobra.Command {
 
 func newTemplateUpdate(rt *Runtime) *cobra.Command {
 	var (
-		displayName string
-		description string
+		displayName      string
+		description      string
+		sessionArgs      []string
+		restartAtStartup bool
+		startupScript    string
 	)
 	cmd := &cobra.Command{
 		Use:   "update <template_id>",
 		Short: "Update template metadata (PATCH /api/org-templates/{id})",
-		Args:  cobra.ExactArgs(1),
+		Long: `Update template fields. --session-arg replaces the full set of session
+arguments (pass it once per arg; omit to leave them unchanged). Shorthand:
+KEY=DEFAULT (optional text) or KEY (required text). For select/boolean/label/
+help, pass JSON per arg, e.g.
+'{"key":"ENV","type":"select","options":["dev","prod"],"default":"dev"}'.`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c, _, err := requireOrgClient(rt, "org templates")
 			if err != nil {
@@ -183,8 +351,21 @@ func newTemplateUpdate(rt *Runtime) *cobra.Command {
 			if cmd.Flags().Changed("description") {
 				body["description"] = description
 			}
+			if cmd.Flags().Changed("session-arg") {
+				parsed, perr := parseSessionArgs(sessionArgs)
+				if perr != nil {
+					return perr
+				}
+				body["session_args"] = parsed
+			}
+			if cmd.Flags().Changed("restart-at-startup") {
+				body["restart_at_startup"] = restartAtStartup
+			}
+			if cmd.Flags().Changed("startup-script") {
+				body["startup_script"] = startupScript
+			}
 			if len(body) == 0 {
-				return fmt.Errorf("pass at least one field to update (--display-name, --description)")
+				return fmt.Errorf("pass at least one field to update (--display-name, --description, --session-arg, --restart-at-startup, --startup-script)")
 			}
 			resp, err := c.PatchJSON("/org-templates/"+url.PathEscape(args[0]), body)
 			return runJSON(rt, resp, err)
@@ -192,6 +373,9 @@ func newTemplateUpdate(rt *Runtime) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&displayName, "display-name", "", "New display name")
 	cmd.Flags().StringVar(&description, "description", "", "New description (pass empty string to clear)")
+	cmd.Flags().StringArrayVar(&sessionArgs, "session-arg", nil, `Replace session args (repeatable). Shorthand KEY=DEFAULT / KEY, or JSON for select/boolean/label/help.`)
+	cmd.Flags().BoolVar(&restartAtStartup, "restart-at-startup", false, "Force-restart services (and run the startup script) on first sandbox boot")
+	cmd.Flags().StringVar(&startupScript, "startup-script", "", "Path to a startup script, relative to the workdir or absolute (empty string clears)")
 	return cmd
 }
 
@@ -288,13 +472,16 @@ func newTemplateBuildLogsHistory(rt *Runtime) *cobra.Command {
 func newTemplateFixSession(rt *Runtime) *cobra.Command {
 	var agent string
 	cmd := &cobra.Command{
-		Use:   "fix-session <template_id>",
-		Short: "Create a session against the template sandbox for iterative fixes",
-		Long: `Spins up an interactive session that boots the template's sandbox so an
-agent can investigate and fix issues. After the agent confirms the fix, call
-'runtm template save-snapshot <template_id> --session <session_id>' to
-promote the session state into the template snapshot.
+		Use:     "fix-session <template_id>",
+		Aliases: []string{"configure"},
+		Short:   "Open a session on the template's sandbox to configure it manually",
+		Long: `Spins up an interactive session that boots the template's sandbox so you (or
+an agent) can configure it by hand. The response includes a session_id; connect
+to it with 'runtm-api session connect <session_id>', make your changes, then run
+'runtm-api template save-snapshot <template_id> --session <session_id>' to
+promote the sandbox state into the template snapshot.
 
+Also available as 'runtm-api template configure <template_id>'.
 Required scope: templates:write.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

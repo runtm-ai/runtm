@@ -45,6 +45,7 @@ Docs: https://docs.runtm.com`,
 	sessionCmd := NewSessionCommand(rt)
 	AddSessionExtras(sessionCmd, rt)
 	AddSessionDeploy(sessionCmd, rt)
+	AddSessionTerminal(sessionCmd, rt)
 
 	root.AddCommand(
 		NewAuthCommand(rt),
@@ -72,6 +73,12 @@ func Execute() int {
 	if err := build.cmd.Execute(); err != nil {
 		if errors.Is(err, errSilent) {
 			return ExitOK
+		}
+		// `session exec` mirrors the remote command's exit code; its output
+		// already went to stdout, so don't print an error envelope.
+		var ece *exitCodeError
+		if errors.As(err, &ece) {
+			return ece.ExitCode()
 		}
 		return build.rt.ReportError(err)
 	}
