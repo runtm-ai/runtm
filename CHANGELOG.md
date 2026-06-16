@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Agent CLI**: `runtm-api skills`, `runtm-api mcp`, and `runtm-api tools` now support full create / get / list / update / delete against the cloud API, so agents can author skills, wire up MCP servers, and store provider tool credentials without the dashboard
+  - `skills` gained cloud CRUD alongside the existing `install`. `skills list` lists your org's skills; `skills list --bundled` lists the skill files embedded in the binary
+  - `mcp` manages MCP servers over stdio (`--command/--arg/--env`) or http/sse (`--url/--header`); skill content comes from a markdown file (`--md`) or a raw content object (`--content`); tools take `--provider/--auth-method/--credentials`
+  - Skills/MCP map to `/api/agent-directives` and tools to `/api/knowledge/integrations` under the hood — surfaced only as `skills`, `mcp`, and `tools` so users never deal with "directives"
+  - New bundled `runtm-directives` agent skill documents these commands; it ships in the binary and is written out by `runtm-api skills install`
+
 ### Fixed
 
 - **Agent CLI**: `runtm-api session list` now uses the hosted cloud proxy URL consistently instead of leaking the internal `localhost:8081` backend URL when listing sessions through `https://app.runtm.com/api/cloud`

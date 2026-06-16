@@ -9,13 +9,34 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewSkillsCommand returns `runtm skills` with install/list subcommands.
+// NewSkillsCommand returns `runtm-api skills`. It covers two things:
+//
+//   - cloud CRUD: create/get/list/update/delete skills in your org
+//   - install: write this CLI's own bundled skill files to ~/.claude / ~/.cursor
+//
+// `skills list` lists your org's skills; add --bundled to instead list the
+// skill files embedded in this binary.
 func NewSkillsCommand(rt *Runtime) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "skills",
-		Short: "Install agent skill files for Claude Code, Cursor, etc.",
+		Short: "Create and manage skills (and install the bundled CLI skills)",
+		Long: `Create, list, update, and delete your org's skills, and install this
+CLI's own bundled skill files locally.
+
+Cloud commands (create/get/list/update/delete) are org-scoped: pass --org or
+RUNTM_ORG_ID, or use an org-scoped key. Writes need the context:write scope.
+
+'skills install' is a local operation (no API call) that copies the skill files
+embedded in this binary into the detected agent's skills directory.`,
 	}
-	cmd.AddCommand(newSkillsInstall(rt), newSkillsList(rt))
+	cmd.AddCommand(
+		newSkillsList(rt),
+		newDirectiveGet(rt, "skill"),
+		newSkillCreate(rt),
+		newSkillUpdate(rt),
+		newDirectiveDelete(rt, "skill"),
+		newSkillsInstall(rt),
+	)
 	return cmd
 }
 
@@ -61,7 +82,7 @@ Pass --target to override the destination directory.`,
 				}
 				installed = append(installed, map[string]any{
 					"directory": dir,
-					"files":    files,
+					"files":     files,
 				})
 			}
 
@@ -77,21 +98,47 @@ Pass --target to override the destination directory.`,
 }
 
 func newSkillsList(rt *Runtime) *cobra.Command {
-	return &cobra.Command{
+	var (
+		bundled        bool
+		pageSize       int
+		pageToken      string
+		includeContent bool
+	)
+	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List the skill files embedded in this binary",
+		Short: "List your org's skills (or --bundled for this CLI's own skills)",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			files, err := listEmbeddedSkills()
+			// --bundled: list the skill files embedded in this binary (local).
+			if bundled {
+				files, err := listEmbeddedSkills()
+				if err != nil {
+					return err
+				}
+				rt.WriteObject(map[string]any{
+					"skills": files,
+					"count":  len(files),
+				})
+				return nil
+			}
+			// Default: list the org's cloud skills.
+			c, _, err := requireOrgClient(rt, "skills")
 			if err != nil {
 				return err
 			}
-			rt.WriteObject(map[string]any{
-				"skills": files,
-				"count":  len(files),
-			})
-			return nil
+			q := listQuery(pageSize, pageToken)
+			q.Set("type_family", "skill")
+			if includeContent {
+				q.Set("include_content", "true")
+			}
+			resp, err := c.Get(directivesListPath, q)
+			return runJSON(rt, resp, err)
 		},
 	}
+	cmd.Flags().BoolVar(&bundled, "bundled", false, "List the skill files embedded in this CLI binary instead of org skills")
+	cmd.Flags().IntVar(&pageSize, "page-size", 0, "Results per page (1-100)")
+	cmd.Flags().StringVar(&pageToken, "page-token", "", "Pagination cursor")
+	cmd.Flags().BoolVar(&includeContent, "include-content", false, "Include each skill's content payload")
+	return cmd
 }
 
 func resolveSkillTargets(override string) []string {

@@ -57,6 +57,8 @@ Docs: https://docs.runtm.com`,
 		NewGuardrailsCommand(rt),
 		NewIntegrationsCommand(rt),
 		NewSkillsCommand(rt),
+		NewMcpCommand(rt),
+		NewToolsCommand(rt),
 	)
 	return rootBuild{cmd: root, rt: rt}
 }
