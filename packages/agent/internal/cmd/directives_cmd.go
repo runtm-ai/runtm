@@ -1,0 +1,752 @@
+package cmd
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/url"
+	"os"
+	"strconv"
+	"strings"
+
+	"github.com/spf13/cobra"
+)
+
+// This file implements the cloud CRUD commands for the three things a session
+// can load: skills, MCP servers, and tools. They are exposed as separate
+// top-level commands (`runtm-api skills|mcp|tools`) so users only ever deal
+// with those concepts — never the underlying "directive" plumbing.
+//
+// Under the hood: skills and MCP servers are agent-directives (one endpoint
+// family, distinguished by type); tools are knowledge integrations (a separate
+// endpoint). That mapping is documented in the `runtm-directives` skill, not
+// surfaced in the command UX.
+
+// NewMcpCommand returns `runtm-api mcp` — CRUD for MCP servers.
+func NewMcpCommand(rt *Runtime) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "mcp",
+		Short: "Create and manage MCP servers (stdio or http/sse)",
+		Long: `Manage MCP servers that sessions can load. Two transports:
+stdio (a local command) and http/sse (a remote URL).
+
+Org-scoped: pass --org or RUNTM_ORG_ID, or use an org-scoped key. Writes need
+the context:write scope on the key.`,
+	}
+	cmd.AddCommand(
+		newDirectiveList(rt, "MCP server", "mcp_server"),
+		newDirectiveGet(rt, "MCP server"),
+		newMcpCreate(rt),
+		newMcpUpdate(rt),
+		newDirectiveDelete(rt, "MCP server"),
+	)
+	return cmd
+}
+
+// NewToolsCommand returns `runtm-api tools` — CRUD for tools (the dashboard's
+// knowledge integrations: stored provider credentials).
+func NewToolsCommand(rt *Runtime) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "tools",
+		Short: "Create and manage tools (provider credentials)",
+		Long: `Manage tools — stored provider credentials (e.g. bigquery, notion) that
+sessions use. This command handles static-credential providers (service
+accounts, API keys); OAuth providers are connected through the dashboard.
+
+Org-scoped: pass --org or RUNTM_ORG_ID, or use an org-scoped key. Writes need
+the integrations:write scope on the key.`,
+	}
+	cmd.AddCommand(
+		newToolList(rt),
+		newToolGet(rt),
+		newToolCreate(rt),
+		newToolUpdate(rt),
+		newToolDelete(rt),
+	)
+	return cmd
+}
+
+// ---------------------------------------------------------------------------
+// Shared helpers
+// ---------------------------------------------------------------------------
+
+// Cloud paths (relative to the /api/cloud base). List/create use the trailing
+// slash to match the backend agent-directives route registered at "/".
+const (
+	directivesListPath = "/agent-directives/"
+	knowledgeBasePath  = "/knowledge/integrations"
+)
+
+func directivePath(id string) string {
+	return "/agent-directives/" + url.PathEscape(id)
+}
+
+func integrationPath(id string) string {
+	return knowledgeBasePath + "/" + url.PathEscape(id)
+}
+
+// parseKeyVals turns ["A=1", "B=2"] into {"A":"1","B":"2"}. The value may
+// contain "=" (only the first is the separator).
+func parseKeyVals(pairs []string) (map[string]string, error) {
+	out := map[string]string{}
+	for _, p := range pairs {
+		k, v, ok := strings.Cut(p, "=")
+		if !ok || k == "" {
+			return nil, fmt.Errorf("invalid KEY=VALUE pair: %q", p)
+		}
+		out[k] = v
+	}
+	return out, nil
+}
+
+// parseJSONObject parses a JSON object string into a map.
+func parseJSONObject(raw string) (map[string]any, error) {
+	var m map[string]any
+	if err := json.Unmarshal([]byte(raw), &m); err != nil {
+		return nil, fmt.Errorf("invalid JSON object: %w", err)
+	}
+	return m, nil
+}
+
+// skillContentFromMarkdown builds a skill content payload from a single
+// markdown file on disk (the common case — one SKILL.md).
+func skillContentFromMarkdown(path, entry string) (map[string]any, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read %s: %w", path, err)
+	}
+	return map[string]any{
+		"entry_md": entry,
+		"files": []map[string]any{
+			{"path": entry, "mode": "text", "inline": string(data)},
+		},
+	}, nil
+}
+
+// listQuery builds the shared pagination query for list commands.
+func listQuery(pageSize int, pageToken string) url.Values {
+	q := url.Values{}
+	if pageSize > 0 {
+		q.Set("page_size", strconv.Itoa(pageSize))
+	}
+	if pageToken != "" {
+		q.Set("page_token", pageToken)
+	}
+	return q
+}
+
+// ---------------------------------------------------------------------------
+// skill create/update (cloud) — wired into `runtm-api skills` in skills_cmd.go
+// ---------------------------------------------------------------------------
+
+func newSkillCreate(rt *Runtime) *cobra.Command {
+	var (
+		name        string
+		displayName string
+		description string
+		mdPath      string
+		entry       string
+		contentJSON string
+		labels      []string
+	)
+	cmd := &cobra.Command{
+		Use:   "create",
+		Short: "Create a skill",
+		Long: `Create a skill. Provide the body with either:
+  --md <path>        a markdown file used as the skill's entry (default SKILL.md)
+  --content <json>   a raw skill content object (full control over files/requires)
+
+Example:
+  runtm-api skills create --name deploy-checks \
+    --display-name "Pre-deploy checks" --md ./SKILL.md`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if name == "" {
+				return fmt.Errorf("--name is required")
+			}
+			content, err := resolveSkillContent(mdPath, entry, contentJSON)
+			if err != nil {
+				return err
+			}
+			c, _, err := requireOrgClient(rt, "skills")
+			if err != nil {
+				return err
+			}
+			body := map[string]any{
+				"type":    "skill_v0",
+				"name":    name,
+				"content": content,
+			}
+			if displayName != "" {
+				body["display_name"] = displayName
+			}
+			if description != "" {
+				body["description"] = description
+			}
+			if len(labels) > 0 {
+				lbl, perr := parseKeyVals(labels)
+				if perr != nil {
+					return perr
+				}
+				body["labels"] = lbl
+			}
+			resp, err := c.PostJSON(directivesListPath, body)
+			return runJSON(rt, resp, err)
+		},
+	}
+	cmd.Flags().StringVar(&name, "name", "", "Unique skill name/slug (required)")
+	cmd.Flags().StringVar(&displayName, "display-name", "", "Human-readable name")
+	cmd.Flags().StringVar(&description, "description", "", "Short description")
+	cmd.Flags().StringVar(&mdPath, "md", "", "Path to a markdown file used as the skill entry")
+	cmd.Flags().StringVar(&entry, "entry", "SKILL.md", "Entry filename for --md content")
+	cmd.Flags().StringVar(&contentJSON, "content", "", "Raw skill content object as JSON (overrides --md)")
+	cmd.Flags().StringArrayVar(&labels, "label", nil, "Label as KEY=VALUE (repeatable)")
+	_ = cmd.MarkFlagRequired("name")
+	return cmd
+}
+
+func newSkillUpdate(rt *Runtime) *cobra.Command {
+	var (
+		displayName string
+		description string
+		mdPath      string
+		entry       string
+		contentJSON string
+		labels      []string
+	)
+	cmd := &cobra.Command{
+		Use:   "update <id>",
+		Short: "Update a skill",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			body := map[string]any{}
+			if cmd.Flags().Changed("display-name") {
+				body["display_name"] = displayName
+			}
+			if cmd.Flags().Changed("description") {
+				body["description"] = description
+			}
+			if cmd.Flags().Changed("md") || cmd.Flags().Changed("content") {
+				content, err := resolveSkillContent(mdPath, entry, contentJSON)
+				if err != nil {
+					return err
+				}
+				body["content"] = content
+			}
+			if cmd.Flags().Changed("label") {
+				lbl, perr := parseKeyVals(labels)
+				if perr != nil {
+					return perr
+				}
+				body["labels"] = lbl
+			}
+			if len(body) == 0 {
+				return fmt.Errorf("pass at least one field to update (--display-name, --description, --md/--content, --label)")
+			}
+			c, _, err := requireOrgClient(rt, "skills")
+			if err != nil {
+				return err
+			}
+			resp, err := c.PatchJSON(directivePath(args[0]), body)
+			return runJSON(rt, resp, err)
+		},
+	}
+	cmd.Flags().StringVar(&displayName, "display-name", "", "New display name")
+	cmd.Flags().StringVar(&description, "description", "", "New description")
+	cmd.Flags().StringVar(&mdPath, "md", "", "Replace content from a markdown file")
+	cmd.Flags().StringVar(&entry, "entry", "SKILL.md", "Entry filename for --md content")
+	cmd.Flags().StringVar(&contentJSON, "content", "", "Replace content with a raw JSON object")
+	cmd.Flags().StringArrayVar(&labels, "label", nil, "Replace labels; KEY=VALUE (repeatable)")
+	return cmd
+}
+
+// resolveSkillContent builds the content object from --content (raw JSON, wins)
+// or --md (markdown file). Errors when neither is usable.
+func resolveSkillContent(mdPath, entry, contentJSON string) (map[string]any, error) {
+	if contentJSON != "" {
+		return parseJSONObject(contentJSON)
+	}
+	if mdPath != "" {
+		if entry == "" {
+			entry = "SKILL.md"
+		}
+		return skillContentFromMarkdown(mdPath, entry)
+	}
+	return nil, fmt.Errorf("provide skill content via --md <path> or --content <json>")
+}
+
+// ---------------------------------------------------------------------------
+// mcp create/update
+// ---------------------------------------------------------------------------
+
+func newMcpCreate(rt *Runtime) *cobra.Command {
+	var (
+		name        string
+		displayName string
+		description string
+		transport   string
+		command     string
+		mcpArgs     []string
+		envs        []string
+		serverURL   string
+		headers     []string
+		contentJSON string
+		labels      []string
+	)
+	cmd := &cobra.Command{
+		Use:   "create",
+		Short: "Create an MCP server",
+		Long: `Create an MCP server.
+
+stdio (default):
+  runtm-api mcp create --name files --transport stdio \
+    --command npx --arg -y --arg @scope/server --env TOKEN=abc
+
+http/sse:
+  runtm-api mcp create --name remote --transport http \
+    --url https://mcp.example.com --header "Authorization=Bearer xyz"
+
+Or pass the full content object with --content <json>.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if name == "" {
+				return fmt.Errorf("--name is required")
+			}
+			content, err := resolveMcpContent(transport, command, mcpArgs, envs, serverURL, headers, contentJSON)
+			if err != nil {
+				return err
+			}
+			c, _, err := requireOrgClient(rt, "MCP servers")
+			if err != nil {
+				return err
+			}
+			body := map[string]any{
+				"type":    "mcp_server_v0",
+				"name":    name,
+				"content": content,
+			}
+			if displayName != "" {
+				body["display_name"] = displayName
+			}
+			if description != "" {
+				body["description"] = description
+			}
+			if len(labels) > 0 {
+				lbl, perr := parseKeyVals(labels)
+				if perr != nil {
+					return perr
+				}
+				body["labels"] = lbl
+			}
+			resp, err := c.PostJSON(directivesListPath, body)
+			return runJSON(rt, resp, err)
+		},
+	}
+	cmd.Flags().StringVar(&name, "name", "", "Unique MCP server name (required)")
+	cmd.Flags().StringVar(&displayName, "display-name", "", "Human-readable name")
+	cmd.Flags().StringVar(&description, "description", "", "Short description")
+	cmd.Flags().StringVar(&transport, "transport", "stdio", "Transport: stdio, http, or sse")
+	cmd.Flags().StringVar(&command, "command", "", "stdio: executable to launch")
+	cmd.Flags().StringArrayVar(&mcpArgs, "arg", nil, "stdio: command argument (repeatable, ordered)")
+	cmd.Flags().StringArrayVar(&envs, "env", nil, "stdio: environment var KEY=VALUE (repeatable)")
+	cmd.Flags().StringVar(&serverURL, "url", "", "http/sse: server URL")
+	cmd.Flags().StringArrayVar(&headers, "header", nil, "http/sse: header KEY=VALUE (repeatable)")
+	cmd.Flags().StringVar(&contentJSON, "content", "", "Raw MCP content object as JSON (overrides the flags above)")
+	cmd.Flags().StringArrayVar(&labels, "label", nil, "Label as KEY=VALUE (repeatable)")
+	_ = cmd.MarkFlagRequired("name")
+	return cmd
+}
+
+func newMcpUpdate(rt *Runtime) *cobra.Command {
+	var (
+		displayName string
+		description string
+		transport   string
+		command     string
+		mcpArgs     []string
+		envs        []string
+		serverURL   string
+		headers     []string
+		contentJSON string
+		labels      []string
+	)
+	cmd := &cobra.Command{
+		Use:   "update <id>",
+		Short: "Update an MCP server",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			body := map[string]any{}
+			if cmd.Flags().Changed("display-name") {
+				body["display_name"] = displayName
+			}
+			if cmd.Flags().Changed("description") {
+				body["description"] = description
+			}
+			contentTouched := cmd.Flags().Changed("content") ||
+				cmd.Flags().Changed("transport") || cmd.Flags().Changed("command") ||
+				cmd.Flags().Changed("arg") || cmd.Flags().Changed("env") ||
+				cmd.Flags().Changed("url") || cmd.Flags().Changed("header")
+			if contentTouched {
+				content, err := resolveMcpContent(transport, command, mcpArgs, envs, serverURL, headers, contentJSON)
+				if err != nil {
+					return err
+				}
+				body["content"] = content
+			}
+			if cmd.Flags().Changed("label") {
+				lbl, perr := parseKeyVals(labels)
+				if perr != nil {
+					return perr
+				}
+				body["labels"] = lbl
+			}
+			if len(body) == 0 {
+				return fmt.Errorf("pass at least one field to update (--display-name, --description, MCP content flags, --label)")
+			}
+			c, _, err := requireOrgClient(rt, "MCP servers")
+			if err != nil {
+				return err
+			}
+			resp, err := c.PatchJSON(directivePath(args[0]), body)
+			return runJSON(rt, resp, err)
+		},
+	}
+	cmd.Flags().StringVar(&displayName, "display-name", "", "New display name")
+	cmd.Flags().StringVar(&description, "description", "", "New description")
+	cmd.Flags().StringVar(&transport, "transport", "stdio", "Transport: stdio, http, or sse")
+	cmd.Flags().StringVar(&command, "command", "", "stdio: executable to launch")
+	cmd.Flags().StringArrayVar(&mcpArgs, "arg", nil, "stdio: command argument (repeatable, ordered)")
+	cmd.Flags().StringArrayVar(&envs, "env", nil, "stdio: environment var KEY=VALUE (repeatable)")
+	cmd.Flags().StringVar(&serverURL, "url", "", "http/sse: server URL")
+	cmd.Flags().StringArrayVar(&headers, "header", nil, "http/sse: header KEY=VALUE (repeatable)")
+	cmd.Flags().StringVar(&contentJSON, "content", "", "Raw MCP content object as JSON")
+	cmd.Flags().StringArrayVar(&labels, "label", nil, "Replace labels; KEY=VALUE (repeatable)")
+	return cmd
+}
+
+// resolveMcpContent builds an MCP content object from --content (raw JSON, wins)
+// or the structured transport flags.
+func resolveMcpContent(transport, command string, mcpArgs, envs []string, serverURL string, headers []string, contentJSON string) (map[string]any, error) {
+	if contentJSON != "" {
+		return parseJSONObject(contentJSON)
+	}
+	if transport == "" {
+		transport = "stdio"
+	}
+	content := map[string]any{"transport": transport}
+	switch transport {
+	case "stdio":
+		if command == "" {
+			return nil, fmt.Errorf("stdio MCP servers require --command")
+		}
+		content["command"] = command
+		if len(mcpArgs) > 0 {
+			content["args"] = mcpArgs
+		}
+		if len(envs) > 0 {
+			env, err := parseKeyVals(envs)
+			if err != nil {
+				return nil, err
+			}
+			content["env"] = env
+		}
+	case "http", "sse":
+		if serverURL == "" {
+			return nil, fmt.Errorf("%s MCP servers require --url", transport)
+		}
+		content["url"] = serverURL
+		if len(headers) > 0 {
+			hdr, err := parseKeyVals(headers)
+			if err != nil {
+				return nil, err
+			}
+			content["headers"] = hdr
+		}
+	default:
+		return nil, fmt.Errorf("invalid --transport %q (expected stdio, http, or sse)", transport)
+	}
+	return content, nil
+}
+
+// ---------------------------------------------------------------------------
+// tool (knowledge integration) commands
+// ---------------------------------------------------------------------------
+
+func newToolList(rt *Runtime) *cobra.Command {
+	var (
+		scope     string
+		provider  string
+		pageSize  int
+		pageToken string
+	)
+	cmd := &cobra.Command{
+		Use:   "list",
+		Short: "List tools",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			c, _, err := requireOrgClient(rt, "tools")
+			if err != nil {
+				return err
+			}
+			q := listQuery(pageSize, pageToken)
+			if scope != "" {
+				q.Set("scope", scope)
+			}
+			if provider != "" {
+				q.Set("provider", provider)
+			}
+			resp, err := c.Get(knowledgeBasePath, q)
+			return runJSON(rt, resp, err)
+		},
+	}
+	cmd.Flags().StringVar(&scope, "scope", "", "Filter by scope: org or personal")
+	cmd.Flags().StringVar(&provider, "provider", "", "Filter by provider slug")
+	cmd.Flags().IntVar(&pageSize, "page-size", 0, "Results per page (1-100)")
+	cmd.Flags().StringVar(&pageToken, "page-token", "", "Pagination cursor")
+	return cmd
+}
+
+func newToolGet(rt *Runtime) *cobra.Command {
+	return &cobra.Command{
+		Use:   "get <id>",
+		Short: "Get a tool",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			c, _, err := requireOrgClient(rt, "tools")
+			if err != nil {
+				return err
+			}
+			resp, err := c.Get(integrationPath(args[0]), nil)
+			return runJSON(rt, resp, err)
+		},
+	}
+}
+
+func newToolCreate(rt *Runtime) *cobra.Command {
+	var (
+		provider        string
+		authMethod      string
+		scope           string
+		displayName     string
+		credentialsJSON string
+		metadataJSON    string
+		defaultMode     string
+	)
+	cmd := &cobra.Command{
+		Use:   "create",
+		Short: "Create a tool (store provider credentials)",
+		Long: `Store static credentials for a provider so sessions can use the tool.
+
+Example:
+  runtm-api tools create --provider bigquery \
+    --auth-method service_account --scope org \
+    --credentials '{"service_account_json":"{...}"}' \
+    --provider-metadata '{"project_id":"my-gcp-project"}'`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if provider == "" || authMethod == "" {
+				return fmt.Errorf("--provider and --auth-method are required")
+			}
+			if credentialsJSON == "" {
+				return fmt.Errorf("--credentials <json> is required")
+			}
+			creds, err := parseJSONObject(credentialsJSON)
+			if err != nil {
+				return fmt.Errorf("--credentials: %w", err)
+			}
+			c, _, err := requireOrgClient(rt, "tools")
+			if err != nil {
+				return err
+			}
+			body := map[string]any{
+				"provider":    provider,
+				"auth_method": authMethod,
+				"scope":       scope,
+				"credentials": creds,
+			}
+			if displayName != "" {
+				body["display_name"] = displayName
+			}
+			if metadataJSON != "" {
+				meta, merr := parseJSONObject(metadataJSON)
+				if merr != nil {
+					return fmt.Errorf("--provider-metadata: %w", merr)
+				}
+				body["provider_metadata"] = meta
+			}
+			if defaultMode != "" {
+				body["default_mode"] = defaultMode
+			}
+			resp, err := c.PostJSON(knowledgeBasePath, body)
+			return runJSON(rt, resp, err)
+		},
+	}
+	cmd.Flags().StringVar(&provider, "provider", "", "Provider slug, e.g. bigquery, notion (required)")
+	cmd.Flags().StringVar(&authMethod, "auth-method", "", "Auth method, e.g. service_account, api_key (required)")
+	cmd.Flags().StringVar(&scope, "scope", "org", "Scope: org or personal")
+	cmd.Flags().StringVar(&displayName, "display-name", "", "Human-readable name")
+	cmd.Flags().StringVar(&credentialsJSON, "credentials", "", "Credentials object as JSON (required)")
+	cmd.Flags().StringVar(&metadataJSON, "provider-metadata", "", "Provider metadata object as JSON")
+	cmd.Flags().StringVar(&defaultMode, "default-mode", "", "Default permission mode (e.g. ask, allow)")
+	_ = cmd.MarkFlagRequired("provider")
+	_ = cmd.MarkFlagRequired("auth-method")
+	_ = cmd.MarkFlagRequired("credentials")
+	return cmd
+}
+
+func newToolUpdate(rt *Runtime) *cobra.Command {
+	var (
+		displayName   string
+		metadataJSON  string
+		defaultMode   string
+		toolPermsJSON string
+	)
+	cmd := &cobra.Command{
+		Use:   "update <id>",
+		Short: "Update a tool",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			body := map[string]any{}
+			if cmd.Flags().Changed("display-name") {
+				body["display_name"] = displayName
+			}
+			if cmd.Flags().Changed("provider-metadata") {
+				meta, merr := parseJSONObject(metadataJSON)
+				if merr != nil {
+					return fmt.Errorf("--provider-metadata: %w", merr)
+				}
+				body["provider_metadata"] = meta
+			}
+			if cmd.Flags().Changed("default-mode") {
+				body["default_mode"] = defaultMode
+			}
+			if cmd.Flags().Changed("tool-permissions") {
+				tp, terr := parseJSONObject(toolPermsJSON)
+				if terr != nil {
+					return fmt.Errorf("--tool-permissions: %w", terr)
+				}
+				body["tool_permissions"] = tp
+			}
+			if len(body) == 0 {
+				return fmt.Errorf("pass at least one field to update (--display-name, --provider-metadata, --default-mode, --tool-permissions)")
+			}
+			c, _, err := requireOrgClient(rt, "tools")
+			if err != nil {
+				return err
+			}
+			resp, err := c.PatchJSON(integrationPath(args[0]), body)
+			return runJSON(rt, resp, err)
+		},
+	}
+	cmd.Flags().StringVar(&displayName, "display-name", "", "New display name")
+	cmd.Flags().StringVar(&metadataJSON, "provider-metadata", "", "Replace provider metadata (JSON object)")
+	cmd.Flags().StringVar(&defaultMode, "default-mode", "", "Default permission mode")
+	cmd.Flags().StringVar(&toolPermsJSON, "tool-permissions", "", "Per-tool permission overrides (JSON object)")
+	return cmd
+}
+
+func newToolDelete(rt *Runtime) *cobra.Command {
+	var yes bool
+	cmd := &cobra.Command{
+		Use:   "delete <id>",
+		Short: "Delete a tool",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if !yes {
+				rt.WriteObject(map[string]any{
+					"error": "Destructive operation requires --yes to confirm.",
+					"hint":  "Pass --yes when you are sure.",
+				})
+				return errSilent
+			}
+			c, _, err := requireOrgClient(rt, "tools")
+			if err != nil {
+				return err
+			}
+			resp, err := c.Delete(integrationPath(args[0]))
+			return runJSON(rt, resp, err)
+		},
+	}
+	cmd.Flags().BoolVar(&yes, "yes", false, "Confirm deletion")
+	return cmd
+}
+
+// ---------------------------------------------------------------------------
+// Shared agent-directive subcommands (skill + mcp share one endpoint family)
+// ---------------------------------------------------------------------------
+
+// newDirectiveList builds a `list` subcommand for a skill/MCP type.
+// singular is the user-facing noun ("skill", "MCP server"); typeFamily is the
+// backend query value ("skill", "mcp_server").
+func newDirectiveList(rt *Runtime, singular, typeFamily string) *cobra.Command {
+	var (
+		pageSize       int
+		pageToken      string
+		includeContent bool
+	)
+	cmd := &cobra.Command{
+		Use:   "list",
+		Short: fmt.Sprintf("List %ss", singular),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			c, _, err := requireOrgClient(rt, singular+"s")
+			if err != nil {
+				return err
+			}
+			q := listQuery(pageSize, pageToken)
+			q.Set("type_family", typeFamily)
+			if includeContent {
+				q.Set("include_content", "true")
+			}
+			resp, err := c.Get(directivesListPath, q)
+			return runJSON(rt, resp, err)
+		},
+	}
+	cmd.Flags().IntVar(&pageSize, "page-size", 0, "Results per page (1-100)")
+	cmd.Flags().StringVar(&pageToken, "page-token", "", "Pagination cursor")
+	cmd.Flags().BoolVar(&includeContent, "include-content", false, "Include each item's content payload")
+	return cmd
+}
+
+func newDirectiveGet(rt *Runtime, singular string) *cobra.Command {
+	var includeContent bool
+	cmd := &cobra.Command{
+		Use:   "get <id>",
+		Short: fmt.Sprintf("Get a %s", singular),
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			c, _, err := requireOrgClient(rt, singular+"s")
+			if err != nil {
+				return err
+			}
+			q := url.Values{}
+			if includeContent {
+				q.Set("include_content", "true")
+			}
+			resp, err := c.Get(directivePath(args[0]), q)
+			return runJSON(rt, resp, err)
+		},
+	}
+	cmd.Flags().BoolVar(&includeContent, "include-content", true, "Include the content payload")
+	return cmd
+}
+
+func newDirectiveDelete(rt *Runtime, singular string) *cobra.Command {
+	var yes bool
+	cmd := &cobra.Command{
+		Use:   "delete <id>",
+		Short: fmt.Sprintf("Delete a %s", singular),
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if !yes {
+				rt.WriteObject(map[string]any{
+					"error": "Destructive operation requires --yes to confirm.",
+					"hint":  "Pass --yes when you are sure.",
+				})
+				return errSilent
+			}
+			c, _, err := requireOrgClient(rt, singular+"s")
+			if err != nil {
+				return err
+			}
+			resp, err := c.Delete(directivePath(args[0]))
+			return runJSON(rt, resp, err)
+		},
+	}
+	cmd.Flags().BoolVar(&yes, "yes", false, "Confirm deletion")
+	return cmd
+}
