@@ -19,8 +19,10 @@ func TestLoadFromEnv(t *testing.T) {
 	if creds.APIKey != "runtm_sk_test_env" {
 		t.Errorf("APIKey = %q, want runtm_sk_test_env", creds.APIKey)
 	}
-	if creds.APIURL != "http://localhost:8081/api" {
-		t.Errorf("APIURL = %q, want http://localhost:8081/api", creds.APIURL)
+	// The CLI always targets the cloud proxy, so /cloud is appended to the
+	// "…/api" base from RUNTM_API_URL.
+	if creds.APIURL != "http://localhost:8081/api/cloud" {
+		t.Errorf("APIURL = %q, want http://localhost:8081/api/cloud", creds.APIURL)
 	}
 	if creds.OrganizationID != "org_env" {
 		t.Errorf("OrganizationID = %q, want org_env", creds.OrganizationID)
@@ -56,8 +58,8 @@ func TestLoadFromFile(t *testing.T) {
 	if creds.APIKey != "runtm_sk_file_value" {
 		t.Errorf("APIKey = %q, want runtm_sk_file_value", creds.APIKey)
 	}
-	if creds.APIURL != "http://localhost:9000/api" {
-		t.Errorf("APIURL = %q, want http://localhost:9000/api", creds.APIURL)
+	if creds.APIURL != "http://localhost:9000/api/cloud" {
+		t.Errorf("APIURL = %q, want http://localhost:9000/api/cloud", creds.APIURL)
 	}
 	if creds.Source != "file" {
 		t.Errorf("Source = %q, want file", creds.Source)
@@ -85,8 +87,8 @@ func TestLoadOverridesWinOverEnv(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load returned error: %v", err)
 	}
-	if creds.APIURL != "http://flag-url/api" {
-		t.Errorf("APIURL = %q, want flag value", creds.APIURL)
+	if creds.APIURL != "http://flag-url/api/cloud" {
+		t.Errorf("APIURL = %q, want flag value with /cloud", creds.APIURL)
 	}
 	if creds.OrganizationID != "org_flag" {
 		t.Errorf("OrganizationID = %q, want flag value", creds.OrganizationID)
@@ -105,5 +107,30 @@ func TestLoadDefaultURL(t *testing.T) {
 	}
 	if creds.APIURL != DefaultAPIURL {
 		t.Errorf("APIURL = %q, want default %q", creds.APIURL, DefaultAPIURL)
+	}
+}
+
+func TestLoadCloudSuffixIsIdempotent(t *testing.T) {
+	// A base that already targets the proxy must not get a doubled /cloud,
+	// and a trailing slash is trimmed.
+	t.Setenv("RUNTM_API_KEY", "runtm_sk_test_env")
+	t.Setenv("RUNTM_ORG_ID", "")
+
+	for _, tc := range []struct {
+		in, want string
+	}{
+		{"https://app.runtm.com/api/cloud", "https://app.runtm.com/api/cloud"},
+		{"https://app.runtm.com/api/cloud/", "https://app.runtm.com/api/cloud"},
+		{"http://localhost:3000/api", "http://localhost:3000/api/cloud"},
+		{"http://localhost:3000/api/", "http://localhost:3000/api/cloud"},
+	} {
+		t.Setenv("RUNTM_API_URL", tc.in)
+		creds, err := Load("", "")
+		if err != nil {
+			t.Fatalf("Load(%q) error: %v", tc.in, err)
+		}
+		if creds.APIURL != tc.want {
+			t.Errorf("APIURL for %q = %q, want %q", tc.in, creds.APIURL, tc.want)
+		}
 	}
 }

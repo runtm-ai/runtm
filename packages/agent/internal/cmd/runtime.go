@@ -128,7 +128,7 @@ func (r *Runtime) WriteJSON(raw []byte) {
 	// Pretty-print if it parses cleanly.
 	var v any
 	if err := json.Unmarshal(raw, &v); err == nil {
-		out, mErr := json.MarshalIndent(v, "", "  ")
+		out, mErr := marshalIndentNoEscape(v)
 		if mErr == nil {
 			r.Stdout.Write(out)
 			fmt.Fprintln(r.Stdout)
@@ -141,13 +141,28 @@ func (r *Runtime) WriteJSON(raw []byte) {
 
 // WriteObject marshals an arbitrary value as JSON and writes it.
 func (r *Runtime) WriteObject(v any) {
-	out, err := json.MarshalIndent(v, "", "  ")
+	out, err := marshalIndentNoEscape(v)
 	if err != nil {
 		fmt.Fprintf(r.Stderr, `{"error":"failed to marshal: %s"}`+"\n", err.Error())
 		return
 	}
 	r.Stdout.Write(out)
 	fmt.Fprintln(r.Stdout)
+}
+
+// marshalIndentNoEscape is json.MarshalIndent without HTML escaping, so URLs
+// in output keep literal & < > instead of & < > (e.g. the &
+// query separators in a Slack authorize_url).
+func marshalIndentNoEscape(v any) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(v); err != nil {
+		return nil, err
+	}
+	// Encoder.Encode appends a trailing newline; callers add their own.
+	return bytes.TrimRight(buf.Bytes(), "\n"), nil
 }
 
 // ReportError prints a structured JSON error to stderr and returns the exit

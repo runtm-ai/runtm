@@ -20,7 +20,13 @@ import (
 // DefaultAPIURL is the production cloud API proxy exposed by the Next.js app.
 // It rewrites /api/cloud/* to the FastAPI backend's canonical /api/* routes
 // without colliding with dashboard BFF routes under /api/sessions, /api/user,
-// etc. Local development should use RUNTM_API_URL=http://localhost:8081/api.
+// etc.
+//
+// RUNTM_API_URL is expected to be the bare "…/api" base of a host that runs the
+// Next.js rewrites (the prod app, or a tunnel / localhost:3000 in dev). The CLI
+// always talks through the cloud proxy, so the resolved base is normalized to
+// end in /cloud (see ensureCloudSuffix): e.g. RUNTM_API_URL=http://localhost:3000/api
+// is used as http://localhost:3000/api/cloud.
 const DefaultAPIURL = "https://app.runtm.com/api/cloud"
 
 // ErrNoCredentials means we could not locate an API key in env or on disk.
@@ -42,7 +48,7 @@ func Load(apiURLOverride, orgOverride string) (*Credentials, error) {
 		return nil, ErrNoCredentials
 	}
 
-	apiURL := strings.TrimRight(resolveAPIURL(apiURLOverride), "/")
+	apiURL := ensureCloudSuffix(resolveAPIURL(apiURLOverride))
 	orgID := resolveOrg(orgOverride)
 
 	return &Credentials{
@@ -93,6 +99,20 @@ func resolveAPIURL(override string) string {
 		return v
 	}
 	return DefaultAPIURL
+}
+
+// ensureCloudSuffix normalizes a resolved base URL to target the Next.js cloud
+// proxy. RUNTM_API_URL is the "…/api" base of a host running the dashboard's
+// rewrites (/api/cloud/* -> backend /api/*); the CLI always speaks to the proxy,
+// so we append /cloud when it's absent. Idempotent — an explicit "…/api/cloud"
+// (including the default) is returned unchanged. The trailing slash is trimmed
+// either way so callers can join paths with a leading slash.
+func ensureCloudSuffix(u string) string {
+	u = strings.TrimRight(strings.TrimSpace(u), "/")
+	if u == "" || strings.HasSuffix(u, "/cloud") {
+		return u
+	}
+	return u + "/cloud"
 }
 
 func resolveOrg(override string) string {

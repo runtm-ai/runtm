@@ -2,7 +2,7 @@
 name: runtm
 description: "Runtm (Runtime) Cloud CLI for AI agents. Full cloud-API surface: sessions (CRUD + files + env + deploy + lifecycle + history + events + visibility + collaborators), org templates (CRUD + build + fix-session + snapshot + secrets), activity telemetry, secrets, instructions, guardrails, integrations. Trigger on: runtm, runtime, runtm cloud, runtime cloud, runtm session, runtime session, cloud sandbox."
 metadata:
-  version: "0.7.0"
+  version: "0.8.0"
   repository: https://github.com/runtm-ai/runtm
   tags: runtm,runtime,cli,sandboxes,coding-agents
 ---
@@ -128,6 +128,7 @@ To parameterize a template, declare **session arguments** with `--session-arg` (
 | Guardrails | `runtm-api guardrails limits\|allowlist get\|set`, `can-deploy`, `deploy-limits`, `cleanup --yes` |
 | Integrations | `runtm-api integrations anthropic\|openai get\|set\|delete\|resolved [--org-scope]` |
 | Skills / MCP / Tools | `runtm-api skills\|mcp\|tools create\|get\|list\|update\|delete` (see `runtm-directives`) |
+| Agents (Slack/GitHub) | `runtm-api agents create\|list\|get\|update\|delete --type slack\|github` (see `runtm-agents`) |
 | Auth | `runtm-api auth status` |
 
 ## Endpoint Strategy
@@ -246,6 +247,7 @@ If `authenticated: false`, ask the user to set `RUNTM_API_KEY` (or run `runtm-ap
 - `runtm-templates` -- full template lifecycle (create, build, fix, snapshot).
 - `runtm-debug` -- inspect a session's state when something is wrong.
 - `runtm-directives` -- CRUD skills, MCP servers, and tools (the session-context directives).
+- `runtm-agents` -- create, list, and edit Slack/GitHub integration agents.
 
 ## Subcommand Discovery
 
