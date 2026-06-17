@@ -39,6 +39,7 @@ embedded in this binary into the detected agent's skills directory.`,
 		newDirectiveAttach(rt, "skill"),
 		newDirectiveDetach(rt, "skill"),
 		newSkillsInstall(rt),
+		newSkillsPull(rt),
 	)
 	return cmd
 }
