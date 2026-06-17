@@ -35,6 +35,9 @@ embedded in this binary into the detected agent's skills directory.`,
 		newSkillCreate(rt),
 		newSkillUpdate(rt),
 		newDirectiveDelete(rt, "skill"),
+		newDirectiveAttachments(rt, "skill"),
+		newDirectiveAttach(rt, "skill"),
+		newDirectiveDetach(rt, "skill"),
 		newSkillsInstall(rt),
 	)
 	return cmd

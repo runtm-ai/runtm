@@ -171,7 +171,42 @@ See https://docs.runtm.com/cloud-api/templates for the full schemas.`,
 		newTemplateSaveSnapshot(rt),
 		newTemplateRepos(rt),
 		newTemplateSecrets(rt),
+		newTemplateDirectives(rt, "skills", "skill"),
+		newTemplateDirectives(rt, "mcp", "mcp_server"),
 	)
+	return cmd
+}
+
+// --- attached skills / mcp servers ----------------------------------------
+
+// newTemplateDirectives lists the skills or MCP servers attached to a template.
+// It's the template-side view of the attachments managed by
+// `runtm-api skills|mcp attach`: every session launched from the template loads
+// these. Backed by GET /api/agent-directives?template_id=<id>&type_family=<f>.
+func newTemplateDirectives(rt *Runtime, use, typeFamily string) *cobra.Command {
+	var includeContent bool
+	cmd := &cobra.Command{
+		Use:   use + " <template_id>",
+		Short: fmt.Sprintf("List %s attached to a template (sessions from it load these)", use),
+		Long: fmt.Sprintf(`List the %s attached to a template. Attach/detach them with
+'runtm-api %s attach|detach <id> --template <template_id>'.`, use, use),
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			c, _, err := requireOrgClient(rt, "org templates")
+			if err != nil {
+				return err
+			}
+			q := url.Values{}
+			q.Set("template_id", args[0])
+			q.Set("type_family", typeFamily)
+			if includeContent {
+				q.Set("include_content", "true")
+			}
+			resp, err := c.Get(directivesListPath, q)
+			return runJSON(rt, resp, err)
+		},
+	}
+	cmd.Flags().BoolVar(&includeContent, "include-content", false, "Include each item's content payload")
 	return cmd
 }
 

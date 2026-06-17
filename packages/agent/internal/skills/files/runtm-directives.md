@@ -1,9 +1,9 @@
 ---
 name: runtm-directives
-description: "Create, read, update, and delete the Runtm Cloud session-context directives from the CLI: skills (SKILL.md bundles), MCP servers (stdio or http/sse), tools (knowledge integrations / provider credentials), and custom tool providers. Use when the user wants to author/manage skills, wire up an MCP server, store provider credentials, or define a NEW custom tool provider (name, logo, mise/npm/github package, and auth fields) when no built-in provider exists."
+description: "Create, read, update, and delete the Runtm Cloud session-context directives from the CLI: skills (SKILL.md bundles), MCP servers (stdio or http/sse), tools (knowledge integrations / provider credentials), and custom tool providers — and attach skills/MCP servers to org templates, repos, or all repos so sessions load them. Use when the user wants to add/connect/create an integration (investigate API vs CLI vs MCP and auth methods first, then ask the user to pick), author/manage skills, wire up an MCP server, attach a skill or MCP to a template, store provider credentials, or define a NEW custom tool provider (name, logo, mise/npm/github package, and auth fields) when no built-in provider exists."
 metadata:
-  version: "0.2.0"
-  tags: runtm,runtime,directives,skills,mcp,tools,knowledge
+  version: "0.4.0"
+  tags: runtm,runtime,directives,skills,mcp,tools,knowledge,templates,attachments,integrations
 ---
 
 # Runtm Directives
@@ -36,6 +36,67 @@ Every command prints JSON to stdout and structured errors to stderr.
 Common flags: `--page-size`, `--page-token` (list); `--include-content` (skill/
 mcp list/get); `--yes` (delete confirmation). Each subcommand also accepts a raw
 `--content` / `--credentials` JSON escape hatch for full control.
+
+---
+
+## Adding an integration: investigate first, then ask
+
+When the user wants to **add, connect, or create an integration** with some
+external service (e.g. "connect Linear", "add Stripe", "wire up our data
+warehouse"), do **not** jump straight to one mechanism. There are usually
+several ways to reach a service, and they map onto different runtm primitives
+with different trade-offs. **Investigate the options, then ask the user to
+choose before you build anything.**
+
+### Step 1 — Investigate what the service offers
+
+Research (vendor docs, web search, the service's developer site) how the target
+can actually be reached, and which runtm primitive carries each:
+
+| Access modality | What to look for | runtm primitive | Pros | Cons |
+|---|---|---|---|---|
+| **MCP server** | An official or community MCP server (an installable stdio package, or a hosted http/sse endpoint) | `runtm-api mcp create` | Native tool-calling, structured, maintained by others, least glue code | Not every service has one; adds a server process; you inherit its tool design & quality |
+| **CLI** | An official command-line tool | `runtm-api skills create` (document the commands) + a credential via `tools` / a custom provider whose `mise` package installs the binary | Uses battle-tested official tooling; easy for the agent to drive; great coverage | Agent drives free-text commands (less structured); the binary must be installed in the sandbox |
+| **REST / HTTP API** | The public API + auth docs (almost always exists) | `runtm-api skills create` (document the endpoints/recipes) + an API key via `tools` or a session/template secret | Maximum control & coverage; no extra process | You hand-author request recipes; more upfront work; you own the maintenance |
+
+Prefer an existing **MCP server** when one exists and is good; fall back to
+**CLI-via-skill**, then **API-via-skill**. But surface all viable options — the
+user may have a preference.
+
+### Step 2 — Find the auth methods the service supports
+
+For each viable modality, determine how it authenticates and which runtm path
+carries that credential:
+
+- **OAuth** — connected through the **dashboard** (browser flow), not the CLI.
+  For a bring-your-own OAuth app, define a custom provider with
+  `tools providers create … --auth-methods '[{… "kind":"oauth" …}]'`.
+- **API key / token / service account** — store with `runtm-api tools create`
+  (static credentials against a built-in or custom provider), or as a plain
+  session/template secret for a one-off.
+- Note the **scope**: org-wide (define the provider once, every teammate
+  connects their own credentials) vs. personal/one session.
+
+Check whether the service is already a known **tool provider**
+(`runtm-api tools providers list`) before defining a new one.
+
+### Step 3 — Present the options and let the user pick
+
+Summarize what you found and **ask the user to choose** before implementing —
+for example:
+
+> Linear can be integrated three ways:
+> 1. **MCP server** (hosted, http/sse) — auth via OAuth (dashboard) or an API
+>    key header. Most native; least code.
+> 2. **`linear` CLI** wrapped as a skill — auth via personal API key. Uses the
+>    official CLI; good for scripted workflows.
+> 3. **REST API** documented in a skill — auth via API key. Most control.
+>
+> Which approach do you want, and which auth method?
+
+Only after the user selects an approach + auth method, implement it with the
+relevant command below (`mcp`, `tools`/`tools providers`, or `skills`). Skip the
+question only when the user has already named the exact mechanism and auth.
 
 ---
 
@@ -112,6 +173,69 @@ runtm-api mcp delete <id> --yes
 Content shape — stdio: `{transport:"stdio", command, args[], env{}}` (command
 required). http/sse: `{transport:"http"|"sse", url, headers{}}` (url required).
 `--arg` is repeatable and ordered; `--env`/`--header` take `KEY=VALUE`.
+
+---
+
+## Attaching skills & MCP servers to templates (and repos)
+
+Creating a skill or MCP server does **not** load it anywhere on its own — it
+only loads into a session where it is **attached**. Attach it to an **org
+template** and every session launched from that template loads it. This is the
+CLI equivalent of the dashboard's "Attach to template" picker.
+
+`skills` and `mcp` both expose the same three verbs (same
+`/api/agent-directives/{id}/attachments` endpoint, `context:write` to change):
+
+```bash
+# Attach a skill to a template (sessions from that template now load it)
+runtm-api skills attach <skill_id> --template <template_id>
+
+# Attach an MCP server to two templates at once
+runtm-api mcp attach <mcp_id> --template <t1> --template <t2>
+
+# Attach to specific repos, or to every repo in the org
+runtm-api skills attach <skill_id> --repo acme/api --repo acme/web
+runtm-api skills attach <skill_id> --all
+
+# See where something is attached
+runtm-api skills attachments <skill_id>
+
+# Detach from one template (leaves other attachments in place)
+runtm-api skills detach <skill_id> --template <template_id>
+# Remove every attachment
+runtm-api skills detach <skill_id> --clear
+```
+
+The template-side view — list what a template loads:
+
+```bash
+runtm-api template skills <template_id>   # skills attached to the template
+runtm-api template mcp <template_id>      # MCP servers attached to the template
+```
+
+Scopes & semantics:
+
+- Three scopes, **mutually exclusive with `--all`**: `--template` (repeatable),
+  `--repo owner/name` (repeatable), and `--all` (every repo in the org). You can
+  mix `--template` and `--repo` in one call; `--all` cannot be combined with
+  either and supersedes them.
+- `attach` **merges** with the current scope by default (repeated calls add).
+  Pass `--replace` to set the exact scope wholesale. Switching to `--all`
+  replaces any scoped attachments.
+- `detach` removes the named `--template`/`--repo`, `--all` removes the
+  all-repos attachment, and `--clear` removes everything. It leaves untouched
+  attachments in place.
+- Only **org-owned** skills/MCP servers can be attached (use `--org` /
+  `RUNTM_ORG_ID`); personal directives cannot.
+
+The full flow to wire a skill into a template:
+
+```bash
+export RUNTM_ORG_ID=org_abc123
+SKILL_ID=$(runtm-api skills create --name deploy-checks --md ./SKILL.md | jq -r .directive.id)
+runtm-api skills attach "$SKILL_ID" --template <template_id>
+runtm-api template skills <template_id>          # verify it's listed
+```
 
 ---
 
@@ -240,4 +364,6 @@ runtm-api mcp --help
 runtm-api tools --help
 runtm-api tools providers --help
 runtm-api mcp create --help
+runtm-api skills attach --help    # attach/detach/attachments verbs
+runtm-api template skills --help  # template-side view of attachments
 ```

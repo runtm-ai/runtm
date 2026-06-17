@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/runtm-ai/runtm/packages/agent/internal/client"
 	"github.com/spf13/cobra"
 )
 
@@ -38,6 +39,9 @@ the context:write scope on the key.`,
 		newMcpCreate(rt),
 		newMcpUpdate(rt),
 		newDirectiveDelete(rt, "MCP server"),
+		newDirectiveAttachments(rt, "MCP server"),
+		newDirectiveAttach(rt, "MCP server"),
+		newDirectiveDetach(rt, "MCP server"),
 	)
 	return cmd
 }
@@ -749,5 +753,266 @@ func newDirectiveDelete(rt *Runtime, singular string) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&yes, "yes", false, "Confirm deletion")
+	return cmd
+}
+
+// ---------------------------------------------------------------------------
+// Attachments — scope a skill/MCP to templates, repos, or all repos
+//
+// A directive (skill or MCP server) is loaded into a session only where it is
+// attached. Attaching to a template makes every session launched from that
+// template load it. Backed by:
+//
+//	GET /api/agent-directives/{id}/attachments   (list current scope)
+//	PUT /api/agent-directives/{id}/attachments   (replace the full scope)
+//
+// The PUT is a full replace, so `attach`/`detach` read the current scope and
+// merge by default — only `--replace` / `--clear` set it wholesale. The three
+// scopes (templates, repos, all-repos) are mutually exclusive with all-repos:
+// the backend rejects combining applies_to_all with explicit lists.
+// ---------------------------------------------------------------------------
+
+func attachmentsPath(id string) string {
+	return directivePath(id) + "/attachments"
+}
+
+// attachmentRow mirrors the fields of DirectiveAttachmentResource we read back.
+type attachmentRow struct {
+	RepoFullName *string `json:"repo_full_name"`
+	AppliesToAll bool    `json:"applies_to_all"`
+	TemplateID   *string `json:"template_id"`
+}
+
+type attachmentsResp struct {
+	Attachments []attachmentRow `json:"attachments"`
+}
+
+func (r *attachmentsResp) templateIDs() []string {
+	out := []string{}
+	for _, a := range r.Attachments {
+		if a.TemplateID != nil && *a.TemplateID != "" {
+			out = append(out, *a.TemplateID)
+		}
+	}
+	return out
+}
+
+func (r *attachmentsResp) repoNames() []string {
+	out := []string{}
+	for _, a := range r.Attachments {
+		if a.RepoFullName != nil && *a.RepoFullName != "" {
+			out = append(out, *a.RepoFullName)
+		}
+	}
+	return out
+}
+
+func (r *attachmentsResp) appliesToAll() bool {
+	for _, a := range r.Attachments {
+		if a.AppliesToAll {
+			return true
+		}
+	}
+	return false
+}
+
+// fetchAttachments reads a directive's current attachment scope.
+func fetchAttachments(c *client.Client, id string) (*attachmentsResp, error) {
+	raw, err := c.Get(attachmentsPath(id), nil)
+	if err != nil {
+		return nil, err
+	}
+	var out attachmentsResp
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, fmt.Errorf("parse current attachments: %w", err)
+	}
+	return &out, nil
+}
+
+// mergeUnique returns base ∪ add, order-preserving and de-duplicated.
+func mergeUnique(base, add []string) []string {
+	seen := map[string]bool{}
+	out := []string{}
+	for _, s := range append(append([]string{}, base...), add...) {
+		if s == "" || seen[s] {
+			continue
+		}
+		seen[s] = true
+		out = append(out, s)
+	}
+	return out
+}
+
+// without returns base with every element of remove dropped.
+func without(base, remove []string) []string {
+	rm := map[string]bool{}
+	for _, s := range remove {
+		rm[s] = true
+	}
+	out := []string{}
+	for _, s := range base {
+		if !rm[s] {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// nonNil guarantees a JSON array (not null) for list body fields, which the
+// backend's list[str] fields require.
+func nonNil(s []string) []string {
+	if s == nil {
+		return []string{}
+	}
+	return s
+}
+
+func newDirectiveAttachments(rt *Runtime, singular string) *cobra.Command {
+	return &cobra.Command{
+		Use:   "attachments <id>",
+		Short: fmt.Sprintf("List where a %s is attached (templates, repos, or all repos)", singular),
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			c, _, err := requireOrgClient(rt, singular+"s")
+			if err != nil {
+				return err
+			}
+			resp, err := c.Get(attachmentsPath(args[0]), nil)
+			return runJSON(rt, resp, err)
+		},
+	}
+}
+
+func newDirectiveAttach(rt *Runtime, singular string) *cobra.Command {
+	var (
+		templates []string
+		repos     []string
+		all       bool
+		replace   bool
+	)
+	cmd := &cobra.Command{
+		Use:   "attach <id>",
+		Short: fmt.Sprintf("Attach a %s to templates, repos, or all repos", singular),
+		Long: fmt.Sprintf(`Attach a %s so sessions load it. Scope it to one or more templates
+(--template, repeatable), repos (--repo owner/name, repeatable), or every repo
+in the org (--all).
+
+Merges with the existing scope by default, so repeated calls add attachments.
+Pass --replace to set the exact scope instead. --all is mutually exclusive with
+--template/--repo and supersedes any existing scoped attachments.
+
+Examples:
+  runtm-api %ss attach <id> --template <template_id>
+  runtm-api %ss attach <id> --template <t1> --template <t2>
+  runtm-api %ss attach <id> --repo acme/api --replace
+  runtm-api %ss attach <id> --all`, singular, singular, singular, singular, singular),
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if all && (len(templates) > 0 || len(repos) > 0) {
+				return fmt.Errorf("--all cannot be combined with --template or --repo")
+			}
+			if !all && len(templates) == 0 && len(repos) == 0 {
+				return fmt.Errorf("pass at least one of --template, --repo, or --all")
+			}
+			c, _, err := requireOrgClient(rt, singular+"s")
+			if err != nil {
+				return err
+			}
+
+			var body map[string]any
+			switch {
+			case all:
+				body = map[string]any{"applies_to_all": true}
+			case replace:
+				body = map[string]any{
+					"template_ids":    nonNil(templates),
+					"repo_full_names": nonNil(repos),
+				}
+			default:
+				// Merge with the current scope. Attaching to a template/repo
+				// switches off all-repos scope (the two can't coexist).
+				existing, gerr := fetchAttachments(c, args[0])
+				if gerr != nil {
+					return gerr
+				}
+				body = map[string]any{
+					"template_ids":    mergeUnique(existing.templateIDs(), templates),
+					"repo_full_names": mergeUnique(existing.repoNames(), repos),
+				}
+			}
+			resp, err := c.PutJSON(attachmentsPath(args[0]), body)
+			return runJSON(rt, resp, err)
+		},
+	}
+	cmd.Flags().StringArrayVar(&templates, "template", nil, "Template ID to attach to (repeatable)")
+	cmd.Flags().StringArrayVar(&repos, "repo", nil, "Repo owner/name to attach to (repeatable)")
+	cmd.Flags().BoolVar(&all, "all", false, "Attach to every repo in the org (mutually exclusive with --template/--repo)")
+	cmd.Flags().BoolVar(&replace, "replace", false, "Replace the full attachment scope instead of merging")
+	return cmd
+}
+
+func newDirectiveDetach(rt *Runtime, singular string) *cobra.Command {
+	var (
+		templates []string
+		repos     []string
+		all       bool
+		clearAll  bool
+	)
+	cmd := &cobra.Command{
+		Use:   "detach <id>",
+		Short: fmt.Sprintf("Detach a %s from templates, repos, or all repos", singular),
+		Long: fmt.Sprintf(`Remove a %s's attachments while leaving the rest in place.
+
+Pass --template/--repo to drop specific scopes, --all to remove the all-repos
+attachment, or --clear to remove every attachment at once.
+
+Examples:
+  runtm-api %ss detach <id> --template <template_id>
+  runtm-api %ss detach <id> --all
+  runtm-api %ss detach <id> --clear`, singular, singular, singular, singular),
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			c, _, err := requireOrgClient(rt, singular+"s")
+			if err != nil {
+				return err
+			}
+
+			if clearAll {
+				resp, err := c.PutJSON(attachmentsPath(args[0]), map[string]any{
+					"template_ids":    []string{},
+					"repo_full_names": []string{},
+				})
+				return runJSON(rt, resp, err)
+			}
+			if !all && len(templates) == 0 && len(repos) == 0 {
+				return fmt.Errorf("pass --template/--repo to remove, --all to remove the all-repos attachment, or --clear to remove everything")
+			}
+
+			existing, gerr := fetchAttachments(c, args[0])
+			if gerr != nil {
+				return gerr
+			}
+			remTemplates := without(existing.templateIDs(), templates)
+			remRepos := without(existing.repoNames(), repos)
+
+			// Keep the all-repos scope unless this call targets it. (It never
+			// coexists with template/repo scopes, so there's nothing to merge.)
+			var body map[string]any
+			if existing.appliesToAll() && !all && len(remTemplates) == 0 && len(remRepos) == 0 {
+				body = map[string]any{"applies_to_all": true}
+			} else {
+				body = map[string]any{
+					"template_ids":    remTemplates,
+					"repo_full_names": remRepos,
+				}
+			}
+			resp, err := c.PutJSON(attachmentsPath(args[0]), body)
+			return runJSON(rt, resp, err)
+		},
+	}
+	cmd.Flags().StringArrayVar(&templates, "template", nil, "Template ID to detach from (repeatable)")
+	cmd.Flags().StringArrayVar(&repos, "repo", nil, "Repo owner/name to detach from (repeatable)")
+	cmd.Flags().BoolVar(&all, "all", false, "Remove the all-repos attachment")
+	cmd.Flags().BoolVar(&clearAll, "clear", false, "Remove every attachment")
 	return cmd
 }
