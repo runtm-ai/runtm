@@ -206,6 +206,32 @@ runtm-api template secrets set tmpl_abc... DATABASE_URL "postgres://..." STRIPE_
 runtm-api template secrets delete tmpl_abc... STRIPE_KEY
 ```
 
+## Recipe: attach skills & MCP servers
+
+Templates can carry **skills** and **MCP servers**, so every session launched
+from the template loads them automatically — the same "Session context" wiring
+the dashboard offers on a template. Skills/MCP servers are created with the
+`skills`/`mcp` commands (see the `runtm-directives` skill); attaching is what
+binds them to a template.
+
+```bash
+# List what a template currently loads
+runtm-api template skills tmpl_abc...   # attached skills
+runtm-api template mcp tmpl_abc...      # attached MCP servers
+
+# Attach an existing skill / MCP server to the template
+runtm-api skills attach <skill_id> --template tmpl_abc...
+runtm-api mcp attach <mcp_id> --template tmpl_abc...
+
+# Detach (leaves the directive's other attachments untouched)
+runtm-api skills detach <skill_id> --template tmpl_abc...
+```
+
+`attach` merges with the directive's existing scope (repos / other templates /
+all-repos), so attaching to a template never disturbs unrelated attachments.
+Full authoring + attachment workflow lives in the `runtm-directives` skill.
+Requires `context:write` on the key.
+
 ## Recipe: clean up
 
 ```bash
@@ -225,5 +251,7 @@ Deletion does not affect already-running sessions that were created from the tem
 | Build | Admin or Owner | `templates:build` |
 | Delete | Admin or Owner | `templates:delete` |
 | Manage template secrets | Admin or Owner | `secrets:write` |
+| List attached skills / MCP servers | Member | `context:read` |
+| Attach / detach skills / MCP servers | Admin or Owner | `context:write` |
 
 If an operation fails with 403, run `runtm-api auth status` and verify both the API key scopes and the user's org role.

@@ -106,6 +106,8 @@ To parameterize a template, declare **session arguments** with `--session-arg` (
 | List template secrets | `runtm-api template secrets list <tmpl_id>` |
 | Set template secrets | `runtm-api template secrets set <tmpl_id> KEY value [KEY value ...]` |
 | Delete a template secret | `runtm-api template secrets delete <tmpl_id> KEY` |
+| Skills/MCP attached to a template | `runtm-api template skills\|mcp <tmpl_id>` |
+| Attach a skill/MCP to a template | `runtm-api skills\|mcp attach <id> --template <tmpl_id>` |
 
 ### Activity (telemetry)
 
@@ -127,7 +129,7 @@ To parameterize a template, declare **session arguments** with `--session-arg` (
 | Instructions | `runtm-api instructions get\|set [--org-scope] [--text "..."\|--clear]` |
 | Guardrails | `runtm-api guardrails limits\|allowlist get\|set`, `can-deploy`, `deploy-limits`, `cleanup --yes` |
 | Integrations | `runtm-api integrations anthropic\|openai get\|set\|delete\|resolved [--org-scope]` |
-| Skills / MCP / Tools | `runtm-api skills\|mcp\|tools create\|get\|list\|update\|delete` (see `runtm-directives`) |
+| Skills / MCP / Tools | `runtm-api skills\|mcp\|tools create\|get\|list\|update\|delete`; attach skills/MCP to templates with `skills\|mcp attach\|detach\|attachments <id> --template <tmpl_id>` (see `runtm-directives`) |
 | Agents (Slack/GitHub) | `runtm-api agents create\|list\|get\|update\|delete --type slack\|github` (see `runtm-agents`) |
 | Auth | `runtm-api auth status` |
 
