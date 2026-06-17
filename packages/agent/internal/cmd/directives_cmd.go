@@ -61,6 +61,7 @@ the integrations:write scope on the key.`,
 		newToolCreate(rt),
 		newToolUpdate(rt),
 		newToolDelete(rt),
+		newToolProvidersCommand(rt),
 	)
 	return cmd
 }

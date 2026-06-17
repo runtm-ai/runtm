@@ -59,6 +59,7 @@ Docs: https://docs.runtm.com`,
 		NewSkillsCommand(rt),
 		NewMcpCommand(rt),
 		NewToolsCommand(rt),
+		NewAgentsCommand(rt),
 	)
 	return rootBuild{cmd: root, rt: rt}
 }

@@ -14,9 +14,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `mcp` manages MCP servers over stdio (`--command/--arg/--env`) or http/sse (`--url/--header`); skill content comes from a markdown file (`--md`) or a raw content object (`--content`); tools take `--provider/--auth-method/--credentials`
   - Skills/MCP map to `/api/agent-directives` and tools to `/api/knowledge/integrations` under the hood — surfaced only as `skills`, `mcp`, and `tools` so users never deal with "directives"
   - New bundled `runtm-directives` agent skill documents these commands; it ships in the binary and is written out by `runtm-api skills install`
+- **Agent CLI**: `runtm-api tools providers` defines custom tool providers (create/list/get/update/delete/fork) — name, logo, the package to install (mise/`npm:`/`github:`/`cargo:`/`ubi:` spec via `--package`), and auth methods (`--auth-methods`), or a full `--schema`/`--schema-file`. Org-scoped: define once, the whole team connects with `tools create`. Documented in the `runtm-directives` skill.
+- **Agent CLI**: `runtm-api agents` manages Slack and GitHub integration agents (bots that launch a coding session on a Slack mention or GitHub issue/PR) — `create`, `list`, `get`, `update`, `delete`
+  - `create --type slack --name X` returns a Slack authorize URL to open; `--type github` writes a local page that submits the GitHub App manifest (GitHub requires a form POST). Linear is not supported from the CLI yet — use the dashboard.
+  - `update <id>` edits an agent's defaults (`--template`, `--agent`, `--github-repo`, `--rate-limit`, `--service-user`, `--enabled`/`--disabled`, `--model`) and merges arbitrary behavior config via `--config <json>` (Slack triggers / `system_instructions`, GitHub review toggles / `review_filter_label`, …)
+  - New bundled `runtm-agents` agent skill documents the commands
+- **Agent CLI**: the CLI normalizes `RUNTM_API_URL` to the Next.js cloud proxy — a bare `…/api` base is used as `…/api/cloud` (idempotent), so it always routes through the dashboard's `/api/cloud/* → /api/*` rewrites
 
 ### Fixed
 
+- **Agent CLI**: JSON output no longer HTML-escapes `&`, `<`, `>` — URLs print literally (e.g. the `&` query separators in a Slack `authorize_url`) instead of being unicode-escaped
 - **Agent CLI**: `runtm-api session list` now uses the hosted cloud proxy URL consistently instead of leaking the internal `localhost:8081` backend URL when listing sessions through `https://app.runtm.com/api/cloud`
 - **API**: Reworked DB connection pool config to stop recurring `SSL connection has been closed unexpectedly` errors behind Fly MPG's PgBouncer
   - Lowered `pool_recycle` from 1800s to 300s so connections are recycled well before the upstream pooler closes idle server connections — previously ~1/3 of `pool_pre_ping` probes were hitting dead connections
