@@ -1,8 +1,8 @@
 ---
 name: runtm-directives
-description: "Create, read, update, and delete the three Runtm Cloud session-context directives: skills (SKILL.md bundles), MCP servers (stdio or http/sse), and tools (knowledge integrations / provider credentials). Use when the user wants to author or manage skills, wire up an MCP server, or store provider credentials from the CLI."
+description: "Create, read, update, and delete the Runtm Cloud session-context directives from the CLI: skills (SKILL.md bundles), MCP servers (stdio or http/sse), tools (knowledge integrations / provider credentials), and custom tool providers. Use when the user wants to author/manage skills, wire up an MCP server, store provider credentials, or define a NEW custom tool provider (name, logo, mise/npm/github package, and auth fields) when no built-in provider exists."
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
   tags: runtm,runtime,directives,skills,mcp,tools,knowledge
 ---
 
@@ -145,11 +145,99 @@ Create fields: `--provider`, `--auth-method`, `--credentials` (all required),
 
 ---
 
+## Custom tool providers
+
+`tools providers …` defines a brand-new tool *provider* (the thing behind
+`tools`): its **name**, **logo**, the **package** to install (a mise spec —
+`latest`, `npm:pkg`, `github:owner/repo`, `cargo:crate`, `ubi:owner/repo`), and
+its **auth mechanism(s)**. Pure API — no browser; needs an org-admin key with
+`integrations:write`. (`tools create` stores credentials *against* a provider;
+this defines the provider itself.)
+
+### When to create one
+
+**If the tool the user wants isn't already a provider, create a custom one.**
+First check: `runtm-api tools providers list` (and the `tools`/catalog). If
+nothing matches, define it here. A custom provider is **org-scoped**, so once
+you create it *every member of the team* can connect to it — you define it once,
+everyone connects their own credentials.
+
+Two things matter when defining it:
+
+1. **Use `fields` for the secrets** so the whole team can connect. The auth
+   method's `fields[]` are the inputs each person fills in (API key, token, …);
+   mark secrets with `"kind":"secret"`. `materialization.env`/`files` then inject
+   those values into the sandbox (via `{fields.<id>}`). Because the provider is
+   org-wide, defining the fields once lets any teammate run
+   `tools create --provider <slug> --auth-method <id> --credentials '{…}'` with
+   their own values — no need to redefine the provider per person.
+2. **Always pass `--logo` (recommended).** A brand logo URL makes the provider
+   card look right in the dashboard; without it the card falls back to a generic
+   glyph. Pass an absolute `https://…` image URL.
+
+### Example: a "Pylon" provider (npm CLI + user-entered API key)
+
+```bash
+runtm-api tools providers create \
+  --slug pylon \
+  --name "Pylon" \
+  --category support \
+  --logo https://app.pylon.com/favicon.png \
+  --package pylon-cli=npm:pylon-cli \
+  --auth-methods '[{
+    "id": "api_key",
+    "display_name": "API Key",
+    "kind": "static",
+    "fields": [
+      { "id": "api_key", "label": "API Key", "kind": "secret", "required": true }
+    ],
+    "materialization": { "env": { "PYLON_API_KEY": "{fields.api_key}" } }
+  }]'
+```
+
+Then any teammate connects with their own key:
+
+```bash
+runtm-api tools create --provider pylon --auth-method api_key \
+  --credentials '{"api_key": "..."}'
+```
+
+### Commands
+
+```bash
+runtm-api tools providers list
+runtm-api tools providers get <id>
+runtm-api tools providers update <id> --logo https://example.com/new.png   # fetches current schema, applies the change
+runtm-api tools providers delete <id> --yes
+runtm-api tools providers fork <built-in-id> --slug my-notion              # editable copy, e.g. to bring your own OAuth app
+```
+
+Flags build a `ProviderSchema`: `--name` (display_name, required), `--logo`
+(image_url), `--icon`, `--tagline`, `--description`, `--category`, repeatable
+`--package NAME=SPEC` (→ `tooling.mise`), and `--auth-methods <json>` (the
+auth_methods array — at least one required). For full control pass the whole
+schema with `--schema '<json>'` or `--schema-file <path>` (flags override on
+top); `--oauth-secrets '{"<method>":{"client_id":"…","client_secret":"…"}}'`
+attaches per-method OAuth app credentials.
+
+`auth_methods[]` entries: `id`, `display_name`, `kind` (`static`|`oauth`),
+`fields[]` (the credential inputs the user fills), `materialization`
+(`env`/`files`/`setup_commands` written into the sandbox, interpolating
+`{fields.x}` / `{oauth.access_token}`), optional `oauth` (`auth_url`,
+`token_url`, `scopes`, …) and `health` probe.
+
+Tip: discover package specs with the package search endpoint
+(`GET /api/knowledge/package-search?backend=mise|npm|cargo|homebrew|github&q=…`)
+— each hit returns the `mise_spec` to drop into `--package`.
+
+---
+
 ## Discovery
 
 ```bash
 runtm-api skills --help
 runtm-api mcp --help
 runtm-api tools --help
+runtm-api tools providers --help
 runtm-api mcp create --help
 ```
