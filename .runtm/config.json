@@ -1,0 +1,5 @@
+{
+  "setup": ["./.runtm/setup.local.sh"],
+  "teardown": ["./.runtm/teardown.local.sh"],
+  "run": ["./.runtm/run.local.sh"]
+}

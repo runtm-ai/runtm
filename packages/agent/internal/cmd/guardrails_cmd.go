@@ -122,8 +122,8 @@ func newGuardrailsAllowlist(rt *Runtime) *cobra.Command {
 
 func newGuardrailsAllowlistSet(rt *Runtime) *cobra.Command {
 	var (
-		mode         string
-		patternsCSV  string
+		mode          string
+		patternsCSV   string
 		allowPersonal bool
 	)
 	cmd := &cobra.Command{

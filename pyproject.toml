@@ -54,5 +54,4 @@ ignore_missing_imports = true
 testpaths = ["packages/*/tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short"
-
+addopts = "-v --tb=short --import-mode=importlib"

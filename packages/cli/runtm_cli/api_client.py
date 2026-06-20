@@ -957,7 +957,7 @@ def build_ignore_spec(project_path: Path) -> pathspec.PathSpec:
     elif gitignore.exists():
         patterns.extend(_parse_ignore_file(gitignore))
 
-    return pathspec.PathSpec.from_lines("gitwildmatch", patterns)
+    return pathspec.PathSpec.from_lines("gitignore", patterns)
 
 
 def create_artifact_zip(project_path: Path) -> Path:
