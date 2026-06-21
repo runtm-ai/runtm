@@ -95,7 +95,7 @@ app/page.tsx
 
 ### Prerequisites
 - Node.js 20+
-- Python 3.9+
+- Python 3.10+
 
 ### Running Locally
 
@@ -255,7 +255,7 @@ runtm deploy
 
 ### Resource Requirements
 
-Fullstack apps run both Next.js and FastAPI simultaneously, requiring at least the standard tier (512MB RAM). The `runtm.yaml` is pre-configured with `tier: standard`.
+Fullstack apps run both Next.js and FastAPI simultaneously. The `runtm.yaml` is pre-configured with the valid default `tier: starter`; use `performance` or `pro` for heavier workloads.
 
 ## Customization
 
