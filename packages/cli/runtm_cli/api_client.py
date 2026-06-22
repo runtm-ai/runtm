@@ -384,7 +384,7 @@ class APIClient:
             artifact_path: Path to artifact.zip
             idempotency_key: Optional idempotency key (generated if not provided)
             force_new: Force creation of new deployment instead of redeploying
-            tier: Optional machine tier override (starter, standard, performance)
+            tier: Optional machine tier override (starter, performance, pro)
             secrets: Optional secrets to inject (passed through to provider, never stored)
             src_hash: Source hash for tracking and config-only validation
             config_only: Skip Docker build and reuse previous image (for config-only changes)

@@ -18,7 +18,7 @@ ALLOWED_METRIC_LABELS = frozenset(
         "outcome",  # success, failure, timeout
         "error_type",  # validation, auth, network, etc.
         "template",  # backend-service, static-site, web-app
-        "tier",  # starter, standard, performance
+        "tier",  # starter, performance, pro
         "runtime",  # python, node, fullstack
     }
 )

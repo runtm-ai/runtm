@@ -59,9 +59,9 @@ def deploy_command(
     Use --json for NDJSON output for AI agents (one JSON object per line).
 
     Machine tiers (all use auto-stop for cost savings):
-      - starter: 1 shared CPU, 256MB RAM (~$2/month, much less with auto-stop)
-      - standard: 1 shared CPU, 512MB RAM (~$5/month, much less with auto-stop)
-      - performance: 2 shared CPUs, 1GB RAM (~$10/month, much less with auto-stop)
+      - starter: 2 shared CPUs, 2GB RAM (~$15/month, much less with auto-stop)
+      - performance: 4 shared CPUs, 4GB RAM (~$30/month, much less with auto-stop)
+      - pro: 4 shared CPUs, 8GB RAM (~$55/month, much less with auto-stop)
 
     Examples:
         runtm deploy                    # Deploy current directory

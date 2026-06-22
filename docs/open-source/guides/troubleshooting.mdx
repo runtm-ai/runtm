@@ -18,7 +18,7 @@ Quick solutions to common problems.
     pipx install runtm --force
     ```
   </Accordion>
-  
+
   <Accordion title="Authentication failed">
     Check your setup:
     ```bash
@@ -30,11 +30,11 @@ Quick solutions to common problems.
     runtm login
     ```
   </Accordion>
-  
+
   <Accordion title="Invalid API key format">
     Keys should start with `runtm_`. Get a new key from [app.runtm.com](https://app.runtm.com).
   </Accordion>
-  
+
   <Accordion title="Connection refused">
     If self-hosting, check your API URL:
     ```bash
@@ -58,7 +58,7 @@ Quick solutions to common problems.
     runtm deploy --yes
     ```
   </Accordion>
-  
+
   <Accordion title="Missing required environment variable">
     Set the missing secret:
     ```bash
@@ -67,7 +67,7 @@ Quick solutions to common problems.
     runtm deploy
     ```
   </Accordion>
-  
+
   <Accordion title="Artifact too large">
     Check what's being included:
     ```bash
@@ -75,28 +75,28 @@ Quick solutions to common problems.
     ```
     Add large files to `.gitignore`. Max artifact size is 20MB.
   </Accordion>
-  
+
   <Accordion title="Build timeout">
     Builds have a 10-minute limit. Common causes:
     - Too many dependencies
     - Large assets being processed
     - Network issues during package install
-    
+
     Try a higher tier:
     ```bash
-    runtm deploy --tier standard
+    runtm deploy --tier performance
     ```
   </Accordion>
-  
+
   <Accordion title="Health check failed">
     Your app must respond HTTP 200 at `/health` (or custom `health_path`).
-    
+
     Test locally:
     ```bash
     runtm run
     curl http://localhost:8080/health
     ```
-    
+
     Check logs:
     ```bash
     runtm logs <id> --type deploy
@@ -117,22 +117,22 @@ Quick solutions to common problems.
     - Wrong port (should match manifest)
     - Unhandled exceptions during init
   </Accordion>
-  
+
   <Accordion title="Out of memory">
     Upgrade to a higher tier:
     ```bash
-    runtm deploy --tier standard   # 512MB
-    runtm deploy --tier performance # 1GB
+    runtm deploy --tier performance # 4GB
+    runtm deploy --tier pro         # 8GB
     ```
   </Accordion>
-  
+
   <Accordion title="Database connection errors">
     If using `features.database: true`:
     - Ensure your app connects to `sqlite:///data/app.db`
     - The `/data` directory is mounted automatically
     - Check for file permission issues in logs
   </Accordion>
-  
+
   <Accordion title="Slow cold starts">
     Apps in suspended state take ~1-2 seconds to wake. To reduce this:
     - Minimize startup work
@@ -152,7 +152,7 @@ Quick solutions to common problems.
     ```
     Stop the conflicting process or use a `docker-compose.override.yml` to change ports.
   </Accordion>
-  
+
   <Accordion title="Database connection failed">
     Check PostgreSQL is running:
     ```bash
@@ -160,7 +160,7 @@ Quick solutions to common problems.
     docker compose -f infra/docker-compose.yml logs postgres
     ```
   </Accordion>
-  
+
   <Accordion title="Worker not processing jobs">
     Check worker logs:
     ```bash
@@ -171,7 +171,7 @@ Quick solutions to common problems.
     - Redis is running
     - API is healthy
   </Accordion>
-  
+
   <Accordion title="Migrations not running">
     Migrations run on API startup. To run manually:
     ```bash
@@ -182,7 +182,7 @@ Quick solutions to common problems.
     docker compose -f infra/docker-compose.yml exec api alembic upgrade head
     ```
   </Accordion>
-  
+
   <Accordion title="FLY_API_TOKEN errors">
     Use a Personal Access Token, not a deploy token:
     ```bash
@@ -205,7 +205,7 @@ Quick solutions to common problems.
     - Invalid template name
     - Malformed YAML
   </Accordion>
-  
+
   <Accordion title="Secret with default value">
     Secrets can't have defaults. Fix in `runtm.yaml`:
     ```yaml
@@ -213,14 +213,14 @@ Quick solutions to common problems.
     - name: API_KEY
       secret: true
       default: "xxx"
-    
+
     # Correct
     - name: API_KEY
       secret: true
       required: true
     ```
   </Accordion>
-  
+
   <Accordion title="Missing Dockerfile">
     Each template requires a `Dockerfile`. If missing:
     ```bash
@@ -250,4 +250,3 @@ If you're still stuck:
 3. **Search the docs** - Use the search bar above
 
 4. **Open an issue** - [github.com/runtm-ai/runtm/issues](https://github.com/runtm-ai/runtm/issues)
-

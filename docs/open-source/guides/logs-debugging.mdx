@@ -267,7 +267,7 @@ runtm logs dep_abc123xyz --search "memory,oom,killed"
 If you see out-of-memory errors, upgrade to a higher tier:
 
 ```bash
-runtm deploy --tier standard
+runtm deploy --tier performance
 ```
 
 ## Best Practices
@@ -278,7 +278,7 @@ runtm deploy --tier standard
     ```python
     import logging
     import json
-    
+
     logging.info(json.dumps({
         "event": "request",
         "path": "/api/items",
@@ -307,4 +307,3 @@ runtm deploy --tier standard
 
 - [`runtm logs`](/cli/logs) - CLI reference
 - [Logs API](/api/logs) - API reference
-
