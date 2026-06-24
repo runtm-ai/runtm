@@ -56,12 +56,19 @@ Pass --target to override the destination directory.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			targets := resolveSkillTargets(target)
 			if len(targets) == 0 {
-				rt.WriteObject(map[string]any{
-					"installed": false,
-					"error":     "No AI agent skills directory found (~/.claude or ~/.cursor).",
-					"hint":      "Pass --target <dir> to install manually, or create ~/.claude/skills/ first.",
-				})
-				return errSilent
+				// No agent config dir detected. `skills install` is an explicit
+				// setup command, so don't bail — default to Claude Code's location
+				// and create it (the install loop's MkdirAll does the `mkdir -p`).
+				home, err := os.UserHomeDir()
+				if err != nil {
+					rt.WriteObject(map[string]any{
+						"installed": false,
+						"error":     "Could not resolve home directory.",
+						"hint":      "Pass --target <dir> to install manually.",
+					})
+					return errSilent
+				}
+				targets = []string{filepath.Join(home, ".claude/skills/runtm")}
 			}
 
 			files, err := listEmbeddedSkills()
@@ -155,15 +162,18 @@ func resolveSkillTargets(override string) []string {
 		return nil
 	}
 
+	// Detect each agent by its ROOT config dir (~/.claude, ~/.cursor) — if the
+	// agent is present, install into <root>/skills/runtm (created on demand by
+	// MkdirAll at install time). Checking for <root>/skills to pre-exist was too
+	// strict: a fresh agent has ~/.claude (settings.json/CLAUDE.md) but no
+	// skills/ subdir yet, so `skills install` wrongly reported "no agent found".
 	var targets []string
-	for _, rel := range []string{
-		".claude/skills/runtm",
-		".cursor/skills/runtm",
+	for _, a := range []struct{ root, target string }{
+		{".claude", ".claude/skills/runtm"},
+		{".cursor", ".cursor/skills/runtm"},
 	} {
-		dir := filepath.Join(home, rel)
-		parent := filepath.Dir(dir)
-		if info, err := os.Stat(parent); err == nil && info.IsDir() {
-			targets = append(targets, dir)
+		if info, err := os.Stat(filepath.Join(home, a.root)); err == nil && info.IsDir() {
+			targets = append(targets, filepath.Join(home, a.target))
 		}
 	}
 	return targets
