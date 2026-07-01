@@ -1,6 +1,6 @@
 ---
 name: runtm-integrations
-description: "Create, read, update, and delete the Runtm Cloud session-context directives from the CLI: skills (SKILL.md bundles), MCP servers (stdio or http/sse), tools (knowledge integrations / provider credentials), and custom tool providers — and attach skills/MCP servers to org templates, repos, or all repos so sessions load them. Use when the user wants to add/connect/create an integration — ALWAYS follow the 5-step process: (1) research every way to reach the service (API, SDK, CLI, MCP, GitHub repos, predefined skills), (2) investigate the auth methods (OAuth, API key, service account) with pros/cons, (3) ask the user to pick the interface + auth combination, (4) build the definition (MCP server or tool provider), (5) redirect the user to connect in the dashboard UI so secrets never pass through the agent — or to author/manage skills, wire up an MCP server, attach a skill or MCP to a template, or define a NEW custom tool provider (name, logo, mise/npm/github package, and auth fields) when no built-in provider exists."
+description: "Create, read, update, and delete the Runtm Cloud session-context directives from the CLI: skills (SKILL.md bundles), MCP servers (stdio or http/sse), tools (knowledge integrations / provider credentials), and custom tool providers — and attach skills/MCP servers to org templates, repos, or all repos so sessions load them. Use when the user wants to add/connect/create an integration — ALWAYS follow the 5-step process: (1) research every way to reach the service (API, SDK, CLI, MCP, GitHub repos, predefined skills), (2) investigate the auth methods (OAuth, API key, service account) with pros/cons, (3) ask the user to pick the interface + auth combination, (4) build the definition (MCP server or tool provider), (5) redirect the user to connect in the dashboard UI so secrets never pass through the agent — or to author/manage skills, wire up an MCP server, attach a skill or MCP to a template, or define a NEW custom tool provider (name, logo, mise/npm/github package, and auth fields) when no built-in provider exists. Keeps three concepts distinct: a DEFINITION (tool provider / MCP server — the wiring, no secrets), a CONNECTION (the credentials a user supplies against a definition — entered in the dashboard UI, one definition can have many), and an ATTACHMENT (which templates/repos load it)."
 metadata:
   version: "0.4.0"
   tags: runtm,runtime,directives,skills,mcp,tools,knowledge,templates,attachments,integrations
@@ -36,6 +36,43 @@ Every command prints JSON to stdout and structured errors to stderr.
 Common flags: `--page-size`, `--page-token` (list); `--include-content` (skill/
 mcp list/get); `--yes` (delete confirmation). Each subcommand also accepts a raw
 `--content` / `--credentials` JSON escape hatch for full control.
+
+---
+
+## Definition vs. connection vs. attachment (the mental model)
+
+An integration is **three separate things** — keep them straight, because they
+live in different places and only one of them ever touches a secret:
+
+1. **Definition** — the *wiring*, no secrets. What the service is, how it's
+   reached, and which auth method(s) it supports.
+   - **Tool provider** (`tools providers`) — a service + its auth method(s) +
+     the package to install. Either **managed** (a runtm-seeded provider) or
+     **custom / forked** (org-owned). Lives at `/api/knowledge/providers`.
+   - **MCP server** (`mcp`) — transport + command/url. An agent-directive of
+     type `mcp_server_v0` at `/api/agent-directives`.
+
+2. **Connection** — the *credentials* a person supplies **against** a definition
+   (API key, OAuth token, service-account JSON). Stored **encrypted**, has a
+   `status` (`active`/`error`/`revoked`/`pending`) and a **scope** (org-shared
+   vs. personal). **One definition → many connections** — e.g. "Prod BQ" and
+   "Dev BQ", or each teammate their own key.
+   - For a **tool provider**: a *knowledge integration* —
+     `/api/knowledge/integrations` (`runtm-api tools create`, or the dashboard).
+   - For an **MCP server**: a *directive connection* —
+     `/api/agent-directives/{id}/connections` (**dashboard only today** — the CLI
+     can't create these yet; see the note under MCP servers).
+
+3. **Attachment (context)** — *where* a skill or MCP server loads: specific
+   templates, specific repos, or all repos.
+   `/api/agent-directives/{id}/attachments` (`skills|mcp attach`). Creating a
+   definition attaches it nowhere on its own.
+
+Rule of thumb: **the agent builds definitions and attachments; the user creates
+connections in the dashboard UI so secrets never pass through the agent** (Step 4
+and Step 5 of the flow below). `tools create --credentials` and MCP
+`--env`/`--header` *can* carry a secret for non-interactive automation, but that
+is not the path for a secret a user is handing you — send them to the UI.
 
 ---
 
@@ -171,6 +208,14 @@ and `requires` (`{integrations: [...], tooling: {mise: {...}}}`).
 
 Two transports. **stdio** launches a local command; **http**/**sse** points at a
 remote URL.
+
+> **Definition vs. connection for MCP.** `--env`/`--header` bake a value **into
+> the server definition** — fine for a shared, non-secret setting, but a real
+> per-user credential belongs in a **directive connection** (entered in the
+> dashboard, kept out of the definition and away from the agent). The CLI can't
+> create directive connections yet, so for a secret-bearing MCP server: create
+> the definition here **without** the secret, then send the user to the dashboard
+> **Integrations** page to connect it (Step 5).
 
 ```bash
 # stdio server
