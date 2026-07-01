@@ -23,6 +23,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - New bundled `runtm-agents` agent skill documents the commands
 - **Agent CLI**: the CLI normalizes `RUNTM_API_URL` to the Next.js cloud proxy — a bare `…/api` base is used as `…/api/cloud` (idempotent), so it always routes through the dashboard's `/api/cloud/* → /api/*` rewrites
 
+### Changed
+
+- **Agent CLI**: renamed `runtm-api integrations` → `runtm-api providers` (**breaking**). The command manages LLM provider API keys (Anthropic/OpenAI), so `providers` names it for what it is and frees the word "integrations" to mean external tooling (MCP servers, skills, tools, CLIs, APIs). Subcommands are unchanged: `runtm-api providers anthropic|openai get|set|delete|resolved [--org-scope]`. The backend scope is still `integrations:read` / `integrations:write` — only the CLI verb moved.
+  - The bundled `runtm` skill's `SKILL.md` now lists a `Providers (LLM keys)` row separate from an `Integrations (external)` row, and its `description`/triggers distinguish LLM provider keys from external integrations — so prompts mentioning "integration" load the skill and default to external tooling, while provider keys route to `runtm-api providers`.
+
 ### Fixed
 
 - **Agent CLI**: JSON output no longer HTML-escapes `&`, `<`, `>` — URLs print literally (e.g. the `&` query separators in a Slack `authorize_url`) instead of being unicode-escaped
