@@ -1,6 +1,6 @@
 ---
 name: runtm
-description: "Runtm (Runtime) Cloud CLI for AI agents. Full cloud-API surface: sessions (CRUD + files + env + deploy + lifecycle + history + events + visibility + collaborators), org templates (CRUD + build + fix-session + snapshot + secrets), activity telemetry, secrets, instructions, guardrails, integrations. Trigger on: runtm, runtime, runtm cloud, runtime cloud, runtm session, runtime session, cloud sandbox."
+description: "Runtm (Runtime) Cloud CLI for AI agents. Full cloud-API surface: sessions (CRUD + files + env + deploy + lifecycle + history + events + visibility + collaborators), org templates (CRUD + build + fix-session + snapshot + secrets), activity telemetry, secrets, instructions, guardrails, LLM provider keys (Anthropic/OpenAI), external integrations (MCP servers, skills, tools, CLIs, APIs). Trigger on: runtm, runtime, runtm cloud, runtime cloud, runtm session, runtime session, cloud sandbox, integration, integrations, connect an integration, mcp, skill, provider key."
 metadata:
   version: "0.8.0"
   repository: https://github.com/runtm-ai/runtm
@@ -121,15 +121,15 @@ To parameterize a template, declare **session arguments** with `--session-arg` (
 | Team activity over time | `runtm-api activity team-activity --days 7` |
 | Team members | `runtm-api activity team-members` |
 
-### Secrets / Instructions / Guardrails / Integrations / Plan
+### Secrets / Instructions / Guardrails / Providers / Plan
 
 | Area | Commands |
 |------|----------|
 | Secrets | `runtm-api secrets list\|set\|delete\|resolved [--team]` |
 | Instructions | `runtm-api instructions get\|set [--org-scope] [--text "..."\|--clear]` |
 | Guardrails | `runtm-api guardrails limits\|allowlist get\|set`, `can-deploy`, `deploy-limits`, `cleanup --yes` |
-| Integrations | `runtm-api integrations anthropic\|openai get\|set\|delete\|resolved [--org-scope]` |
-| Skills / MCP / Tools | `runtm-api skills\|mcp\|tools create\|get\|list\|update\|delete`; attach skills/MCP to templates with `skills\|mcp attach\|detach\|attachments <id> --template <tmpl_id>` (see `runtm-integrations`) |
+| Providers (LLM keys) | `runtm-api providers anthropic\|openai get\|set\|delete\|resolved [--org-scope]` |
+| Integrations (external) | Skills / MCP servers / tools -- `runtm-api skills\|mcp\|tools create\|get\|list\|update\|delete`; attach skills/MCP to templates with `skills\|mcp attach\|detach\|attachments <id> --template <tmpl_id>` (see `runtm-integrations`) |
 | Agents (Slack/GitHub) | `runtm-api agents create\|list\|get\|update\|delete --type slack\|github` (see `runtm-agents`) |
 | Auth | `runtm-api auth status` |
 
@@ -240,15 +240,15 @@ If `authenticated: false`, ask the user to set `RUNTM_API_KEY` (or run `runtm-ap
 | `guardrails limits\|allowlist set` | `guardrails:write` (admin/owner) |
 | `guardrails can-deploy\|deploy-limits` | `deployments:read` |
 | `guardrails cleanup` | `guardrails:write` (admin/owner) |
-| `integrations * get\|resolved` | `integrations:read` |
-| `integrations * set\|delete` | `integrations:write` (org needs admin/owner) |
+| `providers * get\|resolved` | `integrations:read` (backend scope unchanged) |
+| `providers * set\|delete` | `integrations:write` (org needs admin/owner) |
 
 ## More Skills
 
 - `runtm-sessions` -- session workflow recipes (launch, iterate, deploy, debug).
 - `runtm-templates` -- full template lifecycle (create, build, fix, snapshot).
 - `runtm-debug` -- inspect a session's state when something is wrong.
-- `runtm-integrations` -- add/connect an integration (research API/SDK/CLI/MCP/repos/skills → weigh auth methods → user picks → build definition → connect in the UI); CRUD skills, MCP servers, and tools.
+- `runtm-integrations` -- add/connect an **external** integration (research API/SDK/CLI/MCP/repos/skills → weigh auth methods → user picks → build definition → connect in the UI); CRUD skills, MCP servers, and tools. NB: "integration" means external tooling; LLM provider keys (Anthropic/OpenAI) live under `runtm-api providers`.
 - `runtm-agents` -- create, list, and edit Slack/GitHub integration agents.
 
 ## Subcommand Discovery

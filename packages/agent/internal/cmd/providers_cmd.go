@@ -8,10 +8,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewIntegrationsCommand returns `runtm integrations` covering provider API
-// keys (Anthropic, OpenAI). Other integrations (GitHub App, Slack, Linear) are
-// installed via OAuth flows that the CLI cannot drive end-to-end, so they are
-// intentionally out of scope here.
+// NewProvidersCommand returns `runtm providers` covering LLM provider API keys
+// (Anthropic, OpenAI). This is deliberately separate from "integrations", which
+// means external integrations (MCP servers, skills, tools, CLIs, APIs) — see the
+// `runtm-integrations` skill. External integration OAuth flows (GitHub App,
+// Slack, Linear) require browser redirects the CLI cannot drive, so they live in
+// the dashboard.
+//
+// The backend scope is still integrations:read / integrations:write (the command
+// was renamed; the scope namespace was not).
 //
 // Routes:
 //
@@ -29,49 +34,50 @@ import (
 //	GET    /api/organizations/{org_id}/openai-key             integrations:read
 //	PUT    /api/organizations/{org_id}/openai-key             integrations:write (org admin)
 //	DELETE /api/organizations/{org_id}/openai-key             integrations:write (org admin)
-func NewIntegrationsCommand(rt *Runtime) *cobra.Command {
+func NewProvidersCommand(rt *Runtime) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "integrations",
-		Short: "Manage Anthropic / OpenAI provider keys (user + org scope)",
-		Long: `Stores encrypted provider API keys used by sessions when no per-session
+		Use:   "providers",
+		Short: "Manage Anthropic / OpenAI LLM provider keys (user + org scope)",
+		Long: `Stores encrypted LLM provider API keys used by sessions when no per-session
 override is set. Use --org to manage org-wide keys (admin/owner role required).
 
-The CLI does not drive GitHub/Slack/Linear OAuth installations. Those flows
-require browser redirects and live in the dashboard.
+This is separate from external integrations (MCP servers, skills, tools, CLIs,
+APIs) — for those, see the 'runtm-integrations' skill. GitHub/Slack/Linear OAuth
+installations also live in the dashboard, not here.
 
 See https://docs.runtm.com/cloud-api/provider-keys for the schema.`,
 	}
 	cmd.AddCommand(
-		newIntegrationsKeyCommand(rt, "anthropic"),
-		newIntegrationsKeyCommand(rt, "openai"),
+		newProviderKeyCommand(rt, "anthropic"),
+		newProviderKeyCommand(rt, "openai"),
 	)
 	return cmd
 }
 
-// newIntegrationsKeyCommand builds the `anthropic` / `openai` subcommand
-// trees. Each has get/set/delete plus a `resolved` variant for the personal
-// scope only (the resolved endpoint follows team -> user precedence).
-func newIntegrationsKeyCommand(rt *Runtime, provider string) *cobra.Command {
+// newProviderKeyCommand builds the `anthropic` / `openai` subcommand trees.
+// Each has get/set/delete plus a `resolved` variant for the personal scope only
+// (the resolved endpoint follows team -> user precedence).
+func newProviderKeyCommand(rt *Runtime, provider string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   provider,
 		Short: fmt.Sprintf("Manage the %s provider key", provider),
 	}
 	cmd.AddCommand(
-		newIntegrationsGet(rt, provider),
-		newIntegrationsSet(rt, provider),
-		newIntegrationsDelete(rt, provider),
-		newIntegrationsResolved(rt, provider),
+		newProviderGet(rt, provider),
+		newProviderSet(rt, provider),
+		newProviderDelete(rt, provider),
+		newProviderResolved(rt, provider),
 	)
 	return cmd
 }
 
-func newIntegrationsGet(rt *Runtime, provider string) *cobra.Command {
+func newProviderGet(rt *Runtime, provider string) *cobra.Command {
 	var orgScope bool
 	cmd := &cobra.Command{
 		Use:   "get",
 		Short: fmt.Sprintf("Inspect stored %s key (masked)", provider),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			c, path, err := integrationsPath(rt, provider, orgScope, "")
+			c, path, err := providerKeyPath(rt, provider, orgScope, "")
 			if err != nil {
 				return err
 			}
@@ -83,7 +89,7 @@ func newIntegrationsGet(rt *Runtime, provider string) *cobra.Command {
 	return cmd
 }
 
-func newIntegrationsSet(rt *Runtime, provider string) *cobra.Command {
+func newProviderSet(rt *Runtime, provider string) *cobra.Command {
 	var (
 		orgScope bool
 		apiKey   string
@@ -96,7 +102,7 @@ func newIntegrationsSet(rt *Runtime, provider string) *cobra.Command {
 			if apiKey == "" {
 				return fmt.Errorf("--api-key is required")
 			}
-			c, path, err := integrationsPath(rt, provider, orgScope, "")
+			c, path, err := providerKeyPath(rt, provider, orgScope, "")
 			if err != nil {
 				return err
 			}
@@ -115,13 +121,13 @@ func newIntegrationsSet(rt *Runtime, provider string) *cobra.Command {
 	return cmd
 }
 
-func newIntegrationsDelete(rt *Runtime, provider string) *cobra.Command {
+func newProviderDelete(rt *Runtime, provider string) *cobra.Command {
 	var orgScope bool
 	cmd := &cobra.Command{
 		Use:   "delete",
 		Short: fmt.Sprintf("Remove the stored %s key", provider),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			c, path, err := integrationsPath(rt, provider, orgScope, "")
+			c, path, err := providerKeyPath(rt, provider, orgScope, "")
 			if err != nil {
 				return err
 			}
@@ -133,12 +139,12 @@ func newIntegrationsDelete(rt *Runtime, provider string) *cobra.Command {
 	return cmd
 }
 
-func newIntegrationsResolved(rt *Runtime, provider string) *cobra.Command {
+func newProviderResolved(rt *Runtime, provider string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "resolved",
 		Short: fmt.Sprintf("Show which %s key would be used (team override -> user fallback)", provider),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			c, path, err := integrationsPath(rt, provider, false, "/resolved")
+			c, path, err := providerKeyPath(rt, provider, false, "/resolved")
 			if err != nil {
 				return err
 			}
@@ -148,9 +154,9 @@ func newIntegrationsResolved(rt *Runtime, provider string) *cobra.Command {
 	}
 }
 
-// integrationsPath builds /api/user/{provider}-key or /api/organizations/{org}/{provider}-key
+// providerKeyPath builds /api/user/{provider}-key or /api/organizations/{org}/{provider}-key
 // plus an optional suffix (e.g. "/resolved").
-func integrationsPath(rt *Runtime, provider string, orgScope bool, suffix string) (*client.Client, string, error) {
+func providerKeyPath(rt *Runtime, provider string, orgScope bool, suffix string) (*client.Client, string, error) {
 	if orgScope {
 		c, creds, err := requireOrgClient(rt, "org provider keys")
 		if err != nil {
