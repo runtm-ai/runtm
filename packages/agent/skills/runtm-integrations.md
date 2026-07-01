@@ -1,6 +1,6 @@
 ---
-name: runtm-directives
-description: "Create, read, update, and delete the Runtm Cloud session-context directives from the CLI: skills (SKILL.md bundles), MCP servers (stdio or http/sse), tools (knowledge integrations / provider credentials), and custom tool providers — and attach skills/MCP servers to org templates, repos, or all repos so sessions load them. Use when the user wants to add/connect/create an integration (investigate API vs CLI vs MCP and auth methods first, then ask the user to pick), author/manage skills, wire up an MCP server, attach a skill or MCP to a template, store provider credentials, or define a NEW custom tool provider (name, logo, mise/npm/github package, and auth fields) when no built-in provider exists."
+name: runtm-integrations
+description: "Create, read, update, and delete the Runtm Cloud session-context directives from the CLI: skills (SKILL.md bundles), MCP servers (stdio or http/sse), tools (knowledge integrations / provider credentials), and custom tool providers — and attach skills/MCP servers to org templates, repos, or all repos so sessions load them. Use when the user wants to add/connect/create an integration — ALWAYS follow the 5-step process: (1) research every way to reach the service (API, SDK, CLI, MCP, GitHub repos, predefined skills), (2) investigate the auth methods (OAuth, API key, service account) with pros/cons, (3) ask the user to pick the interface + auth combination, (4) build the definition (MCP server or tool provider), (5) redirect the user to connect in the dashboard UI so secrets never pass through the agent — or to author/manage skills, wire up an MCP server, attach a skill or MCP to a template, or define a NEW custom tool provider (name, logo, mise/npm/github package, and auth fields) when no built-in provider exists. Keeps three concepts distinct: a DEFINITION (tool provider / MCP server — the wiring, no secrets), a CONNECTION (the credentials a user supplies against a definition — entered in the dashboard UI, one definition can have many), and an ATTACHMENT (which templates/repos load it)."
 metadata:
   version: "0.4.0"
   tags: runtm,runtime,directives,skills,mcp,tools,knowledge,templates,attachments,integrations
@@ -39,50 +39,92 @@ mcp list/get); `--yes` (delete confirmation). Each subcommand also accepts a raw
 
 ---
 
-## Adding an integration: investigate first, then ask
+## Definition vs. connection vs. attachment (the mental model)
 
-When the user wants to **add, connect, or create an integration** with some
+An integration is **three separate things** — keep them straight, because they
+live in different places and only one of them ever touches a secret:
+
+1. **Definition** — the *wiring*, no secrets. What the service is, how it's
+   reached, and which auth method(s) it supports.
+   - **Tool provider** (`tools providers`) — a service + its auth method(s) +
+     the package to install. Either **managed** (a runtm-seeded provider) or
+     **custom / forked** (org-owned). Lives at `/api/knowledge/providers`.
+   - **MCP server** (`mcp`) — transport + command/url. An agent-directive of
+     type `mcp_server_v0` at `/api/agent-directives`.
+
+2. **Connection** — the *credentials* a person supplies **against** a definition
+   (API key, OAuth token, service-account JSON). Stored **encrypted**, has a
+   `status` (`active`/`error`/`revoked`/`pending`) and a **scope** (org-shared
+   vs. personal). **One definition → many connections** — e.g. "Prod BQ" and
+   "Dev BQ", or each teammate their own key.
+   - For a **tool provider**: a *knowledge integration* —
+     `/api/knowledge/integrations` (`runtm-api tools create`, or the dashboard).
+   - For an **MCP server**: a *directive connection* —
+     `/api/agent-directives/{id}/connections` (**dashboard only today** — the CLI
+     can't create these yet; see the note under MCP servers).
+
+3. **Attachment (context)** — *where* a skill or MCP server loads: specific
+   templates, specific repos, or all repos.
+   `/api/agent-directives/{id}/attachments` (`skills|mcp attach`). Creating a
+   definition attaches it nowhere on its own.
+
+Rule of thumb: **the agent builds definitions and attachments; the user creates
+connections in the dashboard UI so secrets never pass through the agent** (Step 4
+and Step 5 of the flow below). `tools create --credentials` and MCP
+`--env`/`--header` *can* carry a secret for non-interactive automation, but that
+is not the path for a secret a user is handing you — send them to the UI.
+
+---
+
+## Adding an integration: investigate → decide → build → connect in the UI
+
+When the user wants to **add, connect, or create an integration** with an
 external service (e.g. "connect Linear", "add Stripe", "wire up our data
 warehouse"), do **not** jump straight to one mechanism. There are usually
-several ways to reach a service, and they map onto different runtm primitives
-with different trade-offs. **Investigate the options, then ask the user to
-choose before you build anything.**
+several ways to reach a service, on several auth methods, each mapping onto a
+different runtm primitive with different trade-offs. **Always work through the
+five steps below**: research the options, weigh the auth methods, let the user
+choose the combination, build the *definition*, then hand off to the dashboard
+UI for the actual credential connect. Never paste real secrets through the CLI.
 
-### Step 1 — Investigate what the service offers
+### Step 1 — Research everything the service offers
 
-Research (vendor docs, web search, the service's developer site) how the target
-can actually be reached, and which runtm primitive carries each:
+Google / read the vendor's developer docs and GitHub. Enumerate **every** way
+the service can be reached — is there an API, an SDK, a CLI, an MCP server,
+useful GitHub repos, or a ready-made skill? Each maps onto a runtm primitive:
 
 | Access modality | What to look for | runtm primitive | Pros | Cons |
 |---|---|---|---|---|
-| **MCP server** | An official or community MCP server (an installable stdio package, or a hosted http/sse endpoint) | `runtm-api mcp create` | Native tool-calling, structured, maintained by others, least glue code | Not every service has one; adds a server process; you inherit its tool design & quality |
+| **MCP server** | An official or community MCP server (installable stdio package, or hosted http/sse endpoint) | `runtm-api mcp create` | Native tool-calling, structured, maintained by others, least glue code | Not every service has one; adds a server process; you inherit its tool design & quality |
+| **Predefined skill** | An existing `SKILL.md` (bundled, community, or a GitHub repo you can import) | `runtm-api skills create` / import | Ready-made; reuse over authoring; encodes best-practice recipes | May be stale or partial; still needs a credential path |
 | **CLI** | An official command-line tool | `runtm-api skills create` (document the commands) + a credential via `tools` / a custom provider whose `mise` package installs the binary | Uses battle-tested official tooling; easy for the agent to drive; great coverage | Agent drives free-text commands (less structured); the binary must be installed in the sandbox |
+| **SDK** | An official client library (npm/pip/…) | `runtm-api skills create` (document usage) + install the package + a credential via `tools` | Idiomatic, typed, well-documented; scriptable | You write the glue; language-specific; package must be installed |
 | **REST / HTTP API** | The public API + auth docs (almost always exists) | `runtm-api skills create` (document the endpoints/recipes) + an API key via `tools` or a session/template secret | Maximum control & coverage; no extra process | You hand-author request recipes; more upfront work; you own the maintenance |
 
-Prefer an existing **MCP server** when one exists and is good; fall back to
-**CLI-via-skill**, then **API-via-skill**. But surface all viable options — the
-user may have a preference.
+Prefer an existing **MCP server** or **predefined skill** when one exists and is
+good; fall back to **CLI-via-skill**, then **SDK/API-via-skill**. Surface all
+viable options — the user may have a preference.
 
-### Step 2 — Find the auth methods the service supports
+### Step 2 — Investigate the auth methods and weigh each
 
-For each viable modality, determine how it authenticates and which runtm path
-carries that credential:
+For each viable modality, list how it can authenticate and weigh the trade-offs
+— don't assume one. Common methods and their pros/cons:
 
-- **OAuth** — connected through the **dashboard** (browser flow), not the CLI.
-  For a bring-your-own OAuth app, define a custom provider with
-  `tools providers create … --auth-methods '[{… "kind":"oauth" …}]'`.
-- **API key / token / service account** — store with `runtm-api tools create`
-  (static credentials against a built-in or custom provider), or as a plain
-  session/template secret for a one-off.
-- Note the **scope**: org-wide (define the provider once, every teammate
-  connects their own credentials) vs. personal/one session.
+| Auth method | Pros | Cons | runtm path |
+|---|---|---|---|
+| **OAuth** | No long-lived secret to paste; per-user identity; revocable; scoped consent | Needs an OAuth app (built-in or bring-your-own); browser flow only | Dashboard connect; BYO app via `tools providers … --auth-methods '[{… "kind":"oauth" …}]'` |
+| **API key / token** | Simplest; works headless; easy to reason about | Long-lived shared secret; often coarse scope; manual rotation | `tools` field / custom provider secret field |
+| **Service account file** | Good for machine-to-machine (GCP, etc.); fine-grained IAM | JSON key to store & rotate; powerful if leaked | `tools` credential field (e.g. `service_account_json`) |
 
-Check whether the service is already a known **tool provider**
-(`runtm-api tools providers list`) before defining a new one.
+Note the **scope**: org-wide (define the provider once, every teammate connects
+their own credential) vs. personal / one session. Check whether the service is
+already a known **tool provider** (`runtm-api tools providers list`) before
+defining a new one.
 
-### Step 3 — Present the options and let the user pick
+### Step 3 — Present the options and let the user pick the combination
 
-Summarize what you found and **ask the user to choose** before implementing —
+Summarize the modalities × auth methods with their pros/cons and **ask the user
+to choose the interface + auth combination** before you build anything —
 for example:
 
 > Linear can be integrated three ways:
@@ -94,9 +136,37 @@ for example:
 >
 > Which approach do you want, and which auth method?
 
-Only after the user selects an approach + auth method, implement it with the
-relevant command below (`mcp`, `tools`/`tools providers`, or `skills`). Skip the
-question only when the user has already named the exact mechanism and auth.
+Skip the question only when the user has already named the exact mechanism and
+auth combination.
+
+### Step 4 — Build the *definition* (MCP server or tool provider)
+
+Once the user has chosen, create the **definition** — the wiring, never the
+secret:
+
+- **MCP server** → `runtm-api mcp create …`
+- **New tool provider** (nothing built-in matches) →
+  `runtm-api tools providers create …` — define its auth `fields`,
+  `materialization`, and `--logo`. Org-scoped, so the whole team can then connect.
+- **Skill** (CLI / SDK / API recipes, or an imported predefined one) →
+  `runtm-api skills create …`
+
+### Step 5 — Hand off to the dashboard UI to connect (never handle secrets)
+
+**Do not paste real credentials through the CLI or agent.** After the definition
+exists, redirect the user to connect in the dashboard UI — the **Integrations**
+page on the runtm dashboard (the `/home` app) — so credentials are entered in
+the browser and stored server-side; the agent never sees them. This holds for
+**every** auth method: OAuth *requires* the browser flow, and API keys /
+service-account files should also be entered via the UI, not `--credentials`.
+
+> The <provider> integration is defined. Connect it in the dashboard →
+> **Integrations** → <provider> → **Connect**, and sign in / paste your
+> credential there. I won't handle the secret directly.
+
+(`tools create --credentials …` exists for non-interactive automation where a
+secret is already available to the caller — it is **not** the path for a user
+handing you a fresh secret. Default to the UI connect.)
 
 ---
 
@@ -138,6 +208,14 @@ and `requires` (`{integrations: [...], tooling: {mise: {...}}}`).
 
 Two transports. **stdio** launches a local command; **http**/**sse** points at a
 remote URL.
+
+> **Definition vs. connection for MCP.** `--env`/`--header` bake a value **into
+> the server definition** — fine for a shared, non-secret setting, but a real
+> per-user credential belongs in a **directive connection** (entered in the
+> dashboard, kept out of the definition and away from the agent). The CLI can't
+> create directive connections yet, so for a secret-bearing MCP server: create
+> the definition here **without** the secret, then send the user to the dashboard
+> **Integrations** page to connect it (Step 5).
 
 ```bash
 # stdio server
@@ -245,6 +323,12 @@ Stored provider credentials (e.g. `bigquery`, `notion`). This command handles
 **static-credential** providers (service accounts, API keys); OAuth providers are
 connected through the dashboard.
 
+> **Prefer the dashboard UI to connect.** When a *user* is handing you a fresh
+> secret, don't take it — point them at the dashboard **Integrations** page to
+> enter it (see Step 5 above). `--credentials` below is for non-interactive
+> automation where the caller already holds the secret, not for accepting one
+> from the user.
+
 ```bash
 # Create
 runtm-api tools create \
@@ -319,7 +403,11 @@ runtm-api tools providers create \
   }]'
 ```
 
-Then any teammate connects with their own key:
+Then any teammate connects with their own key **in the dashboard** — the new
+provider now shows up on the **Integrations** page, where each person enters
+their own credential in the browser (secrets never touch the agent). The
+equivalent non-interactive call, only when the caller already holds the secret,
+is:
 
 ```bash
 runtm-api tools create --provider pylon --auth-method api_key \

@@ -163,6 +163,15 @@ Supported platforms include:
 
 Each provider defines the tools it exposes to agents (`search_pages`, `read_doc`, `list_articles`, etc.). The [Knowledge catalog](/cloud-api/context/knowledge/catalog) lists every supported provider and its capabilities.
 
+### Providers vs. connections
+
+Two distinct things, on two different endpoints:
+
+- A **provider** is the *definition* — the service, the auth method(s) it supports, and the tools/package it brings. Providers are either **managed** (runtm-seeded) or **custom** (org-created or forked). They carry **no user credentials**. Managed via [`/api/knowledge/providers`](/cloud-api/context/knowledge/list) and listed read-only in the [catalog](/cloud-api/context/knowledge/catalog).
+- A **connection** (a *knowledge integration*) is a user's *stored credentials* against a provider — an API key, OAuth token, or service-account JSON, kept **encrypted** with a `status` and an org/personal scope. Managed via [`/api/knowledge/integrations`](/cloud-api/context/knowledge/create).
+
+One provider can have **many** connections (e.g. "Production" and "Dev", or one per teammate). The API never returns the secret itself — connections expose only `has_credentials` and `status`. MCP servers follow the same split: the server is the definition, and credentials are a separate *directive connection*.
+
 ### How knowledge sources work
 
 1. An admin connects a knowledge provider via OAuth or static API key

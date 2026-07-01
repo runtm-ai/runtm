@@ -129,7 +129,7 @@ To parameterize a template, declare **session arguments** with `--session-arg` (
 | Instructions | `runtm-api instructions get\|set [--org-scope] [--text "..."\|--clear]` |
 | Guardrails | `runtm-api guardrails limits\|allowlist get\|set`, `can-deploy`, `deploy-limits`, `cleanup --yes` |
 | Integrations | `runtm-api integrations anthropic\|openai get\|set\|delete\|resolved [--org-scope]` |
-| Skills / MCP / Tools | `runtm-api skills\|mcp\|tools create\|get\|list\|update\|delete`; attach skills/MCP to templates with `skills\|mcp attach\|detach\|attachments <id> --template <tmpl_id>` (see `runtm-directives`) |
+| Skills / MCP / Tools | `runtm-api skills\|mcp\|tools create\|get\|list\|update\|delete`; attach skills/MCP to templates with `skills\|mcp attach\|detach\|attachments <id> --template <tmpl_id>` (see `runtm-integrations`) |
 | Agents (Slack/GitHub) | `runtm-api agents create\|list\|get\|update\|delete --type slack\|github` (see `runtm-agents`) |
 | Auth | `runtm-api auth status` |
 
@@ -248,7 +248,7 @@ If `authenticated: false`, ask the user to set `RUNTM_API_KEY` (or run `runtm-ap
 - `runtm-sessions` -- session workflow recipes (launch, iterate, deploy, debug).
 - `runtm-templates` -- full template lifecycle (create, build, fix, snapshot).
 - `runtm-debug` -- inspect a session's state when something is wrong.
-- `runtm-directives` -- CRUD skills, MCP servers, and tools (the session-context directives).
+- `runtm-integrations` -- add/connect an integration (research API/SDK/CLI/MCP/repos/skills → weigh auth methods → user picks → build definition → connect in the UI); CRUD skills, MCP servers, and tools.
 - `runtm-agents` -- create, list, and edit Slack/GitHub integration agents.
 
 ## Subcommand Discovery
