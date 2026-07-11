@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Agent CLI**: renamed `runtm-api integrations` → `runtm-api providers` (**breaking**). The command manages LLM provider API keys (Anthropic/OpenAI), so `providers` names it for what it is and frees the word "integrations" to mean external tooling (MCP servers, skills, tools, CLIs, APIs). Subcommands are unchanged: `runtm-api providers anthropic|openai get|set|delete|resolved [--org-scope]`. The backend scope is still `integrations:read` / `integrations:write` — only the CLI verb moved.
   - The bundled `runtm` skill's `SKILL.md` now lists a `Providers (LLM keys)` row separate from an `Integrations (external)` row, and its `description`/triggers distinguish LLM provider keys from external integrations — so prompts mentioning "integration" load the skill and default to external tooling, while provider keys route to `runtm-api providers`.
+- **CLI / Shared**: `runtm` and `runtm-shared` now require Python >= 3.10 (was >= 3.9). Python 3.9 reached end-of-life in October 2025 and security fixes for our dependencies (e.g. pytest 9) are no longer published for it. CI already tests on 3.12 only
 
 ### Fixed
 
@@ -37,6 +38,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added TCP keepalives (`keepalives_idle=30`, `keepalives_interval=10`, `keepalives_count=3`) so the kernel detects half-open connections instead of failing on next use
   - Reverted `pool_size` from 10 back to 5; the 0.2.18 bump to 10 did not resolve the SSL drops, and the recycle + keepalives changes address the root cause instead
 - **API**: Fixed N+1 query in `list_deployments` — eager-load `Deployment.provider_resource` via `joinedload` so `DeploymentResponse.from_db()` no longer issues one extra query per deployment to read `provider_resource.app_name`
+
+### Security
+
+- **Agent CLI**: Hardened file permissions when installing/pulling skills — directories are created `0750` instead of `0755` and files written `0600` instead of `0644` (gosec G301/G306). Skills are only read by the same user the agent runs as, so nothing needs group/other access
+- **Agent CLI**: Annotated the four intentional variable-path file reads for gosec G304 — the fixed `~/.runtm/credentials` / `~/.runtm/config.yaml` lookups and the explicit `--md` / `--schema-file` CLI flags — with per-site `#nosec` justifications; `gosec -include=G301,G304,G306 ./...` on `packages/agent` now reports 0 issues
+- **CLI / Shared / Agent CLI**: Upgraded all dependencies flagged by dependency scanning (14 findings across `packages/shared/uv.lock`, `packages/cli/uv.lock`, `packages/agent/go.mod`):
+  - `cryptography` 46.0.3 → 49.0.0 (GHSA-537c-gmf6-5ccf bundled OpenSSL, GHSA-p423-j2cm-9vmq buffer overflow / CVE-2026-39892, GHSA-r6ph-v2qm-q3c2 SECT subgroup attack / CVE-2026-26007, GHSA-m959-cc7f-wv43 DNS name-constraint bypass / CVE-2026-34073)
+  - `jaraco-context` 6.0.2 → 6.1.2 (GHSA-58pv-8j8x-9vj2 path traversal / CVE-2026-23949)
+  - `pytest` 8.4.2 → 9.1.1 (GHSA-6w46-j5rx-g56g tmpdir handling / CVE-2025-71176)
+  - `python-dotenv` 1.2.1 → 1.2.2 (GHSA-mf9w-mj56-hr94 symlink following in `set_key` / CVE-2026-28684)
+  - `idna` 3.11 → 3.18 (GHSA-65pc-fj4g-8rjx `idna.encode()` bypass / CVE-2026-45409)
+  - `pygments` 2.19.2 → 2.20.0 (GHSA-5239-wwwm-4pmq ReDoS / CVE-2026-4539)
+  - `golang.org/x/sys` v0.28.0 → v0.47.0 (CVE-2026-39824 `NewNTUnicodeString` length overflow; fixed in v0.44.0)
 
 ## [0.2.21] - 2026-05-10
 

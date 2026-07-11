@@ -78,7 +78,7 @@ func readKey() (string, string) {
 	if err != nil {
 		return "", ""
 	}
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- fixed path (~/.runtm/credentials) built from the user's home dir
 	if err != nil {
 		return "", ""
 	}
@@ -139,7 +139,7 @@ func readConfigAPIURL() string {
 		return ""
 	}
 	path := filepath.Join(home, ".runtm", "config.yaml")
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- fixed path (~/.runtm/config.yaml) built from the user's home dir
 	if err != nil {
 		return ""
 	}

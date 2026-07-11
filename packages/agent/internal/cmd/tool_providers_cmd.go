@@ -309,7 +309,7 @@ func addProviderSchemaFlags(cmd *cobra.Command, name, logo, icon, tagline, descr
 // or an empty map when neither is set.
 func loadProviderSchema(schemaJSON, schemaFile string) (map[string]any, error) {
 	if schemaFile != "" {
-		data, err := os.ReadFile(schemaFile)
+		data, err := os.ReadFile(schemaFile) // #nosec G304 -- schemaFile is the user's --schema-file CLI flag; reading the named file is the command's purpose
 		if err != nil {
 			return nil, fmt.Errorf("read --schema-file: %w", err)
 		}

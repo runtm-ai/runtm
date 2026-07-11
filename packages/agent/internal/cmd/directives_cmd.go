@@ -115,7 +115,7 @@ func parseJSONObject(raw string) (map[string]any, error) {
 // skillContentFromMarkdown builds a skill content payload from a single
 // markdown file on disk (the common case — one SKILL.md).
 func skillContentFromMarkdown(path, entry string) (map[string]any, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- path is the user's --md CLI flag; reading the named file is the command's purpose
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", path, err)
 	}

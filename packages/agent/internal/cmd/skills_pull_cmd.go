@@ -251,7 +251,7 @@ func writeSkill(c *client.Client, s pulledSkill, skillDir string) ([]string, err
 	if s.Content == nil {
 		return nil, fmt.Errorf("no content returned (the skill may be unavailable, or use a context:read key)")
 	}
-	if err := os.MkdirAll(skillDir, 0o755); err != nil {
+	if err := os.MkdirAll(skillDir, 0o750); err != nil {
 		return nil, err
 	}
 	entry := s.Content.EntryMd
@@ -271,10 +271,10 @@ func writeSkill(c *client.Client, s pulledSkill, skillDir string) ([]string, err
 			data = []byte(ensureSkillFrontmatter(s, s.Content, string(data)))
 		}
 		dest := filepath.Join(skillDir, filepath.FromSlash(cleanRelPath(f.Path)))
-		if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(dest), 0o750); err != nil {
 			return nil, err
 		}
-		if err := os.WriteFile(dest, data, 0o644); err != nil {
+		if err := os.WriteFile(dest, data, 0o600); err != nil {
 			return nil, err
 		}
 		written = append(written, f.Path)
