@@ -78,7 +78,7 @@ Pass --target to override the destination directory.`,
 
 			installed := []map[string]any{}
 			for _, dir := range targets {
-				if err := os.MkdirAll(dir, 0o755); err != nil {
+				if err := os.MkdirAll(dir, 0o750); err != nil {
 					return fmt.Errorf("mkdir %s: %w", dir, err)
 				}
 				for _, f := range files {
@@ -87,7 +87,7 @@ Pass --target to override the destination directory.`,
 						return fmt.Errorf("read embedded %s: %w", f, err)
 					}
 					dest := filepath.Join(dir, f)
-					if err := os.WriteFile(dest, data, 0o644); err != nil {
+					if err := os.WriteFile(dest, data, 0o600); err != nil {
 						return fmt.Errorf("write %s: %w", dest, err)
 					}
 				}

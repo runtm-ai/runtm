@@ -38,6 +38,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Reverted `pool_size` from 10 back to 5; the 0.2.18 bump to 10 did not resolve the SSL drops, and the recycle + keepalives changes address the root cause instead
 - **API**: Fixed N+1 query in `list_deployments` — eager-load `Deployment.provider_resource` via `joinedload` so `DeploymentResponse.from_db()` no longer issues one extra query per deployment to read `provider_resource.app_name`
 
+### Security
+
+- **Agent CLI**: Hardened file permissions when installing/pulling skills — directories are created `0750` instead of `0755` and files written `0600` instead of `0644` (gosec G301/G306). Skills are only read by the same user the agent runs as, so nothing needs group/other access
+- **Agent CLI**: Annotated the four intentional variable-path file reads for gosec G304 — the fixed `~/.runtm/credentials` / `~/.runtm/config.yaml` lookups and the explicit `--md` / `--schema-file` CLI flags — with per-site `#nosec` justifications; `gosec -include=G301,G304,G306 ./...` on `packages/agent` now reports 0 issues
+
 ## [0.2.21] - 2026-05-10
 
 ### Fixed
