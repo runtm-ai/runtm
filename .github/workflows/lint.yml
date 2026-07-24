@@ -4,6 +4,11 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  # Pinned so a new Ruff release can't turn every open PR red on its own.
+  # Bump deliberately, in a PR that also applies the resulting reformat.
+  RUFF_VERSION: "0.15.22"
+
 jobs:
   lint:
     name: Lint
@@ -15,7 +20,7 @@ jobs:
         uses: astral-sh/setup-uv@v5
 
       - name: Run Ruff check
-        run: uvx ruff check .
+        run: uvx ruff@${{ env.RUFF_VERSION }} check .
 
       - name: Run Ruff format check
-        run: uvx ruff format --check .
+        run: uvx ruff@${{ env.RUFF_VERSION }} format --check .
