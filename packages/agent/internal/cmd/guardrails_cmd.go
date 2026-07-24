@@ -26,7 +26,7 @@ func NewGuardrailsCommand(rt *Runtime) *cobra.Command {
 		Use:   "guardrails",
 		Short: "Org spend limits, allowlist policy, and deploy permissions",
 		Long: `Inspect and set org-scoped policies that gate session and deploy spend.
-Most commands require --org or RUNTM_ORG_ID. Writes require admin/owner role.
+Most commands require an org-scoped API key. Writes require admin/owner role.
 
 See https://docs.runtm.com/cloud-api/guardrails for the full schemas.`,
 	}
@@ -122,8 +122,8 @@ func newGuardrailsAllowlist(rt *Runtime) *cobra.Command {
 
 func newGuardrailsAllowlistSet(rt *Runtime) *cobra.Command {
 	var (
-		mode         string
-		patternsCSV  string
+		mode          string
+		patternsCSV   string
 		allowPersonal bool
 	)
 	cmd := &cobra.Command{

@@ -39,7 +39,8 @@ func NewProvidersCommand(rt *Runtime) *cobra.Command {
 		Use:   "providers",
 		Short: "Manage Anthropic / OpenAI LLM provider keys (user + org scope)",
 		Long: `Stores encrypted LLM provider API keys used by sessions when no per-session
-override is set. Use --org to manage org-wide keys (admin/owner role required).
+override is set. Use --org-scope with an org-scoped API key to manage org-wide
+keys (admin/owner role required).
 
 This is separate from external integrations (MCP servers, skills, tools, CLIs,
 APIs) — for those, see the 'runtm-integrations' skill. GitHub/Slack/Linear OAuth
@@ -85,7 +86,7 @@ func newProviderGet(rt *Runtime, provider string) *cobra.Command {
 			return runJSON(rt, resp, err)
 		},
 	}
-	cmd.Flags().BoolVar(&orgScope, "org-scope", false, "Read org-level key (requires --org)")
+	cmd.Flags().BoolVar(&orgScope, "org-scope", false, "Read org-level key (requires an org-scoped key)")
 	return cmd
 }
 
@@ -114,7 +115,7 @@ func newProviderSet(rt *Runtime, provider string) *cobra.Command {
 			return runJSON(rt, resp, err)
 		},
 	}
-	cmd.Flags().BoolVar(&orgScope, "org-scope", false, "Write to org-level key (requires --org and admin role)")
+	cmd.Flags().BoolVar(&orgScope, "org-scope", false, "Write to org-level key (requires an org-scoped key and admin role)")
 	cmd.Flags().StringVar(&apiKey, "api-key", "", "Raw provider API key (required)")
 	cmd.Flags().StringVar(&policy, "policy", "", "Org policy: 'allow_user_override' or 'require_team_key' (org only)")
 	_ = cmd.MarkFlagRequired("api-key")
@@ -135,7 +136,7 @@ func newProviderDelete(rt *Runtime, provider string) *cobra.Command {
 			return runJSON(rt, resp, err)
 		},
 	}
-	cmd.Flags().BoolVar(&orgScope, "org-scope", false, "Delete org-level key (requires --org and admin role)")
+	cmd.Flags().BoolVar(&orgScope, "org-scope", false, "Delete org-level key (requires an org-scoped key and admin role)")
 	return cmd
 }
 

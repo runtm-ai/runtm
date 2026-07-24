@@ -127,7 +127,7 @@ func parseSessionArgs(specs []string) ([]map[string]any, error) {
 // boot instantly with the environment ready.
 //
 // All routes are dual-auth and live under /api/org-templates/*. Templates are
-// org-scoped (--org or RUNTM_ORG_ID required).
+// org-scoped (an org-scoped API key is required).
 //
 // Surface covered:
 //
@@ -153,7 +153,8 @@ func NewTemplateCommand(rt *Runtime) *cobra.Command {
 and agent instructions configured. Sessions launched from a template boot
 instantly with the environment ready.
 
-All template commands require --org or RUNTM_ORG_ID. Writes (create, build,
+All template commands require an org-scoped API key; the org is read from the
+key, and --org / RUNTM_ORG_ID cannot substitute for one. Writes (create, build,
 delete) require admin/owner role on the API key.
 
 See https://docs.runtm.com/cloud-api/templates for the full schemas.`,

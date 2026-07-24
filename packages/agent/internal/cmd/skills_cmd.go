@@ -23,8 +23,9 @@ func NewSkillsCommand(rt *Runtime) *cobra.Command {
 		Long: `Create, list, update, and delete your org's skills, and install this
 CLI's own bundled skill files locally.
 
-Cloud commands (create/get/list/update/delete) are org-scoped: pass --org or
-RUNTM_ORG_ID, or use an org-scoped key. Writes need the context:write scope.
+Cloud commands (create/get/list/update/delete) are org-scoped: they require an
+org-scoped API key, which --org / RUNTM_ORG_ID cannot substitute for. Writes
+need the context:write scope.
 
 'skills install' is a local operation (no API call) that copies the skill files
 embedded in this binary into the detected agent's skills directory.`,

@@ -40,7 +40,7 @@ Docs: https://docs.runtm.com`,
 		SilenceUsage:  true,
 	}
 	root.PersistentFlags().StringVar(&flags.APIURL, "api-url", "", "Override API base URL (also RUNTM_API_URL)")
-	root.PersistentFlags().StringVar(&flags.Org, "org", "", "Organization ID for org-scoped operations (also RUNTM_ORG_ID)")
+	root.PersistentFlags().StringVar(&flags.Org, "org", "", "Organization ID for org-scoped operations (also RUNTM_ORG_ID); must match the API key's own org")
 
 	sessionCmd := NewSessionCommand(rt)
 	AddSessionExtras(sessionCmd, rt)

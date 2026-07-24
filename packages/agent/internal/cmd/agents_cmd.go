@@ -29,8 +29,8 @@ connected platform — a Slack mention, a GitHub issue/PR.
 
 The final install step happens in your browser (you authorize the app into your
 workspace/account), so 'create' hands back a URL or page to open. Org-scoped:
-pass --org or RUNTM_ORG_ID, or use an org-scoped key with admin/owner role and
-the integrations:write scope.
+requires an org-scoped API key with admin/owner role and the integrations:write
+scope (--org cannot substitute for one).
 
   Slack:  needs the org's Slack app config token set once in the dashboard,
           then 'create --type slack --name X' returns an authorize URL.

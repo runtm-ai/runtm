@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -31,16 +33,32 @@ func newTestClient(serverURL string) *client.Client {
 	})
 }
 
-func TestResolveKeyOrgIDReturnsOrgFromVerify(t *testing.T) {
-	var calls int32
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		atomic.AddInt32(&calls, 1)
-		if r.URL.Path != "/auth/verify" {
-			t.Errorf("unexpected path %q", r.URL.Path)
+// identityServer serves the supplied JSON at /v1/me and 404s everything else,
+// mirroring the real /api/cloud proxy — which only forwards to /api/*, so a
+// root-mounted route like /auth/verify is unreachable.
+//
+// The leading /cloud is stripped the way the proxy does, so this stub works
+// both for clients built directly and for those whose base URL went through
+// auth.Load (which appends the /cloud suffix).
+func identityServer(t *testing.T, payload string, calls *int32) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if calls != nil {
+			atomic.AddInt32(calls, 1)
+		}
+		if strings.TrimPrefix(r.URL.Path, "/cloud") != "/v1/me" {
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprint(w, `{"detail":"Not Found"}`)
+			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"organization_id":"org_abc"}`)
+		fmt.Fprint(w, payload)
 	}))
+}
+
+func TestResolveKeyOrgIDReturnsOrgFromMe(t *testing.T) {
+	var calls int32
+	srv := identityServer(t, `{"organization_id":"org_abc","tenant_id":"org_abc","principal_id":"user_xyz"}`, &calls)
 	defer srv.Close()
 
 	rt := newTestRuntime()
@@ -59,22 +77,51 @@ func TestResolveKeyOrgIDReturnsOrgFromVerify(t *testing.T) {
 		t.Fatalf("second call error: %v", err)
 	}
 	if calls != 1 {
-		t.Errorf("verify hit %d times, want 1 (memoized)", calls)
+		t.Errorf("identity endpoint hit %d times, want 1 (memoized)", calls)
+	}
+}
+
+// Regression guard: the bootstrap used to call /auth/verify, which the cloud
+// proxy 404s, so every org-scoped command wrongly reported "no org".
+func TestResolveKeyOrgIDUsesProxyReachableEndpoint(t *testing.T) {
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"organization_id":"org_abc"}`)
+	}))
+	defer srv.Close()
+
+	if _, err := newTestRuntime().resolveKeyOrgID(newTestClient(srv.URL)); err != nil {
+		t.Fatalf("resolveKeyOrgID error: %v", err)
+	}
+	if gotPath != "/v1/me" {
+		t.Errorf("requested %q, want /v1/me", gotPath)
+	}
+}
+
+// Backends that predate organization_id on /v1/me only expose the legacy
+// tenant_id, which equals the org for org-scoped keys.
+func TestResolveKeyOrgIDFallsBackToTenantID(t *testing.T) {
+	srv := identityServer(t, `{"tenant_id":"org_abc","principal_id":"user_xyz"}`, nil)
+	defer srv.Close()
+
+	got, err := rtResolve(t, srv.URL)
+	if err != nil {
+		t.Fatalf("resolveKeyOrgID error: %v", err)
+	}
+	if got != "org_abc" {
+		t.Errorf("orgID = %q, want org_abc", got)
 	}
 }
 
 func TestResolveKeyOrgIDReturnsEmptyForPersonalKey(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		// Personal keys come back with organization_id missing/null.
-		fmt.Fprint(w, `{"organization_id":null,"tenant_id":"user_xyz"}`)
-	}))
+	// Personal keys carry a null organization_id and a tenant_id that is just
+	// the user_id — it must not be mistaken for an org.
+	srv := identityServer(t, `{"organization_id":null,"tenant_id":"user_xyz","principal_id":"user_xyz"}`, nil)
 	defer srv.Close()
 
-	rt := newTestRuntime()
-	c := newTestClient(srv.URL)
-
-	got, err := rt.resolveKeyOrgID(c)
+	got, err := rtResolve(t, srv.URL)
 	if err != nil {
 		t.Fatalf("resolveKeyOrgID error: %v", err)
 	}
@@ -83,21 +130,112 @@ func TestResolveKeyOrgIDReturnsEmptyForPersonalKey(t *testing.T) {
 	}
 }
 
-func TestResolveKeyOrgIDPropagatesVerifyError(t *testing.T) {
+func TestResolveKeyOrgIDPropagatesLookupError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		fmt.Fprint(w, `{"detail":"Invalid API key"}`)
 	}))
 	defer srv.Close()
 
-	rt := newTestRuntime()
-	c := newTestClient(srv.URL)
-
-	got, err := rt.resolveKeyOrgID(c)
+	got, err := rtResolve(t, srv.URL)
 	if err == nil {
 		t.Fatalf("expected error, got nil (orgID=%q)", got)
 	}
 	if got != "" {
 		t.Errorf("orgID on error = %q, want empty", got)
+	}
+}
+
+func TestOrgFromIdentity(t *testing.T) {
+	cases := []struct {
+		name                         string
+		orgID, tenantID, principalID string
+		want                         string
+	}{
+		{"explicit org wins", "org_abc", "user_xyz", "user_xyz", "org_abc"},
+		{"tenant differs from principal", "", "org_abc", "user_xyz", "org_abc"},
+		{"tenant equals principal", "", "user_xyz", "user_xyz", ""},
+		{"all empty", "", "", "", ""},
+		{"tenant only, no principal", "", "org_abc", "", "org_abc"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := orgFromIdentity(tc.orgID, tc.tenantID, tc.principalID); got != tc.want {
+				t.Errorf("orgFromIdentity(%q, %q, %q) = %q, want %q",
+					tc.orgID, tc.tenantID, tc.principalID, got, tc.want)
+			}
+		})
+	}
+}
+
+func rtResolve(t *testing.T, serverURL string) (string, error) {
+	t.Helper()
+	return newTestRuntime().resolveKeyOrgID(newTestClient(serverURL))
+}
+
+// orgRuntime wires a Runtime to a stub identity server the way a real
+// invocation would: key from the env, base URL from the --api-url flag. The
+// returned counter lets callers assert the identity endpoint was actually
+// reached, so a routing regression can't masquerade as a personal key.
+func orgRuntime(t *testing.T, payload string) (*Runtime, *bytes.Buffer, *int32) {
+	t.Helper()
+	var calls int32
+	srv := identityServer(t, payload, &calls)
+	t.Cleanup(srv.Close)
+	t.Setenv("RUNTM_API_KEY", "runtm_sk_test")
+	t.Setenv("RUNTM_ORG_ID", "")
+
+	stdout := &bytes.Buffer{}
+	return &Runtime{
+		Flags:  &GlobalFlags{APIURL: srv.URL},
+		Stdout: stdout,
+		Stderr: &bytes.Buffer{},
+	}, stdout, &calls
+}
+
+func TestRequireOrgClientAdoptsOrgFromKey(t *testing.T) {
+	rt, _, _ := orgRuntime(t, `{"organization_id":"org_abc","tenant_id":"org_abc","principal_id":"user_xyz"}`)
+
+	_, creds, err := requireOrgClient(rt, "org templates")
+	if err != nil {
+		t.Fatalf("requireOrgClient error: %v", err)
+	}
+	if creds.OrganizationID != "org_abc" {
+		t.Errorf("OrganizationID = %q, want org_abc", creds.OrganizationID)
+	}
+}
+
+// A personal key genuinely cannot reach an org, so the guidance must point at
+// creating an org-scoped key rather than at --org / RUNTM_ORG_ID, which the API
+// rejects with 403.
+func TestRequireOrgClientPersonalKeyGuidance(t *testing.T) {
+	rt, stdout, calls := orgRuntime(t, `{"organization_id":null,"tenant_id":"user_xyz","principal_id":"user_xyz"}`)
+
+	if _, _, err := requireOrgClient(rt, "org templates"); err != errSilent {
+		t.Fatalf("err = %v, want errSilent", err)
+	}
+	if *calls != 1 {
+		t.Fatalf("identity endpoint hit %d times, want 1 — the lookup must succeed "+
+			"and report a personal key, not fail to route", *calls)
+	}
+
+	var payload struct {
+		Error string `json:"error"`
+		Hint  string `json:"hint"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal output %q: %v", stdout.String(), err)
+	}
+	if !strings.Contains(payload.Error, "org-scoped key") {
+		t.Errorf("error should point at creating an org-scoped key, got %q", payload.Error)
+	}
+	// Guard against regressing to the old advice, which does not work.
+	for _, banned := range []string{"Pass --org", "set RUNTM_ORG_ID"} {
+		if strings.Contains(payload.Error, banned) {
+			t.Errorf("error recommends %q, which the API rejects with 403: %q", banned, payload.Error)
+		}
+	}
+	if !strings.Contains(payload.Hint, "403") {
+		t.Errorf("hint should explain the 403, got %q", payload.Hint)
 	}
 }

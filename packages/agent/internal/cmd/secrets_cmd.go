@@ -29,7 +29,7 @@ func NewSecretsCommand(rt *Runtime) *cobra.Command {
 		Long: `Personal secrets belong to the API key owner. Team secrets are org-scoped
 and require admin/owner role on the key for writes.
 
-Set --team to operate on team secrets (requires --org or RUNTM_ORG_ID).
+Set --team to operate on team secrets (requires an org-scoped API key).
 See https://docs.runtm.com/cloud-api/secrets for the full schemas.`,
 	}
 	cmd.AddCommand(
@@ -59,7 +59,7 @@ func newSecretsList(rt *Runtime) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&team, "team", false, "List team secrets (requires --org)")
+	cmd.Flags().BoolVar(&team, "team", false, "List team secrets (requires an org-scoped key)")
 	return cmd
 }
 
@@ -97,7 +97,7 @@ func newSecretsSet(rt *Runtime) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&team, "team", false, "Write to team secrets (requires --org and admin role)")
+	cmd.Flags().BoolVar(&team, "team", false, "Write to team secrets (requires an org-scoped key and admin role)")
 	return cmd
 }
 
@@ -120,7 +120,7 @@ func newSecretsDelete(rt *Runtime) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&team, "team", false, "Delete from team secrets (requires --org and admin role)")
+	cmd.Flags().BoolVar(&team, "team", false, "Delete from team secrets (requires an org-scoped key and admin role)")
 	return cmd
 }
 
