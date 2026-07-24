@@ -8,6 +8,9 @@ on:
 
 env:
   PYTHON_VERSION: "3.12"
+  # Pinned so a new Ruff release can't turn every open PR red on its own.
+  # Bump deliberately, in a PR that also applies the resulting reformat.
+  RUFF_VERSION: "0.15.22"
 
 jobs:
   lint:
@@ -22,7 +25,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Ruff
-        run: pip install ruff
+        run: pip install "ruff==${{ env.RUFF_VERSION }}"
 
       - name: Run Ruff check
         run: ruff check .
