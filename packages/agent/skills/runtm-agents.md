@@ -25,9 +25,10 @@ supported from the CLI yet** — manage Linear agents in the dashboard.
 
 ## Org context + scope
 
-All commands are org-scoped: pass `--org` / `RUNTM_ORG_ID`, or use an org-scoped
-key. Writes (create/update/delete) need an **admin/owner** key with the
-`integrations:write` scope; reads need `integrations:read`.
+All commands are org-scoped, so they need an **org-scoped API key** — the org is
+read from the key, and `--org` / `RUNTM_ORG_ID` cannot substitute for one. Writes
+(create/update/delete) need an **admin/owner** key with the `integrations:write`
+scope; reads need `integrations:read`.
 
 ## Create
 

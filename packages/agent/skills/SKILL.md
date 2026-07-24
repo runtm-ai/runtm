@@ -163,12 +163,23 @@ go install github.com/runtm-ai/runtm/packages/agent/cmd/runtm-api@latest
 runtm-api skills install
 ```
 
-Org context for org-scoped operations (templates, team telemetry, team secrets, org instructions, guardrails) is auto-discovered from the API key, so org keys "just work" with no extra setup. Only set this when using a personal key against an org you belong to, or when switching between orgs:
+### Org context
+
+Org-scoped operations (templates, team telemetry, team secrets, org instructions, guardrails, skills/MCP) need an **org-scoped API key**. Nothing else is required — the org is auto-discovered from the key, so org keys work with no extra setup.
+
+The org is bound to the key when it is created and cannot be overridden at call time:
+
+| Key | What you pass | Result |
+|-----|---------------|--------|
+| Org-scoped | nothing | Works — org read from the key |
+| Org-scoped | `--org` matching the key | Works, redundant |
+| Org-scoped | `--org` for another org | `403` |
+| Personal | anything | `403` — a personal key can never reach an org |
+
+So `--org` / `RUNTM_ORG_ID` can only restate the key's own binding; they cannot grant access. If an org-scoped command reports the key is personal, the fix is to create an org-scoped key at https://app.runtm.com > Settings > API Keys — not to set the env var.
 
 ```bash
-export RUNTM_ORG_ID=org_abc123   # optional; usually only personal keys need this
-# or pass per command:
-runtm-api template list --org org_abc123
+runtm-api auth status | jq .organization_id   # null => personal key
 ```
 
 ## Required Input Resolution
@@ -200,7 +211,7 @@ If `authenticated: false`, ask the user to set `RUNTM_API_KEY` (or run `runtm-ap
 | Status | Cause | Fix |
 |--------|-------|-----|
 | 401 | API key invalid or missing | `RUNTM_API_KEY` or rotate in dashboard |
-| 403 | Missing scope or wrong org | `runtm-api auth status` to inspect; key may need `templates:write`, `secrets:write`, `guardrails:write`, etc. |
+| 403 | Missing scope, or the key's org doesn't match the request | `runtm-api auth status` to inspect; key may need `templates:write`, `secrets:write`, `guardrails:write`, etc. Also returned when a personal key targets an org, or `--org` names a different org than the key — use an org-scoped key instead. |
 | 404 | Wrong ID | Run the matching `list` command first |
 | 409 | Conflict (e.g. duplicate name) | Use a different name / --name flag |
 | 422 | Body validation failed | Check the canonical endpoint schema at https://docs.runtm.com/cloud-api |

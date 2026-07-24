@@ -11,7 +11,7 @@ import (
 //
 // All routes mount under /api/sessions/telemetry/* and require the
 // `activity:read` scope. Team endpoints additionally require an organization
-// context (--org or RUNTM_ORG_ID).
+// context, which comes from an org-scoped API key.
 func NewActivityCommand(rt *Runtime) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "activity",
@@ -128,7 +128,7 @@ func newActivitySessionUsage(rt *Runtime) *cobra.Command {
 func newActivityTeamSummary(rt *Runtime) *cobra.Command {
 	return &cobra.Command{
 		Use:   "team-summary",
-		Short: "Team-wide summary (GET /api/sessions/telemetry/team/summary, requires --org)",
+		Short: "Team-wide summary (GET /api/sessions/telemetry/team/summary, requires an org-scoped key)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c, _, err := requireOrgClient(rt, "team telemetry")
 			if err != nil {
@@ -148,7 +148,7 @@ func newActivityTeamActivity(rt *Runtime) *cobra.Command {
 	var days int
 	cmd := &cobra.Command{
 		Use:   "team-activity",
-		Short: "Team activity over time (GET /api/sessions/telemetry/team/activity, requires --org)",
+		Short: "Team activity over time (GET /api/sessions/telemetry/team/activity, requires an org-scoped key)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c, _, err := requireOrgClient(rt, "team telemetry")
 			if err != nil {
@@ -173,7 +173,7 @@ func newActivityTeamActivity(rt *Runtime) *cobra.Command {
 func newActivityTeamMembers(rt *Runtime) *cobra.Command {
 	return &cobra.Command{
 		Use:   "team-members",
-		Short: "Per-member team usage (GET /api/sessions/telemetry/team/members, requires --org)",
+		Short: "Per-member team usage (GET /api/sessions/telemetry/team/members, requires an org-scoped key)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c, _, err := requireOrgClient(rt, "team telemetry")
 			if err != nil {

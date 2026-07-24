@@ -62,36 +62,62 @@ func (r *Runtime) Client() (*client.Client, *auth.Credentials, error) {
 }
 
 // resolveKeyOrgID asks the backend (once) which org this API key is bound to.
-// Returns "" when the key is personal or when verify fails (in which case the
-// caller's subsequent request will surface the real error). Memoized so a
+// Returns "" when the key is personal or when the lookup fails (in which case
+// the caller's subsequent request will surface the real error). Memoized so a
 // single CLI invocation pays at most one extra round-trip.
+//
+// This reads /v1/me, not /auth/verify. The backend mounts /auth/verify at its
+// root, while the CLI speaks to the /api/cloud proxy which only forwards to
+// /api/* -- so /auth/verify is a 404 over this transport.
 func (r *Runtime) resolveKeyOrgID(c *client.Client) (string, error) {
 	r.keyOrgOnce.Do(func() {
-		body, err := c.Get("/auth/verify", nil)
+		body, err := c.Get("/v1/me", nil)
 		if err != nil {
 			r.keyOrgErr = err
 			return
 		}
 		var v struct {
 			OrganizationID string `json:"organization_id"`
+			TenantID       string `json:"tenant_id"`
+			PrincipalID    string `json:"principal_id"`
 		}
 		if err := json.Unmarshal(body, &v); err != nil {
 			r.keyOrgErr = err
 			return
 		}
-		r.keyOrgID = v.OrganizationID
+		r.keyOrgID = orgFromIdentity(v.OrganizationID, v.TenantID, v.PrincipalID)
 	})
 	return r.keyOrgID, r.keyOrgErr
+}
+
+// orgFromIdentity extracts the org binding from a /v1/me payload.
+// organization_id is authoritative when the backend supplies it. Older
+// backends only return the legacy tenant_id, which holds the org for org keys
+// but the user_id for personal ones -- so it only counts as an org when it
+// differs from the principal.
+func orgFromIdentity(orgID, tenantID, principalID string) string {
+	if orgID != "" {
+		return orgID
+	}
+	if tenantID != "" && tenantID != principalID {
+		return tenantID
+	}
+	return ""
 }
 
 // requireOrgClient resolves the API client and ensures an org context is
 // available for routes that require X-Organization-Id (team telemetry, org
 // instructions, guardrails, team secrets, templates, etc.).
 //
+// The org is a property of the API key, not a caller-supplied parameter: the
+// backend 403s a personal key that sends X-Organization-Id, and 403s an org key
+// whose header names a different org. So --org / RUNTM_ORG_ID can only restate
+// the key's own binding -- it can never grant access to an org the key lacks.
+//
 // Resolution order:
 //  1. --org flag / RUNTM_ORG_ID env var (already populated on creds).
-//  2. The org embedded in the API key, fetched once via /auth/verify.
-//  3. Surface a friendly silent error pointing the agent at the fix.
+//  2. The org embedded in the API key, fetched once via /v1/me.
+//  3. Surface a friendly silent error pointing the agent at the only real fix.
 func requireOrgClient(rt *Runtime, what string) (*client.Client, *auth.Credentials, error) {
 	c, creds, err := rt.Client()
 	if err != nil {
@@ -111,8 +137,8 @@ func requireOrgClient(rt *Runtime, what string) (*client.Client, *auth.Credentia
 	}
 
 	rt.WriteObject(map[string]any{
-		"error": what + " is org-scoped, but the API key has no org. Pass --org <id> or set RUNTM_ORG_ID, or create an org-scoped key in the dashboard.",
-		"hint":  "Run `runtm-api auth status` to inspect the active key and its org.",
+		"error": what + " is org-scoped, but this API key is personal (it has no org). Create an org-scoped key at https://app.runtm.com > Settings > API Keys and use it instead.",
+		"hint":  "The org is fixed when the key is created; --org / RUNTM_ORG_ID cannot grant access to one (the API rejects a personal key that sends an org with 403). Run `runtm-api auth status` to inspect the active key.",
 	})
 	return nil, nil, errSilent
 }

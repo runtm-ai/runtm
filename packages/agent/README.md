@@ -66,7 +66,7 @@ Requires Go 1.23+ and `goreleaser` installed locally (only for the snapshot path
 | `runtm session prompt <id> <text>` | Stream a prompt as SSE -> JSON lines. |
 | `runtm session destroy <id>` | Tear down a sandbox. |
 | `runtm session git <id> <op>` | Run a git operation (commit, push, create_branch_and_pr, ...). |
-| `runtm template list` | List org templates (requires `--org` / `RUNTM_ORG_ID`). |
+| `runtm template list` | List org templates (requires an org-scoped API key). |
 | `runtm template get <id>` | Inspect one template. |
 | `runtm deploy list` | List deployments. |
 | `runtm deploy get <id>` | Inspect one deployment. |
@@ -80,6 +80,12 @@ Run `runtm --help` or `runtm <command> --help` for full flag reference.
 | API key | `RUNTM_API_KEY` | `~/.runtm/credentials` (written by `runtm login` in the pip CLI) |
 | API URL | `RUNTM_API_URL` | `~/.runtm/config.yaml` then `https://app.runtm.com/api/cloud` |
 | Org ID  | `RUNTM_ORG_ID`  | `--org` flag, otherwise auto-resolved from the API key when it's org-scoped |
+
+The org is bound to the API key at creation. `RUNTM_ORG_ID` / `--org` can only
+restate that binding — the API returns `403` if they name a different org, or
+name any org at all on a personal key. To use org-scoped commands (templates,
+team telemetry, team secrets, org instructions, guardrails, skills/MCP), create
+an org-scoped key in the dashboard.
 
 API keys are managed in the dashboard at https://app.runtm.com. The same key works for both the pip CLI and this Go CLI.
 

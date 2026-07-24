@@ -24,13 +24,16 @@ Org templates are **snapshots of fully configured sandbox environments**. Each t
 
 A session created from a template boots instantly with the environment ready -- no install commands, no waiting on dependency builds.
 
-## All template commands require org context
+## All template commands require an org-scoped API key
+
+The org is read from the key itself, so no extra setup is needed:
 
 ```bash
-export RUNTM_ORG_ID=org_abc123    # or pass --org org_abc123 each time
+export RUNTM_API_KEY=runtm_sk_live_...   # must be an org-scoped key
+runtm-api auth status | jq .organization_id   # null => personal key, templates unavailable
 ```
 
-Without org context, every `runtm-api template` command surfaces a clear error.
+With a personal key every `runtm-api template` command surfaces a clear error. Setting `RUNTM_ORG_ID` or passing `--org` does **not** help — the org is fixed when the key is created, and the API rejects a personal key that names an org. Create an org-scoped key at https://app.runtm.com > Settings > API Keys.
 
 ## Recipe: discover what exists
 

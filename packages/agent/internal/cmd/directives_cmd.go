@@ -30,8 +30,8 @@ func NewMcpCommand(rt *Runtime) *cobra.Command {
 		Long: `Manage MCP servers that sessions can load. Two transports:
 stdio (a local command) and http/sse (a remote URL).
 
-Org-scoped: pass --org or RUNTM_ORG_ID, or use an org-scoped key. Writes need
-the context:write scope on the key.`,
+Org-scoped: requires an org-scoped API key (--org cannot substitute for one).
+Writes need the context:write scope on the key.`,
 	}
 	cmd.AddCommand(
 		newDirectiveList(rt, "MCP server", "mcp_server"),
@@ -56,8 +56,8 @@ func NewToolsCommand(rt *Runtime) *cobra.Command {
 sessions use. This command handles static-credential providers (service
 accounts, API keys); OAuth providers are connected through the dashboard.
 
-Org-scoped: pass --org or RUNTM_ORG_ID, or use an org-scoped key. Writes need
-the integrations:write scope on the key.`,
+Org-scoped: requires an org-scoped API key (--org cannot substitute for one).
+Writes need the integrations:write scope on the key.`,
 	}
 	cmd.AddCommand(
 		newToolList(rt),

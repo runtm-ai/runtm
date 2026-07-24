@@ -25,7 +25,7 @@ func NewInstructionsCommand(rt *Runtime) *cobra.Command {
 agent always reads them at boot. User instructions apply to your sessions;
 org instructions apply to every session inside the org.
 
-Use --org or RUNTM_ORG_ID to scope to an organization.
+Use --org-scope with an org-scoped API key to target org instructions.
 See https://docs.runtm.com/cloud-api/context for the full schema.`,
 	}
 	cmd.AddCommand(newInstructionsGet(rt), newInstructionsSet(rt))
@@ -50,7 +50,7 @@ func newInstructionsGet(rt *Runtime) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&orgScope, "org-scope", false, "Read org instructions (requires --org)")
+	cmd.Flags().BoolVar(&orgScope, "org-scope", false, "Read org instructions (requires an org-scoped key)")
 	return cmd
 }
 
@@ -85,7 +85,7 @@ func newInstructionsSet(rt *Runtime) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&orgScope, "org-scope", false, "Write org instructions (requires --org and admin role)")
+	cmd.Flags().BoolVar(&orgScope, "org-scope", false, "Write org instructions (requires an org-scoped key and admin role)")
 	cmd.Flags().StringVarP(&text, "text", "t", "", "Instructions content")
 	cmd.Flags().BoolVar(&clear, "clear", false, "Clear instructions (set to null)")
 	return cmd

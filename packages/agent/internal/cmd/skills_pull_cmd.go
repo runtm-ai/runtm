@@ -73,8 +73,8 @@ for ~/.agents/skills, --agent all for both (repeat --agent to combine), or
 --target to write to one explicit directory instead. Existing skill directories
 are skipped unless --force is passed.
 
-Org-scoped: pass --org or RUNTM_ORG_ID, or use an org-scoped key. Needs the
-context:read scope.
+Org-scoped: requires an org-scoped API key. The org is read from the key, so
+--org / RUNTM_ORG_ID cannot substitute for one. Needs the context:read scope.
 
 Example:
   runtm-api skills pull <template_id>

@@ -23,10 +23,14 @@ Each command exposes the same verbs: `create`, `get`, `list`, `update`,
 endpoint. That mapping is an implementation detail — just use `skills`, `mcp`,
 and `tools`.
 
-## All commands require org context
+## All commands require an org-scoped API key
+
+The org is read from the key; `--org` / `RUNTM_ORG_ID` cannot stand in for one,
+and a personal key targeting an org is rejected with `403`.
 
 ```bash
-export RUNTM_ORG_ID=org_abc123    # or pass --org org_abc123 each time
+export RUNTM_API_KEY=runtm_sk_live_...        # must be an org-scoped key
+runtm-api auth status | jq .organization_id   # null => personal key
 ```
 
 Writes need the right API-key scope: `context:write` for skills/MCP, and
@@ -303,13 +307,13 @@ Scopes & semantics:
 - `detach` removes the named `--template`/`--repo`, `--all` removes the
   all-repos attachment, and `--clear` removes everything. It leaves untouched
   attachments in place.
-- Only **org-owned** skills/MCP servers can be attached (use `--org` /
-  `RUNTM_ORG_ID`); personal directives cannot.
+- Only **org-owned** skills/MCP servers can be attached (they come from an
+  org-scoped key); personal directives cannot.
 
 The full flow to wire a skill into a template:
 
 ```bash
-export RUNTM_ORG_ID=org_abc123
+export RUNTM_API_KEY=runtm_sk_live_...   # org-scoped key
 SKILL_ID=$(runtm-api skills create --name deploy-checks --md ./SKILL.md | jq -r .directive.id)
 runtm-api skills attach "$SKILL_ID" --template <template_id>
 runtm-api template skills <template_id>          # verify it's listed
