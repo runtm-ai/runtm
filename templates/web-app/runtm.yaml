@@ -3,4 +3,4 @@ template: web-app
 runtime: fullstack
 health_path: /health
 port: 3000
-tier: starter  # starter (2GB+) runs fullstack; use performance or pro for heavier apps
+tier: starter  # starter (2GB RAM, 2 shared CPUs) runs fullstack; use performance/pro for heavier apps
