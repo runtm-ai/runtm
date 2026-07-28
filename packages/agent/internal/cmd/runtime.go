@@ -218,7 +218,7 @@ func (r *Runtime) ReportError(err error) int {
 		case http.StatusUnauthorized:
 			payload["hint"] = "Check RUNTM_API_KEY or rotate the key in the dashboard."
 		case http.StatusForbidden:
-			payload["hint"] = "Run `runtm auth status` to inspect scopes and org context."
+			payload["hint"] = "Run `runtm-api auth status` to inspect scopes and org context."
 		case http.StatusNotFound:
 			payload["hint"] = "Run the matching list command to discover valid IDs."
 		case http.StatusTooManyRequests:
