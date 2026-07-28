@@ -4,9 +4,16 @@ api: "GET /api/org-templates/{template_id}"
 description: "Get detailed information about a specific template"
 ---
 
-Returns the full detail of an organization template including its configuration, build status, linked repos, and secret requirements.
+Returns the full detail of an organization template including its configuration, build status, linked repos, secret requirements, and the skills and MCP servers a session launched from it will load.
 
 **Required scope:** `templates:read`
+
+<Note>
+Two fields answer the questions that are easy to get silently wrong:
+
+- **`skills` / `mcp_servers`** — what sessions from this template actually load. An empty `skills` array means nothing is attached, however many skills exist in the org.
+- **`attachments_changed_since_build`** — `true` when those attachments changed after the snapshot was built, so the running image is behind the configuration. Trigger [a build](/cloud-api/templates/build) to catch it up.
+</Note>
 
 ## Path Parameters
 
@@ -68,6 +75,50 @@ Returns the full detail of an organization template including its configuration,
 
 <ResponseField name="build_status" type="string | null">
   Current build status (`pending`, `building`, `completed`, `failed`).
+</ResponseField>
+
+<ResponseField name="skills" type="array">
+  Skills a session launched from this template loads. Includes skills attached to the template directly, to one of its repos, and org-wide.
+
+  <Expandable title="properties">
+    <ResponseField name="id" type="string">
+      Directive ID. Fetch the body with `GET /api/agent-directives/{id}?include_content=true`.
+    </ResponseField>
+    <ResponseField name="type" type="string">
+      Always `skill_v0`.
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Skill slug.
+    </ResponseField>
+    <ResponseField name="display_name" type="string | null">
+      Human-readable name.
+    </ResponseField>
+    <ResponseField name="description" type="string | null">
+      Short description.
+    </ResponseField>
+    <ResponseField name="content_hash" type="string">
+      Hash of the skill body, so you can tell whether the content changed.
+    </ResponseField>
+    <ResponseField name="attached_via" type="string">
+      The narrowest scope through which the skill reaches this template — `template`, `repo`, or `all`. This is the scope to change if you want to detach it.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="mcp_servers" type="array">
+  MCP servers a session launched from this template loads. Same shape as `skills`, with `type` set to `mcp_server_v0`.
+</ResponseField>
+
+<ResponseField name="attachments_changed_since_build" type="boolean">
+  `true` when the attached skills / MCP servers changed after the snapshot was built, so sessions still boot with the previously baked set. Rebuild with `POST /api/org-templates/{template_id}/build`.
+</ResponseField>
+
+<ResponseField name="directive_manifest_hash" type="string | null">
+  Hash of the currently-attached directive set.
+</ResponseField>
+
+<ResponseField name="last_built_directive_manifest_hash" type="string | null">
+  Directive manifest hash baked into the current snapshot. `attachments_changed_since_build` is the comparison of these two.
 </ResponseField>
 
 <RequestExample>
@@ -139,7 +190,22 @@ console.log(`${data.display_name} (build: ${data.build_status})`);
     }
   ],
   "build_spec": null,
-  "workdir": "/home/user/project"
+  "workdir": "/home/user/project",
+  "skills": [
+    {
+      "id": "dir_9f3c1a",
+      "type": "skill_v0",
+      "name": "deploy-checks",
+      "display_name": "Pre-deploy checks",
+      "description": "Run the release checklist before shipping",
+      "content_hash": "9c1185a5c5e9fc54612808977ee8f548b2258d31",
+      "attached_via": "template"
+    }
+  ],
+  "mcp_servers": [],
+  "attachments_changed_since_build": true,
+  "directive_manifest_hash": "b1946ac92492d2347c6235b4d2611184",
+  "last_built_directive_manifest_hash": "5d41402abc4b2a76b9719d911017c592"
 }
 ```
 </ResponseExample>

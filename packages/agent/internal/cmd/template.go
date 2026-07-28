@@ -173,7 +173,9 @@ See https://docs.runtm.com/cloud-api/templates for the full schemas.`,
 		newTemplateRepos(rt),
 		newTemplateSecrets(rt),
 		newTemplateDirectives(rt, "skills", "skill"),
-		newTemplateDirectives(rt, "mcp", "mcp_server"),
+		// "mcp" is the backend's type_family; the type name ("mcp_server")
+		// matches no family and silently disables the type filter.
+		newTemplateDirectives(rt, "mcp", "mcp"),
 	)
 	return cmd
 }
@@ -190,7 +192,11 @@ func newTemplateDirectives(rt *Runtime, use, typeFamily string) *cobra.Command {
 		Use:   use + " <template_id>",
 		Short: fmt.Sprintf("List %s attached to a template (sessions from it load these)", use),
 		Long: fmt.Sprintf(`List the %s attached to a template. Attach/detach them with
-'runtm-api %s attach|detach <id> --template <template_id>'.`, use, use),
+'runtm-api %s attach|detach <id> --template <template_id>'.
+
+Same answer as 'runtm-api %s list --template <template_id>', and
+'runtm-api template get <template_id>' carries the resolved list inline.`,
+			use, use, use),
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c, _, err := requireOrgClient(rt, "org templates")
@@ -245,8 +251,20 @@ func newTemplateList(rt *Runtime) *cobra.Command {
 func newTemplateGet(rt *Runtime) *cobra.Command {
 	return &cobra.Command{
 		Use:   "get <template_id>",
-		Short: "Get a template (GET /api/org-templates/{id})",
-		Args:  cobra.ExactArgs(1),
+		Short: "Get a template, including its attached skills and MCP servers",
+		Long: `Full template detail. Two fields worth reading before you trust a template:
+
+  skills / mcp_servers            what a session launched from this template
+                                  actually loads, each with 'attached_via'
+                                  (template, repo, or all). An empty 'skills'
+                                  means nothing is attached, however many
+                                  skills exist in the org.
+
+  attachments_changed_since_build true when those attachments changed after
+                                  the snapshot was built, so the running image
+                                  is behind the configuration. Fix with
+                                  'runtm-api template build <id>'.`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c, _, err := requireOrgClient(rt, "org templates")
 			if err != nil {

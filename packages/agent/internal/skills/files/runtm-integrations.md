@@ -288,12 +288,19 @@ runtm-api skills detach <skill_id> --template <template_id>
 runtm-api skills detach <skill_id> --clear
 ```
 
-The template-side view — list what a template loads:
+Three equivalent ways to ask "what does this template load?" — use whichever
+you reached for first:
 
 ```bash
-runtm-api template skills <template_id>   # skills attached to the template
-runtm-api template mcp <template_id>      # MCP servers attached to the template
+runtm-api template skills <template_id>          # template-first
+runtm-api skills list --template <template_id>   # skills-first
+runtm-api template get <template_id> | jq .skills   # inline, plus staleness
 ```
+
+The same three exist for MCP servers (`template mcp`, `mcp list --template`,
+`template get | jq .mcp_servers`). Scope a listing to a repo instead with
+`--repo owner/name`. Every scoped form also includes org-wide items (those
+attached with `--all`), because those load too.
 
 Scopes & semantics:
 
@@ -310,14 +317,28 @@ Scopes & semantics:
 - Only **org-owned** skills/MCP servers can be attached (they come from an
   org-scoped key); personal directives cannot.
 
-The full flow to wire a skill into a template:
+The full flow to wire a skill into a template. **Creating a skill attaches it
+nowhere and bakes it nowhere** — both follow-up steps are required, and both
+fail silently if skipped:
 
 ```bash
 export RUNTM_API_KEY=runtm_sk_live_...   # org-scoped key
 SKILL_ID=$(runtm-api skills create --name deploy-checks --md ./SKILL.md | jq -r .directive.id)
+
+# 1. Attach it — without this, sessions boot without the skill
 runtm-api skills attach "$SKILL_ID" --template <template_id>
-runtm-api template skills <template_id>          # verify it's listed
+
+# 2. Verify, and check whether the snapshot is now behind the config
+runtm-api template get <template_id> | jq '{skills: [.skills[].name], stale: .attachments_changed_since_build}'
+
+# 3. Rebuild if stale — attaching changes config, not the built image
+runtm-api template build <template_id>
 ```
+
+`attachments_changed_since_build: true` means the attachments moved after the
+last build, so sessions still boot with the old set until you rebuild. That
+flag is the reason to prefer `template get` over `template skills` when you are
+about to trust a template.
 
 ---
 

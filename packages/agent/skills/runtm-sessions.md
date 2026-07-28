@@ -1,8 +1,8 @@
 ---
 name: runtm-sessions
-description: "Multi-step workflow recipes for Runtm Cloud sessions: launching agents, iterating with prompts, polling status, reading/writing files, managing env vars, and opening PRs."
+description: "Multi-step workflow recipes for Runtm Cloud sessions: launching agents, iterating with prompts, polling status, running commands with exec (incl. --json), reading/writing files, managing env vars, and opening PRs."
 metadata:
-  version: "0.4.0"
+  version: "0.5.0"
   tags: runtm,runtime,sessions,workflows,sandboxes
 ---
 
@@ -16,6 +16,7 @@ Workflow recipes for the `runtm-api session` subcommands. For endpoint details s
 |------|-----|
 | Boot a session from a prebuilt org template | `session create --template-id <uuid>` |
 | Run a single shell command in a session | `session exec <id> -- <command>` (scripted, returns its exit code) |
+| Run a command whose output you will **parse** | `session exec <id> --json -- <command>` |
 | Open a live interactive shell | `session connect <id>` (raw PTY; needs a TTY) |
 | Fire-and-forget background task | `session launch` (v0 -- creates + prompts in one call) |
 | Interactive, streaming response right now | `session create` then `session prompt` |
@@ -63,7 +64,7 @@ runtm-api session connect a6414511-4430-4e1f-8c51-8ea8824dadec
 Two ways to get a shell against a session's sandbox, both over the same terminal WebSocket the dashboard uses (scope: `sessions:terminal`):
 
 ```bash
-# Non-interactive: run one command, stream its output, exit with its exit code.
+# Non-interactive: run one command, print its output, exit with its exit code.
 # A throwaway PTY is used, so it never disturbs interactive terminals. Put the
 # command after `--` so runtm-api does not parse its flags.
 runtm-api session exec <id> -- pwd
@@ -77,7 +78,35 @@ runtm-api session connect <id>
 runtm-api session connect <id> --terminal default   # share the dashboard terminal
 ```
 
-Use `exec` for automation and scripted checks; use `connect` only when a human is at a real terminal. `exec` output is the raw PTY stream and may contain minor terminal formatting.
+Use `exec` for automation and scripted checks; use `connect` only when a human is at a real terminal.
+
+### `--json`: use it whenever you will parse the output
+
+The default output is the raw PTY stream: stderr is merged into stdout and the sandbox's shell startup noise (mise, nvm, and similar banners) rides along, which is why hand-rolled pipelines end up with a `grep -v` filter. `--json` avoids all of that:
+
+```bash
+runtm-api session exec <id> --json -- npm test
+# -> {"stdout": "...", "stderr": "...", "exit_code": 1}
+
+# Read one stream at a time
+runtm-api session exec <id> --json -- ./build.sh | jq -r .stderr
+
+# Branch on the exit code without trusting $? through a pipe
+result=$(runtm-api session exec <id> --json -- pytest -q || true)
+[ "$(jq -r .exit_code <<<"$result")" = "0" ] || echo "tests failed"
+```
+
+- The two streams are captured separately (stderr goes to a temp file in the sandbox and is replayed after a sentinel), so neither can interleave into the other.
+- PTY carriage returns are stripped, so `stdout` compares cleanly against expected text.
+- The process **still exits with the remote exit code**, so under `set -e` a failing command aborts the script before you can read the JSON — capture it with `|| true` as above, then read `exit_code`.
+
+### `!` is safe
+
+Bash history expansion is disabled for the command in both modes. A literal `!` in a heredoc, a commit message, or a regex reaches the sandbox intact instead of being silently rewritten against shell history.
+
+### Paused sandboxes resume automatically
+
+Sessions auto-pause after ~20 minutes idle. `exec`, `connect`, and the file commands now resume a paused sandbox in place rather than failing, so a scripted run against a session you left alone yesterday just works. The first command after a resume takes a few extra seconds. Use `session pause` when you deliberately want to stop the clock.
 
 ## Recipe: launch an agent from scratch
 
