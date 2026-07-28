@@ -1,0 +1,127 @@
+---
+title: "Run Scheduled Agent Now"
+api: "POST /api/v1/scheduled-agents/{agent_id}:run"
+description: "Fire one run immediately instead of waiting for the next cron tick"
+---
+
+Launches one run of a scheduled agent right now. Returns the created session ID.
+
+**Required scope:** `sessions:write` — the caller must also be an organization **admin or owner**.
+
+This executes the identical code path Cloud Scheduler triggers: same template resolution, same Slack target, same orchestrator call. That is the point — a broken agent fails here, synchronously, with the reason in the response, rather than silently at its scheduled hour.
+
+<Note>
+**Disabled agents run too.** Validating an agent before turning its schedule on is the main reason to use this endpoint, so `enabled` is not checked. The response echoes the agent's `enabled` state so you know which you triggered.
+</Note>
+
+The run stamps `last_run_at` and `last_session_id` exactly like a scheduled tick. It is recorded with a `manual` trigger for telemetry, but is otherwise indistinguishable from a scheduled run.
+
+## Path Parameters
+
+<ParamField path="agent_id" type="string" required>
+  The scheduled agent ID.
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  Organization ID.
+</ParamField>
+
+## Response
+
+<ResponseField name="scheduled_agent_id" type="string">
+  The agent that was run.
+</ResponseField>
+
+<ResponseField name="session_id" type="string">
+  Session created by this run. Follow it with [Get Session](/cloud-api/sessions/get) or [Prompt History](/cloud-api/sessions/history).
+</ResponseField>
+
+<ResponseField name="enabled" type="boolean">
+  The agent's schedule state. A manual run works either way.
+</ResponseField>
+
+<ResponseField name="trigger" type="string">
+  Always `manual` for this endpoint.
+</ResponseField>
+
+<ResponseField name="triggered_at" type="string">
+  When the run was triggered.
+</ResponseField>
+
+## Errors
+
+| Status | Cause |
+|--------|-------|
+| `403` | Caller is not an org admin or owner |
+| `404` | No such agent in this organization |
+| `502` | The launch failed — `detail` carries the reason (unknown template, deleted Slack integration, sandbox capacity) |
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/cloud/v1/scheduled-agents/sa_9f3c1a/:run" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```bash CLI
+runtm-api scheduled-agents run-now sa_9f3c1a
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://app.runtm.com/api/cloud/v1/scheduled-agents/sa_9f3c1a:run",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "X-Organization-Id": "org_abc123",
+    },
+)
+
+if response.status_code == 502:
+    # The scheduled tick would have failed the same way.
+    raise RuntimeError(response.json()["detail"])
+
+print(response.json()["session_id"])
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/cloud/v1/scheduled-agents/sa_9f3c1a:run",
+  {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "X-Organization-Id": "org_abc123",
+    },
+  }
+);
+
+const data = await response.json();
+console.log(data.session_id);
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "scheduled_agent_id": "sa_9f3c1a",
+  "session_id": "a6414511-4430-4e1f-8c51-8ea8824dadec",
+  "enabled": false,
+  "trigger": "manual",
+  "triggered_at": "2026-07-27T18:04:11Z"
+}
+```
+
+```json 502
+{
+  "detail": "Failed to launch scheduled agent: template 'gtm-machine' not found"
+}
+```
+</ResponseExample>

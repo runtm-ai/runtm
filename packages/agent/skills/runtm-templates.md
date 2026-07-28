@@ -1,8 +1,8 @@
 ---
 name: runtm-templates
-description: "Full lifecycle workflows for Runtm Cloud org templates: discover, create, build, monitor builds, fix broken templates via fix-session, save snapshots, manage template secrets."
+description: "Full lifecycle workflows for Runtm Cloud org templates: discover, create, build, monitor builds, verify attached skills and build staleness, fix broken templates via fix-session, save snapshots, manage template secrets."
 metadata:
-  version: "0.4.0"
+  version: "0.5.0"
   tags: runtm,runtime,templates,org,workflows
 ---
 
@@ -49,6 +49,49 @@ Key fields to inspect:
 - `has_all_required`: false means a template will fail to boot until missing secrets are set.
 - `services`: array of detected services (web, api, db). Each has its own port + start_cmd.
 - `agents`: list of coding agents the snapshot was built for.
+- `skills` / `mcp_servers`: what a session from this template actually loads.
+- `attachments_changed_since_build`: true means those changed after the last build, so the snapshot is behind.
+
+## Recipe: verify a template loads the skills you think it does
+
+Skills define agent behaviour, and the two ways to get this wrong are both silent: creating a skill and never attaching it, or attaching one and never rebuilding. `template get` reports both:
+
+```bash
+runtm-api template get <tmpl_id> | jq '{
+  skills: [.skills[] | {name, attached_via}],
+  mcp: [.mcp_servers[].name],
+  stale: .attachments_changed_since_build
+}'
+```
+
+```json
+{
+  "skills": [
+    { "name": "outbound-writing", "attached_via": "template" },
+    { "name": "company-context", "attached_via": "all" }
+  ],
+  "mcp": ["notion"],
+  "stale": true
+}
+```
+
+| What you see | What it means | Fix |
+|---|---|---|
+| `skills: []` | Nothing is attached, however many skills exist in the org | `runtm-api skills attach <skill_id> --template <tmpl_id>` |
+| `stale: true` | Attachments changed after the snapshot was built; sessions boot with the old set | `runtm-api template build <tmpl_id>` |
+| `attached_via: "template"` | Attached directly to this template | Detach with `skills detach <id> --template <tmpl_id>` |
+| `attached_via: "repo"` | Reaches the template through one of its repos | Detach with `skills detach <id> --repo owner/name` |
+| `attached_via: "all"` | Org-wide (`--all`), loads into every session | Detach with `skills detach <id> --all` |
+
+The same list is available from either direction, so use whichever command you reached for first:
+
+```bash
+runtm-api template get <tmpl_id> | jq .skills   # inline, plus staleness
+runtm-api template skills <tmpl_id>             # template-first
+runtm-api skills list --template <tmpl_id>      # skills-first
+```
+
+Full attach/detach mechanics live in the `runtm-integrations` skill.
 
 ## Recipe: create a new template
 

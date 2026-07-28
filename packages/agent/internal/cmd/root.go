@@ -60,6 +60,7 @@ Docs: https://docs.runtm.com`,
 		NewMcpCommand(rt),
 		NewToolsCommand(rt),
 		NewAgentsCommand(rt),
+		NewScheduledAgentsCommand(rt),
 	)
 	return rootBuild{cmd: root, rt: rt}
 }

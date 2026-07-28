@@ -34,7 +34,10 @@ Org-scoped: requires an org-scoped API key (--org cannot substitute for one).
 Writes need the context:write scope on the key.`,
 	}
 	cmd.AddCommand(
-		newDirectiveList(rt, "MCP server", "mcp_server"),
+		// "mcp" is the backend's type_family. Sending the type name instead
+		// ("mcp_server") falls through to no type filter at all, which quietly
+		// mixes skills into the results.
+		newDirectiveList(rt, "MCP server", "mcp"),
 		newDirectiveGet(rt, "MCP server"),
 		newMcpCreate(rt),
 		newMcpUpdate(rt),
@@ -680,13 +683,23 @@ func newToolDelete(rt *Runtime) *cobra.Command {
 // backend query value ("skill", "mcp_server").
 func newDirectiveList(rt *Runtime, singular, typeFamily string) *cobra.Command {
 	var (
+		templateID     string
+		repo           string
 		pageSize       int
 		pageToken      string
 		includeContent bool
 	)
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: fmt.Sprintf("List %ss", singular),
+		Short: fmt.Sprintf("List %ss (--template to scope to one template)", singular),
+		Long: fmt.Sprintf(`List the %ss in your org.
+
+  --template <id>   only the %ss a session from that template loads.
+                    Equivalent to 'runtm-api template mcp <id>'.
+  --repo owner/name only the %ss attached to that repo.
+
+Both scoped forms include org-wide items (those attached with --all).`,
+			singular, singular, singular),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c, _, err := requireOrgClient(rt, singular+"s")
 			if err != nil {
@@ -694,6 +707,12 @@ func newDirectiveList(rt *Runtime, singular, typeFamily string) *cobra.Command {
 			}
 			q := listQuery(pageSize, pageToken)
 			q.Set("type_family", typeFamily)
+			if templateID != "" {
+				q.Set("template_id", templateID)
+			}
+			if repo != "" {
+				q.Set("repo_full_name", repo)
+			}
 			if includeContent {
 				q.Set("include_content", "true")
 			}
@@ -701,6 +720,8 @@ func newDirectiveList(rt *Runtime, singular, typeFamily string) *cobra.Command {
 			return runJSON(rt, resp, err)
 		},
 	}
+	cmd.Flags().StringVar(&templateID, "template", "", fmt.Sprintf("Only %ss a session from this template loads", singular))
+	cmd.Flags().StringVar(&repo, "repo", "", fmt.Sprintf("Only %ss attached to this repo (owner/name)", singular))
 	cmd.Flags().IntVar(&pageSize, "page-size", 0, "Results per page (1-100)")
 	cmd.Flags().StringVar(&pageToken, "page-token", "", "Pagination cursor")
 	cmd.Flags().BoolVar(&includeContent, "include-content", false, "Include each item's content payload")

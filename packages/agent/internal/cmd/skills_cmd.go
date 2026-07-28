@@ -112,16 +112,32 @@ Pass --target to override the destination directory.`,
 func newSkillsList(rt *Runtime) *cobra.Command {
 	var (
 		bundled        bool
+		templateID     string
+		repo           string
 		pageSize       int
 		pageToken      string
 		includeContent bool
 	)
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List your org's skills (or --bundled for this CLI's own skills)",
+		Short: "List your org's skills (--template to scope to one template)",
+		Long: `List the skills in your org.
+
+  --template <id>   only the skills a session from that template loads.
+                    Equivalent to 'runtm-api template skills <id>' — the same
+                    answer from whichever command you reached for first.
+  --repo owner/name only the skills attached to that repo.
+  --bundled         the skill files embedded in this binary (local, no API).
+
+Both scoped forms include org-wide skills (those attached with --all), because
+those load too. 'runtm-api template get <id>' also carries the resolved list
+inline, along with whether it is stale relative to the last build.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// --bundled: list the skill files embedded in this binary (local).
 			if bundled {
+				if templateID != "" || repo != "" {
+					return fmt.Errorf("--bundled lists this binary's own files; it cannot be combined with --template or --repo")
+				}
 				files, err := listEmbeddedSkills()
 				if err != nil {
 					return err
@@ -139,6 +155,12 @@ func newSkillsList(rt *Runtime) *cobra.Command {
 			}
 			q := listQuery(pageSize, pageToken)
 			q.Set("type_family", "skill")
+			if templateID != "" {
+				q.Set("template_id", templateID)
+			}
+			if repo != "" {
+				q.Set("repo_full_name", repo)
+			}
 			if includeContent {
 				q.Set("include_content", "true")
 			}
@@ -147,6 +169,8 @@ func newSkillsList(rt *Runtime) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&bundled, "bundled", false, "List the skill files embedded in this CLI binary instead of org skills")
+	cmd.Flags().StringVar(&templateID, "template", "", "Only skills a session from this template loads (same as 'template skills <id>')")
+	cmd.Flags().StringVar(&repo, "repo", "", "Only skills attached to this repo (owner/name)")
 	cmd.Flags().IntVar(&pageSize, "page-size", 0, "Results per page (1-100)")
 	cmd.Flags().StringVar(&pageToken, "page-token", "", "Pagination cursor")
 	cmd.Flags().BoolVar(&includeContent, "include-content", false, "Include each skill's content payload")

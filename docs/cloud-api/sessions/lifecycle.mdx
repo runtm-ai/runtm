@@ -13,6 +13,22 @@ single atomic call.
   Required scope for all four endpoints: `sessions:write`.
 </Info>
 
+<Note>
+**You usually don't need to resume explicitly.** Sessions auto-pause after
+roughly 20 minutes idle, and the endpoints you'd reach for next resume in
+place rather than rejecting:
+
+- the [file endpoints](/cloud-api/sessions/files-read) (read, write, list, search, upload, download, mkdir, rename, delete) and `run-server`
+- the terminal WebSocket, which backs `runtm-api session exec` and `session connect`
+- the prompt WebSocket
+- `POST /api/v2/sessions/{id}/start`
+
+The first call after a resume takes a few extra seconds. If the resume itself
+fails, those endpoints return `400` with the reason rather than a bare
+"not running". Call `resume` explicitly when you want to warm a sandbox ahead
+of time, or `pause` when you deliberately want to stop the clock.
+</Note>
+
 ---
 
 ## Pause Session

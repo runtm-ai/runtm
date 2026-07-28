@@ -217,6 +217,13 @@
       ]
     },
     {
+      "group": "Scheduled Agents",
+      "pages": [
+        "cloud-api/scheduled-agents/overview",
+        "cloud-api/scheduled-agents/run"
+      ]
+    },
+    {
       "group": "Secrets",
       "pages": [
         "cloud-api/secrets/resolved",

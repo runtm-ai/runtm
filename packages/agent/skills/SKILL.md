@@ -1,8 +1,8 @@
 ---
 name: runtm
-description: "Runtm (Runtime) Cloud CLI for AI agents. Full cloud-API surface: sessions (CRUD + files + env + deploy + lifecycle + history + events + visibility + collaborators), org templates (CRUD + build + fix-session + snapshot + secrets), activity telemetry, secrets, instructions, guardrails, LLM provider keys (Anthropic/OpenAI), external integrations (MCP servers, skills, tools, CLIs, APIs). Trigger on: runtm, runtime, runtm cloud, runtime cloud, runtm session, runtime session, cloud sandbox, integration, integrations, connect an integration, mcp, skill, provider key."
+description: "Runtm (Runtime) Cloud CLI for AI agents. Full cloud-API surface: sessions (CRUD + files + env + deploy + lifecycle + history + events + visibility + collaborators), org templates (CRUD + build + fix-session + snapshot + secrets), scheduled agents (cron automation + run-now), activity telemetry, secrets, instructions, guardrails, LLM provider keys (Anthropic/OpenAI), external integrations (MCP servers, skills, tools, CLIs, APIs). Trigger on: runtm, runtime, runtm cloud, runtime cloud, runtm session, runtime session, cloud sandbox, integration, integrations, connect an integration, mcp, skill, provider key, scheduled agent, cron, automation, recurring agent."
 metadata:
-  version: "0.8.0"
+  version: "0.9.0"
   repository: https://github.com/runtm-ai/runtm
   tags: runtm,runtime,cli,sandboxes,coding-agents
 ---
@@ -43,9 +43,15 @@ runtm-api session connect a6414511-4430-4e1f-8c51-8ea8824dadec
 
 # 4b. Or run one command non-interactively and capture its output + exit code
 runtm-api session exec a6414511-4430-4e1f-8c51-8ea8824dadec -- pwd
+
+# 4c. Parsing the output? Use --json for separated streams and no shell noise.
+runtm-api session exec a6414511-4430-4e1f-8c51-8ea8824dadec --json -- npm test
+# -> {"stdout": "...", "stderr": "...", "exit_code": 0}
 ```
 
-Use `session connect` when a human wants a live shell; use `session exec` for scripted, one-shot commands (it streams stdout and exits with the command's exit code). Both need the `sessions:terminal` scope. See the `runtm-sessions` skill for the full recipe.
+Use `session connect` when a human wants a live shell; use `session exec` for scripted, one-shot commands. Both need the `sessions:terminal` scope, and both auto-resume a paused sandbox. See the `runtm-sessions` skill for the full recipe.
+
+**Always pass `--json` to `session exec` when you are going to parse the output.** The default is the raw PTY stream, which merges stderr into stdout and carries shell startup noise (mise/nvm banners and the like) that you would otherwise have to filter out with `grep -v`. `--json` captures the two streams separately and strips PTY carriage returns.
 
 To parameterize a template, declare **session arguments** with `--session-arg` (each becomes an env var in the session); supply values at boot with `session create --template-id <uuid> --template-args KEY=VALUE`. See the `runtm-templates` skill.
 
@@ -62,6 +68,7 @@ To parameterize a template, declare **session arguments** with `--session-arg` (
 | Boot template session with arg values | `runtm-api session create --template-id <uuid> --template-args KEY=VALUE` |
 | Attach interactive terminal (PTY) | `runtm-api session connect <id>` |
 | Run one command (scripted) | `runtm-api session exec <id> -- <command>` |
+| Run one command, parseable output | `runtm-api session exec <id> --json -- <command>` |
 | Stream prompt | `runtm-api session prompt <id> "<task>"` |
 | Stream live event bus | `runtm-api session events <id>` |
 | Poll status (last_prompt) | `runtm-api session status <id>` |
@@ -91,7 +98,7 @@ To parameterize a template, declare **session arguments** with `--session-arg` (
 | Task | Command |
 |------|---------|
 | List templates | `runtm-api template list` |
-| Get template detail | `runtm-api template get <tmpl_id>` |
+| Get template detail (incl. attached skills + build staleness) | `runtm-api template get <tmpl_id>` |
 | Create new template | `runtm-api template create --display-name "..." --github-repo owner/repo` |
 | Create + clone-only build (no AI step) | `runtm-api template create --display-name "..." --github-repo owner/repo --skip-agent` |
 | Declare session args (create/update) | `runtm-api template create ... --session-arg KEY=DEFAULT --session-arg '{"key":"ENV","type":"select","options":["dev","prod"]}'` |
@@ -106,8 +113,63 @@ To parameterize a template, declare **session arguments** with `--session-arg` (
 | List template secrets | `runtm-api template secrets list <tmpl_id>` |
 | Set template secrets | `runtm-api template secrets set <tmpl_id> KEY value [KEY value ...]` |
 | Delete a template secret | `runtm-api template secrets delete <tmpl_id> KEY` |
-| Skills/MCP attached to a template | `runtm-api template skills\|mcp <tmpl_id>` |
+| Skills/MCP attached to a template | `runtm-api template skills\|mcp <tmpl_id>` (or `skills\|mcp list --template <tmpl_id>`) |
 | Attach a skill/MCP to a template | `runtm-api skills\|mcp attach <id> --template <tmpl_id>` |
+
+#### Verify a template actually loads your skills
+
+The most common template mistake is creating skills and never attaching them, so sessions boot without the behaviour you wrote. `template get` answers this inline — no second call needed:
+
+```bash
+runtm-api template get <tmpl_id> | jq '{
+  skills: [.skills[].name],
+  stale: .attachments_changed_since_build
+}'
+```
+
+- **`skills: []`** means nothing is attached, however many skills exist in the org. Fix with `runtm-api skills attach <skill_id> --template <tmpl_id>`.
+- **`stale: true`** means the attachments changed after the last build, so the snapshot sessions boot from is behind the config. Fix with `runtm-api template build <tmpl_id>`.
+
+Each entry carries `attached_via`: `template` (attached directly), `repo` (via one of the template's repos), or `all` (org-wide). Three commands give the same skills answer, so reach for whichever you thought of first:
+
+```bash
+runtm-api template get <tmpl_id> | jq .skills   # inline, plus staleness
+runtm-api template skills <tmpl_id>             # template-first
+runtm-api skills list --template <tmpl_id>      # skills-first
+```
+
+### Scheduled agents (cron automation)
+
+Run a prompt on a schedule. Distinct from `runtm-api agents`, which fires on Slack/GitHub *events*; these fire on a *clock*.
+
+| Task | Command |
+|------|---------|
+| List (with `next_run_at`) | `runtm-api scheduled-agents list` |
+| Get one | `runtm-api scheduled-agents get <id>` |
+| Create | `runtm-api scheduled-agents create --name X --cron '0 18 * * 1' --prompt "..." [--template <tmpl_id>]` |
+| **Run once, right now** | `runtm-api scheduled-agents run-now <id>` |
+| Enable / disable | `runtm-api scheduled-agents update <id> --enabled\|--disabled` |
+| Change the schedule | `runtm-api scheduled-agents update <id> --cron '0 17 * * 1'` |
+| Post results to Slack | `runtm-api scheduled-agents create ... --slack-integration <id> --slack-channel <chan_id>` |
+| Delete | `runtm-api scheduled-agents delete <id> --yes` |
+
+**Always `run-now` before enabling.** It executes the same path the cron tick takes — same template resolution, same Slack target, same orchestrator call — so a bad template name or missing integration fails in front of you instead of silently at the scheduled hour. It works on disabled agents, which is what makes this order safe:
+
+```bash
+# 1. Create it switched off
+runtm-api scheduled-agents create --name weekly-outbound --disabled \
+  --cron '0 18 * * 1' --template <tmpl_id> \
+  --prompt 'Build this week's outbound lists and post them for approval'
+
+# 2. Prove it works (returns the launched session_id)
+runtm-api scheduled-agents run-now <id>
+runtm-api session history <session_id>
+
+# 3. Only then turn the schedule on
+runtm-api scheduled-agents update <id> --enabled
+```
+
+Cron is **5 fields in UTC** — there is no per-agent time zone. 11am Pacific is `0 18 * * *` in winter and `0 17 * * *` under daylight time, so pick the one that matches now and revisit at the DST boundary. `list` reports `next_run_at` (null when disabled) next to `last_run_at` and `last_session_id`, which is the fastest way to check whether a schedule is actually live.
 
 ### Activity (telemetry)
 
@@ -129,8 +191,9 @@ To parameterize a template, declare **session arguments** with `--session-arg` (
 | Instructions | `runtm-api instructions get\|set [--org-scope] [--text "..."\|--clear]` |
 | Guardrails | `runtm-api guardrails limits\|allowlist get\|set`, `can-deploy`, `deploy-limits`, `cleanup --yes` |
 | Providers (LLM keys) | `runtm-api providers anthropic\|openai get\|set\|delete\|resolved [--org-scope]` |
-| Integrations (external) | Skills / MCP servers / tools -- `runtm-api skills\|mcp\|tools create\|get\|list\|update\|delete`; attach skills/MCP to templates with `skills\|mcp attach\|detach\|attachments <id> --template <tmpl_id>` (see `runtm-integrations`) |
-| Agents (Slack/GitHub) | `runtm-api agents create\|list\|get\|update\|delete --type slack\|github` (see `runtm-agents`) |
+| Integrations (external) | Skills / MCP servers / tools -- `runtm-api skills\|mcp\|tools create\|get\|list\|update\|delete`; scope a listing with `list --template <tmpl_id>` / `--repo owner/name`; attach with `skills\|mcp attach\|detach\|attachments <id> --template <tmpl_id>` (see `runtm-integrations`) |
+| Agents (Slack/GitHub events) | `runtm-api agents create\|list\|get\|update\|delete --type slack\|github` (see `runtm-agents`) |
+| Scheduled agents (cron) | `runtm-api scheduled-agents list\|get\|create\|update\|run-now\|delete` |
 | Auth | `runtm-api auth status` |
 
 ## Endpoint Strategy
@@ -216,6 +279,8 @@ If `authenticated: false`, ask the user to set `RUNTM_API_KEY` (or run `runtm-ap
 | 409 | Conflict (e.g. duplicate name) | Use a different name / --name flag |
 | 422 | Body validation failed | Check the canonical endpoint schema at https://docs.runtm.com/cloud-api |
 | 429 | Rate limited | Back off (5-10s) and retry |
+| 502 on `scheduled-agents run-now` | The run itself failed (bad template name, missing Slack integration) | The `detail` carries the reason — this is run-now working as intended, catching what would otherwise fail silently at the scheduled hour |
+| 503 on `scheduled-agents create\|update` | Cloud Scheduler isn't configured in this environment | Create with `--disabled` and drive it with `run-now` |
 | 5xx | Sandbox / upstream | Retry once; check https://status.runtm.com |
 
 ## Scope Reference
@@ -253,6 +318,8 @@ If `authenticated: false`, ask the user to set `RUNTM_API_KEY` (or run `runtm-ap
 | `guardrails cleanup` | `guardrails:write` (admin/owner) |
 | `providers * get\|resolved` | `integrations:read` (backend scope unchanged) |
 | `providers * set\|delete` | `integrations:write` (org needs admin/owner) |
+| `scheduled-agents list\|get` | `sessions:read` |
+| `scheduled-agents create\|update\|delete\|run-now` | `sessions:write` (admin/owner) |
 
 ## More Skills
 
@@ -260,13 +327,14 @@ If `authenticated: false`, ask the user to set `RUNTM_API_KEY` (or run `runtm-ap
 - `runtm-templates` -- full template lifecycle (create, build, fix, snapshot).
 - `runtm-debug` -- inspect a session's state when something is wrong.
 - `runtm-integrations` -- add/connect an **external** integration (research API/SDK/CLI/MCP/repos/skills → weigh auth methods → user picks → build definition → connect in the UI); CRUD skills, MCP servers, and tools. NB: "integration" means external tooling; LLM provider keys (Anthropic/OpenAI) live under `runtm-api providers`.
-- `runtm-agents` -- create, list, and edit Slack/GitHub integration agents.
+- `runtm-agents` -- create, list, and edit Slack/GitHub integration agents (event-driven).
+- `runtm-automation` -- scheduled agents: cron syntax, the create-disabled → `run-now` → enable order, and debugging a schedule that didn't fire.
 
 ## Subcommand Discovery
 
 ```bash
 runtm-api --help
-runtm-api <area> --help            # session, template, activity, secrets, instructions, guardrails, integrations, auth
+runtm-api <area> --help            # session, template, scheduled-agents, activity, secrets, instructions, guardrails, integrations, auth
 runtm-api session deploy --help    # nested subcommand trees
 runtm-api template fix-session --help
 ```

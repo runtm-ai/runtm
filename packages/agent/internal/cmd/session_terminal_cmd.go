@@ -302,21 +302,95 @@ func findExecEnd(buf []byte, pid string) (output []byte, code int, ok bool) {
 	return buf[:m[0]], code, true
 }
 
+// splitExecStreams cuts captured output at the pid-bound mid sentinel that
+// --json mode prints between stdout and the replayed stderr file. Without the
+// marker (a shell too old to have run the split payload, or a command that
+// killed its own shell) everything is treated as stdout.
+func splitExecStreams(output []byte, pid string) (stdout, stderr []byte) {
+	midRe := regexp.MustCompile(`__RUNTM_` + regexp.QuoteMeta(pid) + `_M\r?\n`)
+	m := midRe.FindIndex(output)
+	if m == nil {
+		return output, nil
+	}
+	return output[:m[0]], output[m[1]:]
+}
+
+// execPayload builds the one-line shell program the PTY runs.
+//
+// Three things it has to get right:
+//
+//  1. `set +H` disables bash history expansion. E2B's pty.create() always
+//     starts bash, and an interactive bash expands `!` against history as the
+//     line is read — before the command ever runs. So a literal `!` in a
+//     heredoc, a commit message, or a regex silently rewrites the command.
+//     The option is probed in a subshell first because `set +H` is an
+//     *unrecoverable* error in shells that lack it (dash aborts on the spot,
+//     before a trailing `|| true` can run); the subshell contains that.
+//
+//  2. The command runs in a subshell, so `exit 3` (or anything that calls
+//     `exit`) yields an exit code instead of killing the wrapper before it can
+//     print the end marker — which surfaced as "connection closed before the
+//     command completed" with the output lost.
+//
+//  3. When splitStreams is set, stderr is redirected to a pid-scoped temp file
+//     and replayed after a mid sentinel, which is what lets --json hand back
+//     stdout and stderr separately. Otherwise the two interleave as before.
+func execPayload(cmdLine string, splitStreams bool) string {
+	const prelude = "if (set +H) 2>/dev/null; then set +H; fi; "
+
+	if !splitStreams {
+		return prelude + fmt.Sprintf(
+			"printf '__RUNTM_%%d_S\\n' \"$$\"; ( %s ); __rc=$?; printf '__RUNTM_%%d_E%%d\\n' \"$$\" \"$__rc\"; exit\n",
+			cmdLine,
+		)
+	}
+	// Order matters: print the start marker, run with stderr captured, then
+	// mid marker, then replay stderr, then the exit marker carrying $?.
+	return prelude + fmt.Sprintf(
+		"__errf=$(mktemp 2>/dev/null || echo /tmp/runtm-exec-$$.err); "+
+			"printf '__RUNTM_%%d_S\\n' \"$$\"; "+
+			"( %s ) 2>\"$__errf\"; __rc=$?; "+
+			"printf '__RUNTM_%%d_M\\n' \"$$\"; "+
+			"cat \"$__errf\" 2>/dev/null; rm -f \"$__errf\"; "+
+			"printf '__RUNTM_%%d_E%%d\\n' \"$$\" \"$__rc\"; exit\n",
+		cmdLine,
+	)
+}
+
+// normalizeExecOutput turns PTY line endings into plain newlines. The remote
+// shell runs on a PTY, so every "\n" arrives as "\r\n" — fine to print, but it
+// corrupts JSON string values and breaks callers that compare exact output.
+func normalizeExecOutput(b []byte) string {
+	return strings.ReplaceAll(string(stripLeadingNewline(b)), "\r\n", "\n")
+}
+
 func newSessionExec(rt *Runtime) *cobra.Command {
-	var timeoutSec int
+	var (
+		timeoutSec int
+		asJSON     bool
+	)
 	cmd := &cobra.Command{
 		Use:   "exec <session_id> -- <command> [args...]",
 		Short: "Run one command in a session over the terminal WebSocket",
 		Long: `Runs a single command inside the session's sandbox using the terminal
-WebSocket, streams its output to stdout, and exits with the command's exit
-code. A throwaway PTY is used so it never disturbs your interactive terminals.
+WebSocket, prints its output, and exits with the command's exit code. A
+throwaway PTY is used so it never disturbs your interactive terminals.
 
 Put the command after '--' so its flags are not parsed by runtm-api:
   runtm-api session exec <id> -- ls -la /workspace
   runtm-api session exec <id> -- "npm test"
 
-Output is the raw PTY stream and may contain minor terminal formatting. Scope
-required: sessions:terminal.`,
+--json emits {"stdout": "...", "stderr": "...", "exit_code": N} instead of the
+raw stream, with the two streams captured separately and PTY carriage returns
+stripped. Use it whenever the output is going to be parsed rather than read;
+the default merged stream also carries shell startup noise that otherwise has
+to be filtered out. The process still exits with the remote exit code, so
+check exit_code or the process status, not both.
+
+Bash history expansion is disabled for the command, so '!' is safe to use in
+heredocs, commit messages, and regexes.
+
+A paused sandbox is resumed automatically. Scope required: sessions:terminal.`,
 		Args: cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			sessionID := args[0]
@@ -349,10 +423,7 @@ required: sessions:terminal.`,
 			// One command line: print start marker, run, print end marker + $?,
 			// then exit so the server tears the PTY down. Markers use $$ so the
 			// echoed input can't collide with the printed values.
-			payload := fmt.Sprintf(
-				"printf '__RUNTM_%%d_S\\n' \"$$\"; %s; __rc=$?; printf '__RUNTM_%%d_E%%d\\n' \"$$\" \"$__rc\"; exit\n",
-				cmdLine,
-			)
+			payload := execPayload(cmdLine, asJSON)
 
 			var (
 				buf     []byte
@@ -409,7 +480,16 @@ required: sessions:terminal.`,
 				}
 				if started {
 					if output, code, ok := findExecEnd(buf, pid); ok {
-						os.Stdout.Write(stripLeadingNewline(output))
+						if asJSON {
+							stdout, stderr := splitExecStreams(output, pid)
+							rt.WriteObject(map[string]any{
+								"stdout":    normalizeExecOutput(stdout),
+								"stderr":    normalizeExecOutput(stderr),
+								"exit_code": code,
+							})
+						} else {
+							os.Stdout.Write(stripLeadingNewline(output))
+						}
 						if code != 0 {
 							return &exitCodeError{code: code}
 						}
@@ -420,6 +500,7 @@ required: sessions:terminal.`,
 		},
 	}
 	cmd.Flags().IntVar(&timeoutSec, "timeout", 0, "Abort if the command runs longer than N seconds (0 = no timeout)")
+	cmd.Flags().BoolVar(&asJSON, "json", false, `Emit {"stdout","stderr","exit_code"} with the streams captured separately`)
 	return cmd
 }
 

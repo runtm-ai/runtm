@@ -1,0 +1,167 @@
+---
+title: "Scheduled Agents"
+description: "Run an agent prompt on a cron schedule, and trigger a run on demand"
+---
+
+A scheduled agent pairs a cron expression with a prompt, an optional org template, and an optional Slack channel. Every tick launches a fresh session in autopilot mode and runs the prompt to completion.
+
+This is the *time*-driven automation primitive. For *event*-driven agents (a Slack mention, a GitHub issue), see [Slack](/cloud-api/integrations/slack/list-integrations) and [GitHub](/cloud-api/integrations/github-app/list-installations) integrations.
+
+## Endpoints
+
+| Method | Path | Scope |
+|--------|------|-------|
+| `GET` | `/api/v1/scheduled-agents` | `sessions:read` |
+| `GET` | `/api/v1/scheduled-agents/{agent_id}` | `sessions:read` |
+| `POST` | `/api/v1/scheduled-agents` | `sessions:write` + admin |
+| `PATCH` | `/api/v1/scheduled-agents/{agent_id}` | `sessions:write` + admin |
+| `POST` | `/api/v1/scheduled-agents/{agent_id}:run` | `sessions:write` + admin |
+| `DELETE` | `/api/v1/scheduled-agents/{agent_id}` | `sessions:write` + admin |
+
+All endpoints are organization-scoped and require the `X-Organization-Id` header. Mutations additionally require an **admin or owner** role, because a run costs compute and can post to a shared channel.
+
+## Validate before you enable
+
+`POST /{agent_id}:run` executes the identical code path the scheduled tick takes — same template resolution, same Slack target, same orchestrator call. A misconfigured agent fails there, synchronously, with the reason in the response, instead of silently at its scheduled hour.
+
+It works on **disabled** agents, which makes this the recommended order:
+
+```bash
+# 1. Create it switched off
+curl -X POST "https://app.runtm.com/api/cloud/v1/scheduled-agents" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "weekly-outbound",
+    "cron": "0 18 * * 1",
+    "prompt": "Build this week'"'"'s outbound lists and post them for approval",
+    "org_template_id": "tmpl_abc123",
+    "enabled": false
+  }'
+
+# 2. Prove it runs
+curl -X POST "https://app.runtm.com/api/cloud/v1/scheduled-agents/sa_9f3c/:run" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+
+# 3. Only then enable the schedule
+curl -X PATCH "https://app.runtm.com/api/cloud/v1/scheduled-agents/sa_9f3c" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{"enabled": true}'
+```
+
+## Cron is 5 fields, in UTC
+
+Schedules run in `Etc/UTC`. There is no per-agent time zone, so a local time has to be converted by hand and revisited when daylight saving shifts.
+
+| Intent | Winter (UTC-8) | Summer (UTC-7) |
+|--------|---------------|----------------|
+| Daily 11:00 Pacific | `0 19 * * *` | `0 18 * * *` |
+| Mondays 11:00 Pacific | `0 19 * * 1` | `0 18 * * 1` |
+| Weekdays 09:00 Pacific | `0 17 * * 1-5` | `0 16 * * 1-5` |
+| Every hour | `0 * * * *` | `0 * * * *` |
+
+The `next_run_at` field on every response is derived from the cron, so it is the fastest way to confirm a schedule reads the way you meant. It is `null` for disabled agents, which have no scheduler job at all.
+
+<Note>
+`next_run_at` is advisory. Cloud Scheduler owns the real timing; this is a convenience so you don't need a separate lookup.
+</Note>
+
+## The scheduled agent object
+
+<ResponseField name="id" type="string">
+  Scheduled agent ID.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Display name (1–128 characters).
+</ResponseField>
+
+<ResponseField name="cron" type="string">
+  5-field cron expression, evaluated in UTC.
+</ResponseField>
+
+<ResponseField name="prompt" type="string">
+  Prompt run on every tick.
+</ResponseField>
+
+<ResponseField name="org_template_id" type="string | null">
+  Org template the session launches from.
+</ResponseField>
+
+<ResponseField name="template_name" type="string | null">
+  Display name of that template.
+</ResponseField>
+
+<ResponseField name="agent" type="string">
+  Coding agent to run (default `claude-code`).
+</ResponseField>
+
+<ResponseField name="model" type="string | null">
+  Model override for the launched session.
+</ResponseField>
+
+<ResponseField name="enabled" type="boolean">
+  Whether the schedule is live. Disabling removes the scheduler job but keeps the agent.
+</ResponseField>
+
+<ResponseField name="slack_integration_id" type="string | null">
+  Slack integration posting the result. Travels with `slack_channel_id`; setting one without the other is a `400`.
+</ResponseField>
+
+<ResponseField name="slack_integration_name" type="string | null">
+  Display name of that integration.
+</ResponseField>
+
+<ResponseField name="slack_channel_id" type="string | null">
+  Channel the result is posted to.
+</ResponseField>
+
+<ResponseField name="last_run_at" type="string | null">
+  When the agent last ran, scheduled or manual.
+</ResponseField>
+
+<ResponseField name="last_session_id" type="string | null">
+  Session created by that run. Inspect it with [Get Session](/cloud-api/sessions/get).
+</ResponseField>
+
+<ResponseField name="next_run_at" type="string | null">
+  Next UTC fire time derived from the cron. `null` when disabled or when the expression can't be parsed.
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  Creation timestamp.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string | null">
+  Last modification timestamp.
+</ResponseField>
+
+## Errors
+
+| Status | Cause |
+|--------|-------|
+| `400` | Missing organization context, or `slack_integration_id` / `slack_channel_id` set without the other |
+| `403` | Caller is not an org admin or owner |
+| `404` | No such agent in this organization |
+| `422` | `cron` is not a 5-field expression |
+| `502` | `:run` — the launch itself failed; `detail` carries the reason |
+| `503` | Cloud Scheduler is not configured in this environment |
+
+<Tip>
+A `503` on create or update means the environment has no scheduler wired up. You can still create the agent with `"enabled": false` and drive it entirely with `:run`.
+</Tip>
+
+## CLI
+
+```bash
+runtm-api scheduled-agents list
+runtm-api scheduled-agents create --name weekly --cron '0 18 * * 1' --prompt '...' --disabled
+runtm-api scheduled-agents run-now <id>
+runtm-api scheduled-agents update <id> --enabled
+```
+
+See the [agent CLI reference](/cloud-api/agent-cli).
