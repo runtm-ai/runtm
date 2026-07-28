@@ -1,0 +1,55 @@
+---
+title: "List Agents"
+api: "GET /api/v1/agents"
+description: "List the organization's roster agents"
+---
+
+Returns every agent in the active organization as a JSON array. The list lazily syncs rows from trigger integrations that carry a `config.agent_id`, so agents created through the dashboard's trigger flows appear here without a separate backfill.
+
+**Required scope:** `activity:read`
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string">
+  Organization ID. Omit for personal agents.
+</ParamField>
+
+## Response
+
+A JSON array of [agent objects](/cloud-api/agents/overview#the-agent-object).
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/cloud/v1/agents" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```bash CLI
+runtm-api agents list
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+[
+  {
+    "id": "a1b2c3d4-0000-0000-0000-000000000000",
+    "organization_id": "org_abc123",
+    "name": "Donna",
+    "description": "GTM research agent",
+    "avatar": {"kind": "icon", "icon": "bot", "color": "blue"},
+    "avatar_image_url": null,
+    "system_instructions": "Be terse. Prefer PRs over prose.",
+    "default_template": "gtm-machine",
+    "default_agent": "claude-code",
+    "evaluator_criteria": {"version": 2, "objective": "Ship weekly lists", "checks": ["lists posted"]},
+    "economics": {"budget": {"monthly_usd_cap": 50}}
+  }
+]
+```
+</ResponseExample>

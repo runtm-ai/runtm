@@ -1,0 +1,59 @@
+---
+title: "Load MCP Servers"
+api: "POST /api/sessions/{session_id}/mcps"
+description: "Hot-load MCP servers into a running session"
+---
+
+Loads MCP servers into a running sandbox without a template rebuild. IDs are agent-directive IDs (from [List MCP Servers](/cloud-api/context/skills/list) with `type_family=mcp`). Servers whose connections still need credentials are reported under `needs_auth` rather than failing the call.
+
+**Required scope:** `sessions:write`
+
+## Path Parameters
+
+<ParamField path="session_id" type="string" required>
+  The session ID.
+</ParamField>
+
+## Request Body
+
+<ParamField body="mcp_ids" type="string[]" required>
+  Agent-directive IDs of the MCP servers to load.
+</ParamField>
+
+## Response
+
+<ResponseField name="loaded" type="array">
+  `{id, name}` for each server that loaded.
+</ResponseField>
+
+<ResponseField name="needs_auth" type="string[]">
+  Servers skipped because their connection has no credentials yet.
+</ResponseField>
+
+<ResponseField name="skipped" type="string[]">
+  IDs that were unknown or not MCP servers.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/cloud/sessions/a6414511-4430-4e1f-8c51-8ea8824dadec/mcps" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{"mcp_ids": ["dir_5e6f7a"]}'
+```
+
+```bash CLI
+runtm-api session load-mcps a6414511-4430-4e1f-8c51-8ea8824dadec dir_5e6f7a
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "loaded": [{"id": "dir_5e6f7a", "name": "notion"}],
+  "needs_auth": [],
+  "skipped": []
+}
+```
+</ResponseExample>

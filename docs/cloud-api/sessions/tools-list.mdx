@@ -1,0 +1,44 @@
+---
+title: "List Session Tools"
+api: "GET /api/sessions/{session_id}/tools"
+description: "The tools loaded into a session"
+---
+
+Lists the tools (knowledge integrations) currently loaded into the session. Reads session metadata, so it works while the sandbox is paused.
+
+**Required scope:** `sessions:read`
+
+## Path Parameters
+
+<ParamField path="session_id" type="string" required>
+  The session ID.
+</ParamField>
+
+## Response
+
+<ResponseField name="tools" type="array">
+  `{id, name}` per loaded tool, where `id` is the provider slug.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/cloud/sessions/a6414511-4430-4e1f-8c51-8ea8824dadec/tools" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```bash CLI
+runtm-api session tools a6414511-4430-4e1f-8c51-8ea8824dadec
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "tools": [
+    {"id": "notion", "name": "Notion"},
+    {"id": "bigquery", "name": "BigQuery"}
+  ]
+}
+```
+</ResponseExample>

@@ -1,8 +1,8 @@
 ---
 name: runtm-sessions
-description: "Multi-step workflow recipes for Runtm Cloud sessions: launching agents, iterating with prompts, polling status, running commands with exec (incl. --json), reading/writing files, managing env vars, and opening PRs."
+description: "Multi-step workflow recipes for Runtm Cloud sessions: launching agents, iterating with prompts, searching sessions, resolving approval gates, hot-loading skills/MCP/tools, running commands with exec (incl. --json), binary file upload/download, reading run grades, managing env vars, and opening PRs."
 metadata:
-  version: "0.5.0"
+  version: "0.6.0"
   tags: runtm,runtime,sessions,workflows,sandboxes
 ---
 
@@ -23,6 +23,11 @@ Workflow recipes for the `runtm-api session` subcommands. For endpoint details s
 | Iterate on the same session across prompts | `session prompt` repeatedly with the same `<id>` |
 | Just check status (polling) | `session status <id>` (v0 polling shape with last_prompt) |
 | Inspect full session metadata | `session get <id>` (canonical) |
+| Find a session you know something about | `session search -q "<text>" [--agent ...] [--template ...]` |
+| See why an autopilot run stalled | `session approvals list <id>` then `approvals resolve` |
+| Read a run's evaluation verdict | `session grade <id>` |
+| Add a capability without rebuilding | `session load-skills\|load-mcps\|load-tools <id> ...` |
+| Move binary artifacts in/out | `session file upload\|download <id> ...` |
 | Hold a sandbox without spending | `session pause` then `session resume` later |
 | Edit files programmatically | `session file write` |
 | Inject configuration | `session env set <id> KEY=VAL ...` |
@@ -107,6 +112,84 @@ Bash history expansion is disabled for the command in both modes. A literal `!` 
 ### Paused sandboxes resume automatically
 
 Sessions auto-pause after ~20 minutes idle. `exec`, `connect`, and the file commands now resume a paused sandbox in place rather than failing, so a scripted run against a session you left alone yesterday just works. The first command after a resume takes a few extra seconds. Use `session pause` when you deliberately want to stop the clock.
+
+## Recipe: unblock a stalled autopilot run (approvals)
+
+Autopilot runs can pause on an approval gate (a deploy, a guarded action) and
+wait for a human decision. A run stuck in `agent_status=awaiting_approval` is
+not broken; it is waiting for this:
+
+```bash
+# 1. See the gates, newest first
+runtm-api session approvals list <session_id>
+
+# 2. Decide (role-gated server-side: admins/owners always may; otherwise the
+#    approval's required_role or required_team_id must match)
+runtm-api session approvals resolve <session_id> <approval_id> --approve --note "ship it"
+runtm-api session approvals resolve <session_id> <approval_id> --reject --note "wrong repo"
+
+# 3. The session flips back to working; the agent picks up from the verdict.
+```
+
+## Recipe: hot-load capabilities into a running session
+
+Attaching a skill at template build time takes a rebuild. Loading it into the
+running sandbox takes seconds:
+
+```bash
+runtm-api skills list                                  # find the directive id
+runtm-api session load-skills <id> <skill_id>          # skills: directive ids
+runtm-api session load-mcps <id> <mcp_id>              # MCP servers: directive ids
+runtm-api session load-tools <id> notion bigquery      # tools: PROVIDER SLUGS
+runtm-api session tools <id>                           # what's loaded now
+```
+
+The response separates `loaded` from `needs_auth` (credentials missing) and
+`skipped` (wrong id/slug). Loading requires the sandbox to be running; a
+paused one auto-resumes.
+
+## Recipe: move binary artifacts in and out
+
+`file write`/`read` handle text. For CSVs, archives, and anything binary:
+
+```bash
+# In: defaults to /home/user/<basename>; give an explicit remote path as arg 3
+runtm-api session file upload <id> ./leads.csv /home/user/data/leads.csv
+
+# Out: directories arrive as .tar.gz; capped at 50 MB
+runtm-api session file download <id> /home/user/output/report.pdf ./report.pdf
+```
+
+## Recipe: find the session again later
+
+```bash
+runtm-api session search -q "outbound lists"                 # fuzzy text
+runtm-api session search --template gtm-machine --team-mode  # by origin
+runtm-api session search --source schedule --created-after 2026-07-01
+```
+
+`session list` only pages; `search` filters by agent, model, template, source,
+creator, and time windows, and matches name/prompt text with `-q`.
+
+## Recipe: ship a deployment and track it afterwards
+
+`session deploy` ships from the sandbox; `deployments` is how you see the
+result later without switching tools.
+
+```bash
+# 1. Validate, then deploy (SSE stream of build + deploy progress)
+runtm-api session deploy validate <id>
+runtm-api session deploy run <id>
+
+# 2. Link the session to its deployment
+runtm-api session get <id> | jq -r .last_deployment_id
+
+# 3. Track, read logs, tear down
+runtm-api deployments get <dep_id>            # state + live URL + version
+runtm-api deployments logs <dep_id> --type runtime --lines 100
+runtm-api deployments list --state ready      # everything currently serving
+runtm-api deployments destroy <dep_id> --yes  # URL goes offline
+```
 
 ## Recipe: launch an agent from scratch
 

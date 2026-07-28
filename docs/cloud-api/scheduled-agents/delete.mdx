@@ -1,0 +1,33 @@
+---
+title: "Delete Scheduled Agent"
+api: "DELETE /api/v1/scheduled-agents/{agent_id}"
+description: "Permanently delete a scheduled agent and its schedule"
+---
+
+Deletes the agent and best-effort removes its Cloud Scheduler job, returning `204`. To pause a schedule while keeping its configuration, use [Update](/cloud-api/scheduled-agents/update) with `"enabled": false` instead.
+
+**Required scope:** `sessions:write` and an admin or owner role.
+
+## Path Parameters
+
+<ParamField path="agent_id" type="string" required>
+  The scheduled agent ID.
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE "https://app.runtm.com/api/cloud/v1/scheduled-agents/sa_9f3c1a" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```bash CLI
+runtm-api scheduled-agents delete sa_9f3c1a --yes
+```
+</RequestExample>
+
+<ResponseExample>
+```json 204
+{}
+```
+</ResponseExample>

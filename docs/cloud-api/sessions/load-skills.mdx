@@ -1,0 +1,64 @@
+---
+title: "Load Skills"
+api: "POST /api/sessions/{session_id}/skills"
+description: "Hot-load org skills into a running session"
+---
+
+Loads skills into a running sandbox without a template rebuild: the difference between seconds and minutes when iterating. IDs are agent-directive IDs (from [List Skills](/cloud-api/context/skills/list)), not names. The sandbox must be running.
+
+**Required scope:** `sessions:write`
+
+## Path Parameters
+
+<ParamField path="session_id" type="string" required>
+  The session ID.
+</ParamField>
+
+## Request Body
+
+<ParamField body="skill_ids" type="string[]" required>
+  Agent-directive IDs of the skills to load.
+</ParamField>
+
+## Response
+
+<ResponseField name="loaded" type="array">
+  `{id, name}` for each skill that loaded.
+</ResponseField>
+
+<ResponseField name="applied_integrations" type="string[]">
+  Tool integrations applied because a loaded skill requires them.
+</ResponseField>
+
+<ResponseField name="unmet_requirements" type="string[]">
+  Requirements that could not be satisfied (for example, a tool with no credentials).
+</ResponseField>
+
+<ResponseField name="skipped" type="string[]">
+  IDs that were unknown or not skills.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/cloud/sessions/a6414511-4430-4e1f-8c51-8ea8824dadec/skills" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{"skill_ids": ["dir_9f3c1a"]}'
+```
+
+```bash CLI
+runtm-api session load-skills a6414511-4430-4e1f-8c51-8ea8824dadec dir_9f3c1a
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "loaded": [{"id": "dir_9f3c1a", "name": "outbound-writing"}],
+  "applied_integrations": [],
+  "unmet_requirements": [],
+  "skipped": []
+}
+```
+</ResponseExample>

@@ -206,6 +206,44 @@ Skill content fields: `entry_md` (default `SKILL.md`), `files[]`
 (`{path, mode: text|binary, inline}`), optional `runtime_env`, `frontmatter`,
 and `requires` (`{integrations: [...], tooling: {mise: {...}}}`).
 
+### Skills at org scale: import, discover, resync, lock
+
+Creating skills one at a time by hand does not scale. The lifecycle verbs do:
+
+```bash
+# See what a repo contains before importing (read-only, nothing is created)
+runtm-api skills discover --repo acme/agent-skills
+# -> candidates: [{path, name, description, already_imported}, ...]
+
+# Bulk-import from a repo, attaching in the same call so nothing lands
+# unattached and silently unused
+runtm-api skills import --source github_repo --uri acme/agent-skills \
+  --attach-template <tmpl_id>
+# Or import one file by URL:
+runtm-api skills import --source github_url \
+  --uri https://github.com/acme/agent-skills/blob/main/deploy/SKILL.md
+
+# Re-pull a skill from its original source, keeping id + attachments.
+# No-op when the source is unchanged (response carries no_changes).
+runtm-api skills resync <id>
+
+# Protect a critical skill from edits (org admin only). Locked skills still
+# load into sessions and builds; edits/deletes/resync/attachments are blocked.
+runtm-api skills lock <id>
+runtm-api skills unlock <id>
+
+# What labels exist, with counts (before filtering a list by one)
+runtm-api skills facets [--template <tmpl_id>] [--repo owner/name]
+
+# Add a binary or oversized file to a skill bundle via object storage
+# (presign, PUT the bytes, patch the manifest; max 5 MiB)
+runtm-api skills upload-file <id> --file ./data/lookup.csv --path data/lookup.csv
+```
+
+`resync`, `lock`, `unlock`, and `facets` also exist on `runtm-api mcp`.
+Group ownership: `runtm-api skills update <id> --owner-team <team_id>` limits
+visibility to one group; empty string makes it org-wide again.
+
 ---
 
 ## MCP servers

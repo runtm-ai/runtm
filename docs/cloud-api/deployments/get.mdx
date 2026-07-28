@@ -1,0 +1,49 @@
+---
+title: "Get Deployment"
+api: "GET /api/v0/deployments/{deployment_id}"
+description: "Get one deployment"
+---
+
+Returns a single deployment with its state, live URL, and version chain.
+
+**Required scope:** `deployments:read` (API key auth)
+
+## Path Parameters
+
+<ParamField path="deployment_id" type="string" required>
+  The deployment ID.
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/cloud/v0/deployments/dep_3f2a" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```bash CLI
+runtm-api deployments get dep_3f2a
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "deployment_id": "dep_3f2a",
+  "name": "landing-page",
+  "state": "ready",
+  "url": "https://landing-page.runtm.app",
+  "error_message": null,
+  "version": 3,
+  "is_latest": true,
+  "previous_deployment_id": "dep_1c9b",
+  "app_name": "landing-page",
+  "template": "static-site",
+  "runtime": "static",
+  "src_hash": "5d41402a",
+  "created_at": "2026-07-27T20:00:00Z",
+  "updated_at": "2026-07-27T20:03:00Z",
+  "ready_at": "2026-07-27T20:03:00Z",
+  "discovery": null
+}
+```
+</ResponseExample>

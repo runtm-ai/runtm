@@ -1,0 +1,77 @@
+---
+title: "Update Email Integration"
+api: "PUT /api/v1/email/integration/{integration_id}"
+description: "Edit an email inbox; omitted fields are left unchanged"
+---
+
+Partial update. The `config` object is shallow-merged into the existing config rather than replaced.
+
+**Required scope:** `integrations:write`, and the caller must be an org admin or owner.
+
+## Path Parameters
+
+<ParamField path="integration_id" type="string" required>
+  The email integration ID.
+</ParamField>
+
+## Request Body
+
+<ParamField body="name" type="string">
+  New display name.
+</ParamField>
+
+<ParamField body="enabled" type="boolean">
+  Turn the inbox trigger on or off.
+</ParamField>
+
+<ParamField body="default_template" type="string">
+  New default template.
+</ParamField>
+
+<ParamField body="default_github_repo" type="string">
+  New default repo.
+</ParamField>
+
+<ParamField body="default_agent" type="string">
+  New coding agent harness.
+</ParamField>
+
+<ParamField body="rate_limit_per_hour" type="integer">
+  Max inbound events handled per hour (1 to 1000).
+</ParamField>
+
+<ParamField body="config" type="object">
+  Keys to merge into the existing config.
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X PUT "https://app.runtm.com/api/cloud/v1/email/integration/em_8d7c" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{"enabled": false}'
+```
+
+```bash CLI
+runtm-api agents update em_8d7c --type email --disabled
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "id": "em_8d7c",
+  "name": "support-inbox",
+  "inbox_email": "acme-support-inbox@agentmail.to",
+  "inbox_id": "in_123",
+  "enabled": false,
+  "default_template": "support-bot",
+  "default_github_repo": null,
+  "default_agent": "claude-code",
+  "rate_limit_per_hour": 15,
+  "config": {"agent_id": "a1b2c3d4-0000-0000-0000-000000000000"},
+  "created_at": "2026-07-20T12:00:00Z"
+}
+```
+</ResponseExample>

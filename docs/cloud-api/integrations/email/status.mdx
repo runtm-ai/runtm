@@ -1,0 +1,30 @@
+---
+title: "Email Availability"
+api: "GET /api/v1/email/status"
+description: "Whether email triggers are available in this environment"
+---
+
+Reports whether the platform's email provider (AgentMail) is configured. When `available` is false, provisioning returns `400`.
+
+**Required scope:** `integrations:read`. No organization header required.
+
+## Response
+
+<ResponseField name="available" type="boolean">
+  Whether email inboxes can be provisioned.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/cloud/v1/email/status" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "available": true
+}
+```
+</ResponseExample>

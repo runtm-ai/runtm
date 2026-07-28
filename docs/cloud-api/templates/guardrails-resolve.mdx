@@ -1,0 +1,82 @@
+---
+title: "Resolve Template Guardrails"
+api: "GET /api/org-templates/{template_id}/guardrails:resolve"
+description: "The merged org and template guardrail set sessions actually enforce"
+---
+
+Resolves what a session launched from this template enforces: org items and template items merged, each marked with an `effective_status` (`active`, `deduped`, `shadowed`, or `conflict`), plus the effective limits, allowlist default policy, and allowed network egress. This is the answer to "which rule actually applies" when org and template define overlapping guardrails.
+
+**Required scope:** `guardrails:read`
+
+## Path Parameters
+
+<ParamField path="template_id" type="string" required>
+  The template ID.
+</ParamField>
+
+## Response
+
+<ResponseField name="template_id" type="string">
+  The template.
+</ResponseField>
+
+<ResponseField name="organization_id" type="string">
+  The owning organization.
+</ResponseField>
+
+<ResponseField name="items" type="array">
+  Merged guardrails: `{source: "org" | "template", type, name, content, content_hash, effective_status, enforcement_layer, id}`.
+</ResponseField>
+
+<ResponseField name="limits" type="object">
+  Effective compute and cost limits.
+</ResponseField>
+
+<ResponseField name="allowlist_default_policy" type="string">
+  `allow` or the org's allowlist mode.
+</ResponseField>
+
+<ResponseField name="network_allow_out" type="string[]">
+  The hosts and CIDRs sandbox egress may reach.
+</ResponseField>
+
+<ResponseField name="hash" type="string">
+  Hash of the resolved set; changes when any input changes.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/cloud/org-templates/tmpl_abc123/guardrails:resolve" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```bash CLI
+runtm-api template guardrails resolve tmpl_abc123
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "template_id": "tmpl_abc123",
+  "organization_id": "org_abc123",
+  "items": [
+    {
+      "source": "template",
+      "type": "allowlist_rule_v0",
+      "name": "block-force-push",
+      "content": {"kind": "deny", "pattern": "git push --force*"},
+      "content_hash": "9c1185a5c5e9fc54612808977ee8f548b2258d31",
+      "effective_status": "active",
+      "enforcement_layer": "command",
+      "id": "tg_4b2c"
+    }
+  ],
+  "limits": {"idle_timeout_minutes": 30},
+  "allowlist_default_policy": "allow",
+  "network_allow_out": ["api.stripe.com"],
+  "hash": "b1946ac92492d2347c6235b4d2611184"
+}
+```
+</ResponseExample>

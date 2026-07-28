@@ -1,0 +1,37 @@
+---
+title: "Delete Template Guardrail"
+api: "DELETE /api/org-templates/{template_id}/guardrails/{guardrail_id}"
+description: "Remove a template guardrail"
+---
+
+Deletes the guardrail and returns `204`. To stop enforcing while keeping the definition, prefer [Update](/cloud-api/templates/guardrails-update) with `"enabled": false`.
+
+**Required scope:** `guardrails:write`
+
+## Path Parameters
+
+<ParamField path="template_id" type="string" required>
+  The template ID.
+</ParamField>
+
+<ParamField path="guardrail_id" type="string" required>
+  The guardrail ID.
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE "https://app.runtm.com/api/cloud/org-templates/tmpl_abc123/guardrails/tg_4b2c" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```bash CLI
+runtm-api template guardrails delete tmpl_abc123 tg_4b2c --yes
+```
+</RequestExample>
+
+<ResponseExample>
+```json 204
+{}
+```
+</ResponseExample>

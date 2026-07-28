@@ -1,0 +1,81 @@
+---
+title: "Group Usage"
+api: "GET /api/groups/{team_id}/usage"
+description: "What an owning group owns"
+---
+
+Groups (Better Auth teams) own templates and skills through `owner_team_id`: a group-owned resource is visible only to that group's members and org admins. This returns what a group owns, which matters before renaming or deleting it: group deletion is blocked while the group still owns resources.
+
+Set ownership through [Update Template Config](/cloud-api/templates/update-config) or [Patch Directive](/cloud-api/context/skills/patch) with `owner_team_id` (a team ID sets the owner, explicit `null` makes the resource org-wide). Changing a template's owning group is restricted to org admins and the template's creator.
+
+**Required scope:** `templates:read`
+
+## Path Parameters
+
+<ParamField path="team_id" type="string" required>
+  The Better Auth team ID.
+</ParamField>
+
+## Headers
+
+<ParamField header="X-Organization-Id" type="string" required>
+  Organization ID. Missing header returns `400`.
+</ParamField>
+
+## Response
+
+<ResponseField name="team_id" type="string">
+  The group.
+</ResponseField>
+
+<ResponseField name="template_count" type="integer">
+  Templates owned by the group.
+</ResponseField>
+
+<ResponseField name="skill_count" type="integer">
+  Skills (directives) owned by the group.
+</ResponseField>
+
+<ResponseField name="in_use" type="boolean">
+  Whether the group owns anything.
+</ResponseField>
+
+<ResponseField name="template_names" type="string[]">
+  Up to five owned template names.
+</ResponseField>
+
+<ResponseField name="skill_names" type="string[]">
+  Up to five owned skill names.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/cloud/groups/team_9x8y/usage" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```bash CLI
+runtm-api groups usage team_9x8y
+
+# Assign ownership
+runtm-api template update tmpl_abc123 --owner-team team_9x8y
+runtm-api skills update dir_9f3c1a --owner-team team_9x8y
+
+# Back to org-wide
+runtm-api template update tmpl_abc123 --owner-team ""
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "team_id": "team_9x8y",
+  "template_count": 2,
+  "skill_count": 5,
+  "in_use": true,
+  "template_names": ["GTM Machine", "Support Bot"],
+  "skill_names": ["outbound-writing", "lead-dedupe", "crm-sync", "call-notes", "list-review"]
+}
+```
+</ResponseExample>

@@ -1,0 +1,33 @@
+---
+title: "Delete Agent"
+api: "DELETE /api/v1/agents/{agent_id}"
+description: "Remove a roster agent"
+---
+
+Removes the roster row and returns `204`. Deletion is only durable once every trigger integration referencing the agent is gone: while an integration still carries this `config.agent_id`, the lazy list sync recreates the row. Delete the triggers first (the order the dashboard enforces).
+
+**Required scope:** `integrations:write`
+
+## Path Parameters
+
+<ParamField path="agent_id" type="string" required>
+  The agent ID.
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE "https://app.runtm.com/api/cloud/v1/agents/a1b2c3d4-0000-0000-0000-000000000000" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```bash CLI
+runtm-api agents delete a1b2c3d4-0000-0000-0000-000000000000 --yes
+```
+</RequestExample>
+
+<ResponseExample>
+```json 204
+{}
+```
+</ResponseExample>

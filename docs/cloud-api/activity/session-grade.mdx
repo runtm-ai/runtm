@@ -1,0 +1,84 @@
+---
+title: "Session Grade"
+api: "GET /api/sessions/{session_id}/grade"
+description: "The latest evaluation verdict for a run"
+---
+
+Returns the run grader's verdict for one session: whether the run met its agent's objective, the reason, and which rubric version produced the grade. Runs are graded automatically after completion when their roster agent has `evaluator_criteria` set. Ungraded sessions return `{"graded": false}`.
+
+Org members can read grades for any session in the organization.
+
+**Required scope:** `activity:read`
+
+## Path Parameters
+
+<ParamField path="session_id" type="string" required>
+  The session ID.
+</ParamField>
+
+## Response
+
+<ResponseField name="graded" type="boolean">
+  Whether a verdict exists. When false, no other fields are present.
+</ResponseField>
+
+<ResponseField name="success" type="boolean">
+  Whether the run met the objective.
+</ResponseField>
+
+<ResponseField name="reason" type="string">
+  The grader's explanation.
+</ResponseField>
+
+<ResponseField name="task" type="string | null">
+  The task label the grader assigned, matching keys in the agent's `economics.tasks`.
+</ResponseField>
+
+<ResponseField name="tags" type="object">
+  Additional labels the grader attached.
+</ResponseField>
+
+<ResponseField name="criteria_version" type="integer">
+  Which rubric version produced this grade.
+</ResponseField>
+
+<ResponseField name="grader_model" type="string">
+  The model that graded the run.
+</ResponseField>
+
+<ResponseField name="graded_at" type="string">
+  When the grade was recorded.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/cloud/sessions/a6414511-4430-4e1f-8c51-8ea8824dadec/grade" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```bash CLI
+runtm-api session grade a6414511-4430-4e1f-8c51-8ea8824dadec
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 (graded)
+{
+  "graded": true,
+  "success": true,
+  "reason": "Lists were built, deduped, and posted for approval with the hypothesis quoted.",
+  "task": "weekly-lists",
+  "tags": {},
+  "criteria_version": 2,
+  "grader_model": "claude-sonnet",
+  "graded_at": "2026-07-27T18:41:12Z"
+}
+```
+
+```json 200 (not graded)
+{
+  "graded": false
+}
+```
+</ResponseExample>

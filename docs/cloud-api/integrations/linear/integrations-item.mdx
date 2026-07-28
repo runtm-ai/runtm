@@ -1,0 +1,53 @@
+---
+title: "Get Linear Integration by ID"
+api: "GET /api/v1/linear/integrations/{integration_id}"
+description: "Get, update, or delete one Linear bot"
+---
+
+Returns a single Linear integration by ID. The same path also accepts `POST` to update (only sent fields change) and `DELETE` to remove the bot, both requiring `integrations:write` and an admin or owner role.
+
+Update fields: `name`, `service_user_id`, `default_github_repo`, `default_template`, `default_agent`, `rate_limit_per_hour` (1 to 100), `project_repo_map`, `enabled`, `config`, plus credential rotation with `api_key` (manual bots) or `webhook_signing_secret` (custom OAuth apps).
+
+**Required scope:** `integrations:read` for GET
+
+## Path Parameters
+
+<ParamField path="integration_id" type="string" required>
+  The Linear integration ID.
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/cloud/v1/linear/integrations/li_2e4f" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```bash CLI
+runtm-api agents get li_2e4f --type linear
+runtm-api agents update li_2e4f --type linear --rate-limit 30
+runtm-api agents delete li_2e4f --type linear --yes
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "id": "li_2e4f",
+  "connection_type": "manual",
+  "name": "Runtime Bot",
+  "workspace_name": "Acme",
+  "actor_name": "Runtime Bot",
+  "service_user_id": "user_123",
+  "default_github_repo": "acme/api",
+  "default_template": "backend",
+  "default_agent": "claude-code",
+  "rate_limit_per_hour": 15,
+  "enabled": true,
+  "webhook_active": true,
+  "bot_linear_user_id": "lin_usr_1",
+  "project_repo_map": null,
+  "config": null
+}
+```
+</ResponseExample>

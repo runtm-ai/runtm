@@ -46,6 +46,7 @@ Docs: https://docs.runtm.com`,
 	AddSessionExtras(sessionCmd, rt)
 	AddSessionDeploy(sessionCmd, rt)
 	AddSessionTerminal(sessionCmd, rt)
+	AddSessionOps(sessionCmd, rt)
 
 	root.AddCommand(
 		NewAuthCommand(rt),
@@ -61,6 +62,9 @@ Docs: https://docs.runtm.com`,
 		NewToolsCommand(rt),
 		NewAgentsCommand(rt),
 		NewScheduledAgentsCommand(rt),
+		NewGroupsCommand(rt),
+		NewDeploymentsCommand(rt),
+		NewGithubCommand(rt),
 	)
 	return rootBuild{cmd: root, rt: rt}
 }

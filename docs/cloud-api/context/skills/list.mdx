@@ -18,10 +18,6 @@ Returns a paginated list of agent directives filtered by type family. Directives
   Filter by directive type family. Values: `skill`, `mcp_server`, `doc`, `network_rule`, `allowlist_rule`, `hook`.
 </ParamField>
 
-<ParamField query="is_published" type="boolean">
-  Filter by published status. Omit to return both drafts and published.
-</ParamField>
-
 <ParamField query="page_size" type="integer" default="20">
   Number of results per page (1–100).
 </ParamField>
@@ -83,7 +79,7 @@ response = requests.get(
 
 data = response.json()
 for d in data["directives"]:
-    print(f"{d['name']} (v{d['version']}, published={d['is_published']})")
+    print(f"{d['name']} ({d['content_hash'][:12]})")
 ```
 
 ```javascript JavaScript
@@ -104,7 +100,7 @@ const response = await fetch(
 
 const data = await response.json();
 data.directives.forEach((d) =>
-  console.log(`${d.name} (v${d.version}, published=${d.is_published})`)
+  console.log(`${d.name} (${d.content_hash.slice(0, 12)})`)
 );
 ```
 </RequestExample>
@@ -119,8 +115,6 @@ data.directives.forEach((d) =>
       "name": "deploy-to-fly",
       "display_name": "Deploy to Fly.io",
       "description": "Guides the agent through Fly.io deployments",
-      "version": 2,
-      "is_published": true,
       "organization_id": "org_abc123",
       "owner_user_id": "user_xyz",
       "content_kind": "inline",

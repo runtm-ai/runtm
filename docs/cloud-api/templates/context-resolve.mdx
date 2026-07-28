@@ -1,0 +1,59 @@
+---
+title: "Resolve Template Context"
+api: "GET /api/org-templates/{template_id}/context:resolve"
+description: "The effective instruction stack a session receives"
+---
+
+Answers the debugging question: what instructions does a session launched from this template actually get? Returns the org block and the template block in application order, plus the combined `effective_context` string.
+
+**Required scope:** `context:read`
+
+## Path Parameters
+
+<ParamField path="template_id" type="string" required>
+  The template ID.
+</ParamField>
+
+## Response
+
+<ResponseField name="template_id" type="string">
+  The template.
+</ResponseField>
+
+<ResponseField name="organization_id" type="string">
+  The owning organization.
+</ResponseField>
+
+<ResponseField name="blocks" type="array">
+  Ordered blocks, each `{source: "org" | "template", content, updated_at}`.
+</ResponseField>
+
+<ResponseField name="effective_context" type="string | null">
+  The blocks joined in application order; what the session receives.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/cloud/org-templates/tmpl_abc123/context:resolve" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```bash CLI
+runtm-api template context resolve tmpl_abc123
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "template_id": "tmpl_abc123",
+  "organization_id": "org_abc123",
+  "blocks": [
+    {"source": "org", "content": "Prefer PRs over direct pushes.", "updated_at": "2026-06-01T09:00:00Z"},
+    {"source": "template", "content": "Always run the test suite before opening a PR.", "updated_at": "2026-07-28T19:00:00Z"}
+  ],
+  "effective_context": "Prefer PRs over direct pushes.\n\nAlways run the test suite before opening a PR."
+}
+```
+</ResponseExample>

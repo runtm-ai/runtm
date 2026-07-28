@@ -107,6 +107,7 @@
       "group": "Sessions",
       "pages": [
         "cloud-api/sessions/list",
+        "cloud-api/sessions/search",
         "cloud-api/sessions/create",
         "cloud-api/sessions/get",
         "cloud-api/sessions/delete",
@@ -172,6 +173,22 @@
             "cloud-api/sessions/git-operation",
             "cloud-api/sessions/git-sync"
           ]
+        },
+        {
+          "group": "Approvals",
+          "pages": [
+            "cloud-api/sessions/approvals-list",
+            "cloud-api/sessions/approvals-resolve"
+          ]
+        },
+        {
+          "group": "Capabilities",
+          "pages": [
+            "cloud-api/sessions/load-skills",
+            "cloud-api/sessions/load-mcps",
+            "cloud-api/sessions/tools-list",
+            "cloud-api/sessions/load-tools"
+          ]
         }
       ]
     },
@@ -213,6 +230,24 @@
             "cloud-api/templates/secrets-update",
             "cloud-api/templates/secret-delete"
           ]
+        },
+        {
+          "group": "Context",
+          "pages": [
+            "cloud-api/templates/context-get",
+            "cloud-api/templates/context-set",
+            "cloud-api/templates/context-resolve"
+          ]
+        },
+        {
+          "group": "Guardrails",
+          "pages": [
+            "cloud-api/templates/guardrails-list",
+            "cloud-api/templates/guardrails-create",
+            "cloud-api/templates/guardrails-update",
+            "cloud-api/templates/guardrails-delete",
+            "cloud-api/templates/guardrails-resolve"
+          ]
         }
       ]
     },
@@ -220,7 +255,39 @@
       "group": "Scheduled Agents",
       "pages": [
         "cloud-api/scheduled-agents/overview",
-        "cloud-api/scheduled-agents/run"
+        "cloud-api/scheduled-agents/list",
+        "cloud-api/scheduled-agents/get",
+        "cloud-api/scheduled-agents/create",
+        "cloud-api/scheduled-agents/update",
+        "cloud-api/scheduled-agents/run",
+        "cloud-api/scheduled-agents/delete"
+      ]
+    },
+    {
+      "group": "Agents",
+      "pages": [
+        "cloud-api/agents/overview",
+        "cloud-api/agents/list",
+        "cloud-api/agents/get",
+        "cloud-api/agents/create",
+        "cloud-api/agents/update",
+        "cloud-api/agents/delete",
+        "cloud-api/agents/trigger-credentials"
+      ]
+    },
+    {
+      "group": "Groups",
+      "pages": [
+        "cloud-api/groups/usage"
+      ]
+    },
+    {
+      "group": "Deployments",
+      "pages": [
+        "cloud-api/deployments/list",
+        "cloud-api/deployments/get",
+        "cloud-api/deployments/logs",
+        "cloud-api/deployments/destroy"
       ]
     },
     {
@@ -260,14 +327,15 @@
             "cloud-api/context/skills/get",
             "cloud-api/context/skills/patch",
             "cloud-api/context/skills/delete",
-            "cloud-api/context/skills/version",
-            "cloud-api/context/skills/publish",
             "cloud-api/context/skills/resync",
             "cloud-api/context/skills/presign-upload",
             "cloud-api/context/skills/discover-in-repo",
             "cloud-api/context/skills/import",
             "cloud-api/context/skills/attachments-list",
-            "cloud-api/context/skills/attachments-replace"
+            "cloud-api/context/skills/attachments-replace",
+            "cloud-api/context/skills/lock",
+            "cloud-api/context/skills/unlock",
+            "cloud-api/context/skills/facets"
           ]
         }
       ]
@@ -324,6 +392,8 @@
     {
       "group": "Activity",
       "pages": [
+        "cloud-api/activity/agent-scorecard",
+        "cloud-api/activity/session-grade",
         {
           "group": "Personal",
           "pages": [
@@ -377,7 +447,21 @@
         "cloud-api/integrations/linear/integration-delete",
         "cloud-api/integrations/linear/projects",
         "cloud-api/integrations/linear/user-connection-get",
-        "cloud-api/integrations/linear/user-connection-delete"
+        "cloud-api/integrations/linear/user-connection-delete",
+        "cloud-api/integrations/linear/integrations-list",
+        "cloud-api/integrations/linear/integrations-manual",
+        "cloud-api/integrations/linear/integrations-item",
+        "cloud-api/integrations/linear/teams",
+        {
+          "group": "Email",
+          "pages": [
+            "cloud-api/integrations/email/status",
+            "cloud-api/integrations/email/list",
+            "cloud-api/integrations/email/provision",
+            "cloud-api/integrations/email/update",
+            "cloud-api/integrations/email/delete"
+          ]
+        }
       ]
     },
     {

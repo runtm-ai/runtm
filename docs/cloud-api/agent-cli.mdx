@@ -13,7 +13,7 @@ description: "Thin Go wrapper around the Cloud API, designed for AI coding agent
 | Exit codes | Generic | `0` ok / `1` API / `2` auth / `3` usage |
 | Distribution | PyPI (`uv tool install runtm`) | Pre-built binary (`curl ... \| bash`) |
 
-Most humans use both — the pip CLI for day-to-day work, the Go CLI when an agent needs to act on the hosted platform programmatically.
+Most humans use both: the pip CLI for day-to-day work, the Go CLI when an agent needs to act on the hosted platform programmatically.
 
 ## Install
 
@@ -78,17 +78,29 @@ The same API key works for both this CLI and the pip CLI.
 | `runtm-api session list` | List sessions for the API key. |
 | `runtm-api session status <id>` | Get state + `last_prompt` polling fields. |
 | `runtm-api session prompt <id> <text>` | Stream a prompt as SSE → JSON lines. |
+| `runtm-api session search -q <text>` | Fuzzy-search sessions with filters. |
 | `runtm-api session exec <id> -- <cmd>` | Run one command in the sandbox. Add `--json` for `{stdout, stderr, exit_code}`. |
 | `runtm-api session connect <id>` | Attach an interactive PTY (needs a TTY on stdin). |
+| `runtm-api session grade <id>` | The run's evaluation verdict. |
+| `runtm-api session approvals list\|resolve` | See and clear a stalled run's approval gates. |
+| `runtm-api session load-skills\|load-mcps\|load-tools <id> ...` | Hot-load capabilities into a running sandbox. |
+| `runtm-api session file upload\|download <id> ...` | Binary-safe file transfer in and out of the sandbox. |
 | `runtm-api session destroy <id>` | Tear down a sandbox. |
 | `runtm-api session git <id> <op>` | Run a git operation (commit, push, create_branch_and_pr, ...). |
+| `runtm-api agents list\|create\|update\|delete` | The agent roster (no `--type`); triggers with `--type slack\|github\|linear\|email`. |
+| `runtm-api agents scorecard` | Per-agent performance, spend, and budget. |
 | `runtm-api template list` | List org templates (requires `--org` / `RUNTM_ORG_ID`). |
 | `runtm-api template get <id>` | Inspect one template, including its attached skills and build staleness. |
+| `runtm-api template context get\|set\|resolve <id>` | The template's instruction block and the effective stack. |
+| `runtm-api template guardrails list\|create\|update\|delete\|resolve <id>` | Template-scoped guardrails. |
+| `runtm-api guardrails rules\|hooks\|network ...` | Org guardrail content: allowlist rules, hooks, egress rules. |
 | `runtm-api skills list --template <id>` | Skills a session from that template loads. |
+| `runtm-api skills import\|discover\|resync\|lock\|unlock` | Skill lifecycle at org scale. |
 | `runtm-api scheduled-agents list` | Cron-driven agents, with `next_run_at`. |
 | `runtm-api scheduled-agents run-now <id>` | Fire one run immediately (works on disabled agents). |
-| `runtm-api deploy list` | List deployments. |
-| `runtm-api deploy get <id>` | Inspect one deployment. |
+| `runtm-api groups usage <team_id>` | What an owning group owns. |
+| `runtm-api github installations\|repos\|add-repo` | GitHub App installations and repo access. |
+| `runtm-api deployments list\|get\|logs\|destroy` | The deployments sessions ship (alias: `deploy`). |
 | `runtm-api skills install` | Install the agent skill files into `~/.claude/skills/runtm/` and/or `~/.cursor/skills/runtm/`. |
 
 Run `runtm-api --help` or `runtm-api <command> --help` for full flag reference.
@@ -123,13 +135,13 @@ Bash history expansion is disabled for the command in both modes, so a literal `
 
 The CLI ships with a set of SKILL.md files **embedded into the binary** ([`packages/agent/skills/`](https://github.com/runtm-ai/runtm/tree/main/packages/agent/skills)):
 
-- `SKILL.md` — command cheat sheet, auth, error recovery, trigger words (`runtm`, `runtime`).
-- `runtm-sessions.md` — multi-step workflows (launch from template, iterate, poll, open PR).
-- `runtm-templates.md` — discovering, inspecting, and verifying org templates.
-- `runtm-automation.md` — scheduled agents: cron syntax, `run-now`, debugging a schedule that didn't fire.
-- `runtm-integrations.md` — skills, MCP servers, tools, and how attachments reach a template.
-- `runtm-agents.md` — Slack/GitHub event-driven agents.
-- `runtm-debug.md` — inspecting a session when something is wrong.
+- `SKILL.md`: command cheat sheet, auth, error recovery, trigger words (`runtm`, `runtime`).
+- `runtm-sessions.md`: multi-step workflows (launch from template, iterate, poll, open PR).
+- `runtm-templates.md`: discovering, inspecting, and verifying org templates.
+- `runtm-automation.md`: scheduled agents: cron syntax, `run-now`, debugging a schedule that didn't fire.
+- `runtm-integrations.md`: skills, MCP servers, tools, and how attachments reach a template.
+- `runtm-agents.md`: Slack/GitHub event-driven agents.
+- `runtm-debug.md`: inspecting a session when something is wrong.
 
 These are workflow recipes that teach the agent how to use the CLI. They are auto-installed by the one-liner installer when `~/.claude` or `~/.cursor` exists, and can be re-installed any time with:
 

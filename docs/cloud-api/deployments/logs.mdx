@@ -1,0 +1,66 @@
+---
+title: "Deployment Logs"
+api: "GET /api/v0/deployments/{deployment_id}/logs"
+description: "Fetch stored build, deploy, and runtime logs"
+---
+
+Returns the deployment's stored logs. Use it to diagnose a failed build or check what a running deployment printed.
+
+**Required scope:** `deployments:read` (API key auth)
+
+## Path Parameters
+
+<ParamField path="deployment_id" type="string" required>
+  The deployment ID.
+</ParamField>
+
+## Query Parameters
+
+<ParamField query="type" type="string">
+  Log type: `build`, `deploy`, or `runtime`. Omit for all types.
+</ParamField>
+
+<ParamField query="lines" type="integer" default="20">
+  Number of lines to return (max 1000).
+</ParamField>
+
+<ParamField query="search" type="string">
+  Substring filter on log content.
+</ParamField>
+
+## Response
+
+<ResponseField name="deployment_id" type="string">
+  The deployment.
+</ResponseField>
+
+<ResponseField name="logs" type="array">
+  `{log_type, content, created_at}` entries.
+</ResponseField>
+
+<ResponseField name="source" type="string">
+  Where the logs came from (`stored`).
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/cloud/v0/deployments/dep_3f2a/logs?type=runtime&lines=100" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```bash CLI
+runtm-api deployments logs dep_3f2a --type runtime --lines 100
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "deployment_id": "dep_3f2a",
+  "logs": [
+    {"log_type": "runtime", "content": "Server listening on :3000", "created_at": "2026-07-27T20:03:05Z"}
+  ],
+  "source": "stored"
+}
+```
+</ResponseExample>

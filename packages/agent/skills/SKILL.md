@@ -1,8 +1,8 @@
 ---
 name: runtm
-description: "Runtm (Runtime) Cloud CLI for AI agents. Full cloud-API surface: sessions (CRUD + files + env + deploy + lifecycle + history + events + visibility + collaborators), org templates (CRUD + build + fix-session + snapshot + secrets), scheduled agents (cron automation + run-now), activity telemetry, secrets, instructions, guardrails, LLM provider keys (Anthropic/OpenAI), external integrations (MCP servers, skills, tools, CLIs, APIs). Trigger on: runtm, runtime, runtm cloud, runtime cloud, runtm session, runtime session, cloud sandbox, integration, integrations, connect an integration, mcp, skill, provider key, scheduled agent, cron, automation, recurring agent."
+description: "Runtm (Runtime) Cloud CLI for AI agents. Full cloud-API surface: sessions (CRUD + search + files + upload/download + env + deploy + approvals + capability loading + lifecycle + history + events), the agent roster (identity + instructions + evaluation rubric + budget + scorecard + run grades), scheduled agents (cron automation + run-now), org templates (CRUD + build + context + guardrails + owning groups + secrets), guardrail content (allowlist rules, hooks, network rules), skills lifecycle (import, discover, resync, lock), deployments, GitHub App installations, groups, activity telemetry, secrets, instructions, LLM provider keys, external integrations (MCP, tools, Slack, GitHub, Linear, Email). Trigger on: runtm, runtime, runtm cloud, runtime cloud, runtm session, runtime session, cloud sandbox, integration, integrations, mcp, skill, provider key, scheduled agent, cron, automation, agent roster, evals, evaluation, scorecard, guardrail, approvals, deployment."
 metadata:
-  version: "0.9.0"
+  version: "0.10.0"
   repository: https://github.com/runtm-ai/runtm
   tags: runtm,runtime,cli,sandboxes,coding-agents
 ---
@@ -83,8 +83,17 @@ To parameterize a template, declare **session arguments** with `--session-arg` (
 | Per-session instructions | `runtm-api session instructions get\|set <id> ...` |
 | Collaborators | `runtm-api session collaborators <id>` |
 | Start dev server | `runtm-api session run-server <id> [--port N]` |
+| Search sessions with filters | `runtm-api session search -q "<text>" [--agent ...] [--template ...] [--team-mode]` |
+| Run's evaluation verdict | `runtm-api session grade <id>` |
+| List approval gates | `runtm-api session approvals list <id>` |
+| Approve / reject a gate | `runtm-api session approvals resolve <id> <approval_id> --approve\|--reject [--note "..."]` |
+| Hot-load skills into a running session | `runtm-api session load-skills <id> <skill_id...>` |
+| Hot-load MCP servers | `runtm-api session load-mcps <id> <mcp_id...>` |
+| Hot-load tools (by provider slug) | `runtm-api session load-tools <id> <slug...>` |
+| Tools loaded in a session | `runtm-api session tools <id>` |
 | Files: read/write/list | `runtm-api session file read\|write\|list <id> ...` |
 | Files: search/mkdir/rename/delete | `runtm-api session file search\|mkdir\|rename\|delete <id> ...` |
+| Files: binary upload/download | `runtm-api session file upload\|download <id> <path> ...` |
 | Env vars: get/set/delete | `runtm-api session env get\|set\|delete <id> ...` |
 | Env vars: detect / detected | `runtm-api session env detect\|detected <id>` |
 | Open PR with changes | `runtm-api session git <id> create_branch_and_pr --pr-title "..."` |
@@ -115,6 +124,9 @@ To parameterize a template, declare **session arguments** with `--session-arg` (
 | Delete a template secret | `runtm-api template secrets delete <tmpl_id> KEY` |
 | Skills/MCP attached to a template | `runtm-api template skills\|mcp <tmpl_id>` (or `skills\|mcp list --template <tmpl_id>`) |
 | Attach a skill/MCP to a template | `runtm-api skills\|mcp attach <id> --template <tmpl_id>` |
+| Template context (instructions) | `runtm-api template context get\|set\|resolve <tmpl_id>` |
+| Template guardrails | `runtm-api template guardrails list\|create\|update\|delete\|resolve <tmpl_id> ...` |
+| Owning group / auto-rebuild cron | `runtm-api template update <tmpl_id> --owner-team <team_id> \| --rebuild-schedule '0 6 * * *'` |
 
 #### Verify a template actually loads your skills
 
@@ -137,6 +149,39 @@ runtm-api template get <tmpl_id> | jq .skills   # inline, plus staleness
 runtm-api template skills <tmpl_id>             # template-first
 runtm-api skills list --template <tmpl_id>      # skills-first
 ```
+
+### Agent roster (named agents + the evaluation loop)
+
+Named agents with identity, system instructions, session defaults, an evaluation rubric, and a budget. This is the entity the dashboard's Agents page manages. Omit `--type` for the roster; `--type slack|github|linear|email` manages that platform's trigger integrations instead.
+
+| Task | Command |
+|------|---------|
+| List roster agents | `runtm-api agents list` |
+| Create (headless) | `runtm-api agents create --name X --instructions '...' [--template <slug>]` |
+| Edit identity/defaults | `runtm-api agents update <id> --instructions '...' --template <slug> [--clear-template]` |
+| Set the evaluation rubric | `runtm-api agents update <id> --evaluator-criteria '{"objective":"...","checks":["..."]}'` |
+| Set task values + budget | `runtm-api agents update <id> --economics '{"tasks":{"triage":{"value_usd":10}},"budget":{"monthly_usd_cap":50}}'` |
+| Per-agent scorecard | `runtm-api agents scorecard --days 30` |
+| One run's verdict | `runtm-api session grade <session_id>` |
+| Trigger credential refs | `runtm-api agents trigger-credentials` |
+| Delete | `runtm-api agents delete <id> --yes` (delete its triggers first) |
+| Linear trigger (headless) | `runtm-api agents create --type linear --linear-api-key lin_api_... --service-user <user_id>` |
+| Email trigger (headless) | `runtm-api agents create --type email --name X --agent-id <roster_agent_id>` |
+
+The evaluation loop: set `evaluator_criteria` on the agent, every completed run is graded against it, `session grade` reads one verdict, `agents scorecard` aggregates hit rate, spend, value, and budget. Without a rubric nothing is graded and the scorecard shows zeros.
+
+### Guardrail content (allowlist rules, hooks, network rules)
+
+`guardrails limits|allowlist` manage org settings. The rules themselves are directives that attach to templates, repos, or the whole org, exactly like skills:
+
+| Task | Command |
+|------|---------|
+| Allowlist rule (allow/ask/deny a command pattern) | `runtm-api guardrails rules create --name X --kind deny --pattern 'git push --force*'` |
+| Lifecycle hook (script or prompt on agent events) | `runtm-api guardrails hooks create --name lint-on-stop --event Stop --script './lint.sh'` |
+| Network egress rule | `runtm-api guardrails network create --name allow-stripe --kind host --value api.stripe.com` |
+| List / attach / detach / lock | `runtm-api guardrails rules\|hooks\|network list\|attach\|detach\|lock ...` |
+| Template-scoped guardrails | `runtm-api template guardrails list\|create\|update\|delete\|resolve <tmpl_id>` |
+| What a template actually enforces | `runtm-api template guardrails resolve <tmpl_id>` |
 
 ### Scheduled agents (cron automation)
 
@@ -183,6 +228,29 @@ Cron is **5 fields in UTC** — there is no per-agent time zone. 11am Pacific is
 | Team activity over time | `runtm-api activity team-activity --days 7` |
 | Team members | `runtm-api activity team-members` |
 
+### Deployments
+
+The deployments that `session deploy run` ships. Alias: `deploy`.
+
+| Task | Command |
+|------|---------|
+| List (filter by state) | `runtm-api deployments list [--state ready]` |
+| Get one (state, live URL, version) | `runtm-api deployments get <deployment_id>` |
+| Stored build/deploy/runtime logs | `runtm-api deployments logs <deployment_id> [--type runtime] [--lines 100] [--search err]` |
+| Tear down (URL goes offline) | `runtm-api deployments destroy <deployment_id> --yes` |
+
+After `session deploy run` succeeds, `session get <id> | jq .last_deployment_id` links the session to its deployment.
+
+### GitHub App repo access
+
+Repo access is the precondition for most template work; check it before diagnosing a failed clone or build.
+
+| Task | Command |
+|------|---------|
+| List installations | `runtm-api github installations` |
+| Repos the App can reach | `runtm-api github repos [--installation <uuid>]` |
+| Grant access to another repo | `runtm-api github add-repo <installation_uuid> --repo-id N --repo owner/name --oauth-token <tok>` |
+
 ### Secrets / Instructions / Guardrails / Providers / Plan
 
 | Area | Commands |
@@ -192,8 +260,13 @@ Cron is **5 fields in UTC** — there is no per-agent time zone. 11am Pacific is
 | Guardrails | `runtm-api guardrails limits\|allowlist get\|set`, `can-deploy`, `deploy-limits`, `cleanup --yes` |
 | Providers (LLM keys) | `runtm-api providers anthropic\|openai get\|set\|delete\|resolved [--org-scope]` |
 | Integrations (external) | Skills / MCP servers / tools -- `runtm-api skills\|mcp\|tools create\|get\|list\|update\|delete`; scope a listing with `list --template <tmpl_id>` / `--repo owner/name`; attach with `skills\|mcp attach\|detach\|attachments <id> --template <tmpl_id>` (see `runtm-integrations`) |
-| Agents (Slack/GitHub events) | `runtm-api agents create\|list\|get\|update\|delete --type slack\|github` (see `runtm-agents`) |
+| Agent roster (named agents) | `runtm-api agents list\|get\|create\|update\|delete` (no --type), `scorecard`, `trigger-credentials` |
+| Trigger integrations (events) | `runtm-api agents ... --type slack\|github\|linear\|email` (see `runtm-agents`) |
 | Scheduled agents (cron) | `runtm-api scheduled-agents list\|get\|create\|update\|run-now\|delete` |
+| Skills lifecycle | `runtm-api skills import\|discover\|resync\|lock\|unlock\|facets\|upload-file` |
+| Groups (owning teams) | `runtm-api groups usage <team_id>`; assign with `--owner-team` on template/skills/mcp update |
+| Deployments | `runtm-api deployments list\|get\|logs\|destroy` (alias: `deploy`) |
+| GitHub App access | `runtm-api github installations\|repos\|add-repo` |
 | Auth | `runtm-api auth status` |
 
 ## Endpoint Strategy
@@ -206,7 +279,7 @@ Everything hits the **canonical Cloud API** (`/api/...` on `app.runtm.com`). Thr
 | `session status` | `GET /api/v0/sessions/{id}` | v0 returns `last_prompt` polling envelope for fire-and-forget. |
 | `session prompt` | `POST /api/v0/sessions/{id}/prompt` | Synchronous SSE stream; canonical equivalent splits into POST 202 + GET events (worse CLI UX). |
 
-The CLI **does not call OSS-only routes** like `/api/v0/deployments` (that's the pip CLI's territory).
+Deployments are the one other v0 surface the CLI calls: `runtm-api deployments list|get|logs|destroy` proxies `/api/v0/deployments*` with API-key auth, so the deployment a session ships can be tracked and torn down without switching to the pip CLI.
 
 ## Prerequisites
 
@@ -320,6 +393,30 @@ If `authenticated: false`, ask the user to set `RUNTM_API_KEY` (or run `runtm-ap
 | `providers * set\|delete` | `integrations:write` (org needs admin/owner) |
 | `scheduled-agents list\|get` | `sessions:read` |
 | `scheduled-agents create\|update\|delete\|run-now` | `sessions:write` (admin/owner) |
+| `agents list\|get` (roster) | `activity:read` |
+| `agents create\|update\|delete` (roster) | `integrations:write` |
+| `agents scorecard` / `session grade` | `activity:read` |
+| `agents trigger-credentials` | `integrations:read` |
+| `session search` | `sessions:read` |
+| `session approvals list` | `sessions:read` |
+| `session approvals resolve` | `sessions:write` (+ role gate on the approval) |
+| `session load-skills\|load-mcps\|load-tools` | `sessions:write` |
+| `session tools` / `file download` | `sessions:read` |
+| `session file upload` | `sessions:write` |
+| `skills import\|resync\|upload-file` | `context:write` |
+| `skills discover\|facets` | `context:read` |
+| `skills lock\|unlock` / `mcp lock\|unlock` | `context:write` (admin/owner) |
+| `guardrails rules\|hooks\|network` reads | `context:read` |
+| `guardrails rules\|hooks\|network` writes | `context:write` |
+| `template context get\|resolve` | `context:read` |
+| `template context set` | `context:write` |
+| `template guardrails` reads | `guardrails:read` |
+| `template guardrails` writes | `guardrails:write` |
+| `groups usage` | `templates:read` |
+| `github installations\|repos` | `integrations:read` |
+| `github add-repo` | `integrations:write` |
+| `deployments list\|get\|logs` | `deployments:read` |
+| `deployments destroy` | `deployments:delete` |
 
 ## More Skills
 
@@ -334,7 +431,7 @@ If `authenticated: false`, ask the user to set `RUNTM_API_KEY` (or run `runtm-ap
 
 ```bash
 runtm-api --help
-runtm-api <area> --help            # session, template, scheduled-agents, activity, secrets, instructions, guardrails, integrations, auth
+runtm-api <area> --help            # session, template, agents, scheduled-agents, guardrails, skills, mcp, tools, groups, deployments, github, activity, secrets, instructions, providers, auth
 runtm-api session deploy --help    # nested subcommand trees
 runtm-api template fix-session --help
 ```

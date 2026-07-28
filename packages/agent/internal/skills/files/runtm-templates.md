@@ -1,8 +1,8 @@
 ---
 name: runtm-templates
-description: "Full lifecycle workflows for Runtm Cloud org templates: discover, create, build, monitor builds, verify attached skills and build staleness, fix broken templates via fix-session, save snapshots, manage template secrets."
+description: "Full lifecycle workflows for Runtm Cloud org templates: discover, create, build, monitor builds, verify attached skills and build staleness, manage template context and template-scoped guardrails, assign owning groups, set auto-rebuild schedules, fix broken templates via fix-session, save snapshots, manage template secrets."
 metadata:
-  version: "0.5.0"
+  version: "0.6.0"
   tags: runtm,runtime,templates,org,workflows
 ---
 
@@ -92,6 +92,60 @@ runtm-api skills list --template <tmpl_id>      # skills-first
 ```
 
 Full attach/detach mechanics live in the `runtm-integrations` skill.
+
+## Recipe: template context (instructions) and what actually applies
+
+Template context is the instruction block injected into every session from
+the template, layered after the org-wide instructions. It applies to new
+sessions immediately; no rebuild needed.
+
+```bash
+runtm-api template context get <tmpl_id>
+runtm-api template context set <tmpl_id> --text 'Always run the test suite before opening a PR.'
+runtm-api template context set <tmpl_id> --clear
+
+# The debugging question: what does a session actually receive?
+runtm-api template context resolve <tmpl_id>
+# -> blocks: [{source: "org", ...}, {source: "template", ...}] + effective_context
+```
+
+## Recipe: template-scoped guardrails
+
+Guardrails that apply only to sessions from this template, layered on top of
+the org set. Three types: allowlist rules, hooks, network rules.
+
+```bash
+runtm-api template guardrails create <tmpl_id> --type allowlist \
+  --name block-force-push --content '{"kind":"deny","pattern":"git push --force*"}'
+
+runtm-api template guardrails create <tmpl_id> --type hook \
+  --name lint-on-stop --content '{"event":"Stop","type":"command","script":"./scripts/lint.sh","timeout":120}'
+
+runtm-api template guardrails list <tmpl_id> [--type allowlist]
+runtm-api template guardrails update <tmpl_id> <gid> --disabled   # pause, keep the definition
+runtm-api template guardrails delete <tmpl_id> <gid> --yes
+
+# The merged org + template set, with dedupe/shadow/conflict marks:
+runtm-api template guardrails resolve <tmpl_id>
+```
+
+Org-wide rules live under `runtm-api guardrails rules|hooks|network` and can
+be attached per template/repo like skills; `resolve` shows the combined
+outcome either way.
+
+## Recipe: owning groups and auto-rebuild
+
+```bash
+# Restrict visibility to one group (Better Auth team). Admins and the
+# template's creator only.
+runtm-api template update <tmpl_id> --owner-team <team_id>
+runtm-api template update <tmpl_id> --owner-team ""      # back to org-wide
+runtm-api groups usage <team_id>                          # what a group owns
+
+# Rebuild the snapshot nightly so baked skills stay fresh (5-field UTC cron)
+runtm-api template update <tmpl_id> --rebuild-schedule '0 6 * * *'
+runtm-api template update <tmpl_id> --rebuild-schedule '' # turn it off
+```
 
 ## Recipe: create a new template
 

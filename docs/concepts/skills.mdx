@@ -116,20 +116,22 @@ Beyond the standard skill format (`skill_v0`), Runtime stores a few related dire
 | `allowlist_rule_v0` | A bash command allow/ask/deny pattern (see [Guardrails](/concepts/guardrails)) |
 | `network_rule_v0` | A network access rule for the sandbox |
 
-All of them share the same versioning, publishing, and import system.
+All of them share the same storage, attachment, and import system, and all live under the same `/api/agent-directives` endpoints.
 
-## Versioning and publishing
+## Editing and locking
 
-Skills are versioned. When you update a skill, you publish a new version and existing references either pin to a specific version or float to the latest.
+There is no draft/publish cycle. Each `(organization, type, name)` has exactly one live row, and that row is the deployed state: editing it takes effect directly, and where the directive is baked into a template snapshot the edit queues a rebuild.
 
-| Action | Endpoint |
-|--------|----------|
-| Create a skill | `POST /api/skills` |
-| Get a skill | `GET /api/skills/{id}` |
-| Update content | `PATCH /api/skills/{id}` |
-| Publish a new version | `POST /api/skills/{id}/publish` |
-| Bump version | `POST /api/skills/{id}:new-version` |
-| Resync from source | `POST /api/skills/{id}/resync` |
+| Action | Endpoint | CLI |
+|--------|----------|-----|
+| Create | `POST /api/agent-directives` | `runtm-api skills create` |
+| Get | `GET /api/agent-directives/{id}` | `runtm-api skills get <id>` |
+| Update content | `PATCH /api/agent-directives/{id}` | `runtm-api skills update <id>` |
+| Resync from source | `POST /api/agent-directives/{id}:resync` | `runtm-api skills resync <id>` |
+| Lock against edits | `POST /api/agent-directives/{id}:lock` | `runtm-api skills lock <id>` |
+| Unlock | `POST /api/agent-directives/{id}:unlock` | `runtm-api skills unlock <id>` |
+
+Locking is how a critical skill is protected: a locked directive still loads into sessions and template builds, but edits, deletion, resync, and attachment changes are blocked until an org admin unlocks it.
 
 See the [Skills API reference](/cloud-api/context/skills/list) for the full surface.
 

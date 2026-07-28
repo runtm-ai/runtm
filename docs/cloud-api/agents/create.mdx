@@ -1,0 +1,98 @@
+---
+title: "Create Agent"
+api: "POST /api/v1/agents"
+description: "Create a roster agent"
+---
+
+Creates a named agent headlessly. Triggers (Slack, GitHub, Linear, Email) are bound afterwards through their integration endpoints; a trigger-less agent is valid and can be launched directly from sessions.
+
+**Required scope:** `integrations:write`
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token.
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string">
+  Organization ID. Omit for a personal agent.
+</ParamField>
+
+## Request Body
+
+<ParamField body="name" type="string" required>
+  Display name (max 200 characters).
+</ParamField>
+
+<ParamField body="description" type="string">
+  Short description (max 2000 characters).
+</ParamField>
+
+<ParamField body="avatar" type="object">
+  Avatar descriptor, for example `{"kind": "icon", "icon": "bot", "color": "blue"}`.
+</ParamField>
+
+<ParamField body="system_instructions" type="string">
+  Instructions injected into every session the agent runs (max 20000 characters).
+</ParamField>
+
+<ParamField body="default_template" type="string">
+  Org template slug sessions launch from.
+</ParamField>
+
+<ParamField body="default_agent" type="string">
+  Coding agent harness, for example `claude-code` or `codex`.
+</ParamField>
+
+<ParamField body="evaluator_criteria" type="object">
+  Evaluation rubric: `{"objective": "...", "checks": ["..."]}`. The server manages the `version` field.
+</ParamField>
+
+<ParamField body="economics" type="object">
+  Task values and budget. `budget.monthly_usd_cap` must be a number greater than or equal to zero when present.
+</ParamField>
+
+## Response
+
+The created [agent object](/cloud-api/agents/overview#the-agent-object) with status `201`.
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/cloud/v1/agents" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Donna",
+    "description": "GTM research agent",
+    "system_instructions": "Be terse. Prefer PRs over prose.",
+    "default_template": "gtm-machine",
+    "evaluator_criteria": {"objective": "Ship weekly lists", "checks": ["lists posted"]}
+  }'
+```
+
+```bash CLI
+runtm-api agents create --name Donna \
+  --instructions 'Be terse. Prefer PRs over prose.' \
+  --template gtm-machine \
+  --evaluator-criteria '{"objective":"Ship weekly lists","checks":["lists posted"]}'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 201
+{
+  "id": "a1b2c3d4-0000-0000-0000-000000000000",
+  "organization_id": "org_abc123",
+  "name": "Donna",
+  "description": "GTM research agent",
+  "avatar": null,
+  "avatar_image_url": null,
+  "system_instructions": "Be terse. Prefer PRs over prose.",
+  "default_template": "gtm-machine",
+  "default_agent": null,
+  "evaluator_criteria": {"objective": "Ship weekly lists", "checks": ["lists posted"], "version": 1},
+  "economics": null
+}
+```
+</ResponseExample>

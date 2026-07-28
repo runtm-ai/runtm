@@ -1,0 +1,61 @@
+---
+title: "Get Scheduled Agent"
+api: "GET /api/v1/scheduled-agents/{agent_id}"
+description: "Get one scheduled agent"
+---
+
+Returns a single [scheduled agent object](/cloud-api/scheduled-agents/overview#the-scheduled-agent-object). Agents outside the caller's organization return `404`.
+
+**Required scope:** `sessions:read` (all org members)
+
+## Path Parameters
+
+<ParamField path="agent_id" type="string" required>
+  The scheduled agent ID.
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token.
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  Organization ID.
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/cloud/v1/scheduled-agents/sa_9f3c1a" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```bash CLI
+runtm-api scheduled-agents get sa_9f3c1a
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "id": "sa_9f3c1a",
+  "name": "weekly-outbound",
+  "cron": "0 18 * * 1",
+  "prompt": "Build this week's outbound lists and post them for approval",
+  "org_template_id": "tmpl_abc123",
+  "template_name": "GTM Machine",
+  "agent": "claude-code",
+  "model": null,
+  "enabled": false,
+  "slack_integration_id": null,
+  "slack_integration_name": null,
+  "slack_channel_id": null,
+  "last_run_at": null,
+  "last_session_id": null,
+  "next_run_at": null,
+  "created_at": "2026-07-20T16:00:00Z",
+  "updated_at": null
+}
+```
+</ResponseExample>

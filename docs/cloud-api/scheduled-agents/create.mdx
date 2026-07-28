@@ -1,0 +1,108 @@
+---
+title: "Create Scheduled Agent"
+api: "POST /api/v1/scheduled-agents"
+description: "Create a cron-driven agent"
+---
+
+Creates a scheduled agent. When `enabled` is true the scheduler job is created atomically with the row: if the schedule cannot be created, nothing is persisted.
+
+The recommended order is to create with `"enabled": false`, prove the configuration with [Run Now](/cloud-api/scheduled-agents/run), then enable. A run-now executes the identical code path the cron tick takes, so a bad template or missing Slack target fails in front of you instead of silently at the scheduled hour.
+
+**Required scope:** `sessions:write` and an admin or owner role.
+
+## Request Body
+
+<ParamField body="name" type="string" required>
+  Display name (1 to 128 characters).
+</ParamField>
+
+<ParamField body="cron" type="string" required>
+  5-field cron expression, evaluated in UTC. There is no per-agent time zone: 11am Pacific is `0 18 * * *` during daylight time and `0 19 * * *` in winter.
+</ParamField>
+
+<ParamField body="prompt" type="string" required>
+  The prompt run on every tick. Runs are unattended (autopilot), so say exactly what to produce and in what shape.
+</ParamField>
+
+<ParamField body="org_template_id" type="string">
+  Org template the session launches from.
+</ParamField>
+
+<ParamField body="agent" type="string" default="claude-code">
+  Coding agent harness.
+</ParamField>
+
+<ParamField body="model" type="string">
+  Model override for the launched session.
+</ParamField>
+
+<ParamField body="enabled" type="boolean" default="true">
+  Whether the schedule is live immediately.
+</ParamField>
+
+<ParamField body="slack_integration_id" type="string">
+  Slack integration posting each run's result. Must be set together with `slack_channel_id`.
+</ParamField>
+
+<ParamField body="slack_channel_id" type="string">
+  Channel each run's result is posted to. Must be set together with `slack_integration_id`.
+</ParamField>
+
+## Response
+
+The created [scheduled agent object](/cloud-api/scheduled-agents/overview#the-scheduled-agent-object) with status `201`.
+
+## Errors
+
+| Status | Cause |
+|--------|-------|
+| `400` | Slack integration and channel not set together |
+| `403` | Caller is not an org admin or owner |
+| `422` | `cron` is not a 5-field expression |
+| `503` | Cloud Scheduler is not configured in this environment; create with `"enabled": false` and drive with run-now |
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/cloud/v1/scheduled-agents" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "weekly-outbound",
+    "cron": "0 18 * * 1",
+    "prompt": "Build this week'"'"'s outbound lists and post them for approval",
+    "org_template_id": "tmpl_abc123",
+    "enabled": false
+  }'
+```
+
+```bash CLI
+runtm-api scheduled-agents create --name weekly-outbound --disabled \
+  --cron '0 18 * * 1' --template tmpl_abc123 \
+  --prompt 'Build this weeks outbound lists and post them for approval'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 201
+{
+  "id": "sa_9f3c1a",
+  "name": "weekly-outbound",
+  "cron": "0 18 * * 1",
+  "prompt": "Build this week's outbound lists and post them for approval",
+  "org_template_id": "tmpl_abc123",
+  "template_name": "GTM Machine",
+  "agent": "claude-code",
+  "model": null,
+  "enabled": false,
+  "slack_integration_id": null,
+  "slack_integration_name": null,
+  "slack_channel_id": null,
+  "last_run_at": null,
+  "last_session_id": null,
+  "next_run_at": null,
+  "created_at": "2026-07-28T19:00:00Z",
+  "updated_at": null
+}
+```
+</ResponseExample>
