@@ -24,8 +24,20 @@ import (
 func NewGuardrailsCommand(rt *Runtime) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "guardrails",
-		Short: "Org spend limits, allowlist policy, and deploy permissions",
-		Long: `Inspect and set org-scoped policies that gate session and deploy spend.
+		Short: "Limits, allowlist policy, and the rules/hooks/network guardrails",
+		Long: `Everything that constrains what sessions may do.
+
+Policy and limits (org settings):
+  limits get|set          compute and cost caps
+  allowlist get|set       the DEFAULT command policy (all vs allowlist mode)
+  can-deploy, deploy-limits, cleanup
+
+Guardrail content (directive-backed; attach to templates, repos, or the org):
+  rules ...               allowlist rules (allow/ask/deny command patterns)
+  hooks ...               lifecycle hooks (scripts or prompts on agent events)
+  network ...             egress rules (hosts/CIDRs sandboxes may reach)
+
+Template-scoped guardrails live under 'runtm-api template guardrails'.
 Most commands require an org-scoped API key. Writes require admin/owner role.
 
 See https://docs.runtm.com/cloud-api/guardrails for the full schemas.`,
@@ -37,6 +49,9 @@ See https://docs.runtm.com/cloud-api/guardrails for the full schemas.`,
 		newGuardrailsDeployLimits(rt),
 		newGuardrailsCleanup(rt),
 	)
+	// The guardrail CONTENT: allowlist rules, hooks, and network rules
+	// (directive-backed, attachable to templates/repos/org).
+	addGuardrailDirectiveCommands(cmd, rt)
 	return cmd
 }
 

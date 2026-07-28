@@ -4,7 +4,7 @@ api: "POST /api/agent-directives"
 description: "Create a new agent directive (skill, MCP server, doc, hook, etc.)"
 ---
 
-Creates a new agent directive. The directive starts as an unpublished draft - call [Publish](/cloud-api/context/skills/publish) to activate it.
+Creates a new agent directive. It is live immediately: there is no draft or publish step. Creating it does not attach it anywhere, so nothing loads it until you [attach it](/cloud-api/context/skills/attachments-replace) to a template, a repo, or the whole org.
 
 **Required scope:** `context:write`
 
@@ -45,7 +45,7 @@ Creates a new agent directive. The directive starts as an unpublished draft - ca
 Returns `201` with the created directive resource.
 
 <ResponseField name="directive" type="object">
-  The created directive resource with `id`, `version`, `is_published`, `content`, and timestamps.
+  The created directive resource with `id`, `content_hash`, `content`, `attachments`, and timestamps.
 </ResponseField>
 
 <RequestExample>
@@ -144,8 +144,6 @@ console.log(`Created: ${data.directive.id}`);
     "name": "deploy-to-fly",
     "display_name": "Deploy to Fly.io",
     "description": "Guides the agent through Fly.io deployments",
-    "version": 1,
-    "is_published": false,
     "organization_id": "org_abc123",
     "owner_user_id": "user_xyz",
     "content_kind": "inline",

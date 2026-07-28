@@ -124,6 +124,8 @@ Common causes, in rough order of frequency:
 | `502` from `run-now` | The launch itself fails (unknown template, deleted Slack integration) | Read `detail`; fix the referenced resource |
 | `503` from `create`/`update` | Cloud Scheduler isn't configured in this environment | Create `--disabled` and drive it with `run-now` |
 | Ran, but nothing reached Slack | No Slack target configured, or the run errored before finishing | `get <id> \| jq '{slack_integration_id, slack_channel_id}'`, then `session history` |
+| Run started but never finishes | Stalled on an approval gate (autopilot runs can hit them) | `runtm-api session approvals list <last_session_id>`, then `approvals resolve ... --approve\|--reject` |
+| Ran and finished, but was it good? | Nothing wrong; you want the verdict | `runtm-api session grade <last_session_id>`; aggregate with `runtm-api agents scorecard` |
 | Ran, output was wrong | The prompt or template is wrong, not the schedule | Iterate with `run-now`, not by waiting for ticks |
 
 ## Slack output

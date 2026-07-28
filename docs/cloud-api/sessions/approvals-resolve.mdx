@@ -1,0 +1,78 @@
+---
+title: "Resolve Approval"
+api: "POST /api/sessions/{session_id}/approvals/{approval_id}/resolve"
+description: "Approve or reject a pending approval"
+---
+
+Resolves a pending approval and hands the loop back to the agent (the session flips back to `agent_status=working` when it was waiting on this approval).
+
+Resolution is role-gated server-side and fails closed, for API keys and dashboard users alike:
+
+- Org admins and owners can always resolve.
+- Otherwise the resolver must match the approval's `required_role` or belong to its `required_team_id` (either one suffices when both are set).
+- With no constraints, anyone with access to the session can resolve.
+- Personal (no-org) sessions: only the session owner.
+
+**Required scope:** `sessions:write`
+
+## Path Parameters
+
+<ParamField path="session_id" type="string" required>
+  The session ID.
+</ParamField>
+
+<ParamField path="approval_id" type="string" required>
+  The approval ID.
+</ParamField>
+
+## Request Body
+
+<ParamField body="action" type="string" required>
+  `approve` or `reject`.
+</ParamField>
+
+<ParamField body="note" type="string">
+  Optional resolution note (max 512 characters), recorded on the approval and surfaced to the agent.
+</ParamField>
+
+## Errors
+
+| Status | Cause |
+|--------|-------|
+| `403` | Resolver lacks the required role or team membership |
+| `404` | No such approval on this session |
+| `409` | Already resolved |
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/cloud/sessions/a6414511-4430-4e1f-8c51-8ea8824dadec/approvals/ap_7c2d/resolve" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{"action": "approve", "note": "ship it"}'
+```
+
+```bash CLI
+runtm-api session approvals resolve a6414511-4430-4e1f-8c51-8ea8824dadec ap_7c2d --approve --note "ship it"
+runtm-api session approvals resolve a6414511-4430-4e1f-8c51-8ea8824dadec ap_7c2d --reject --note "wrong repo"
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "id": "ap_7c2d",
+  "session_id": "a6414511-4430-4e1f-8c51-8ea8824dadec",
+  "kind": "deploy",
+  "message": "Deploy the updated landing page to production?",
+  "required_role": "admin",
+  "required_team_id": null,
+  "status": "approved",
+  "requested_by": "sandbox",
+  "created_at": "2026-07-28T18:12:00Z",
+  "resolved_by": "user_123",
+  "resolved_at": "2026-07-28T18:14:30Z",
+  "resolution_note": "ship it"
+}
+```
+</ResponseExample>

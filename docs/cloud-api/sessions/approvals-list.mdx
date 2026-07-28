@@ -1,0 +1,100 @@
+---
+title: "List Approvals"
+api: "GET /api/sessions/{session_id}/approvals"
+description: "List a session's approval requests, newest first"
+---
+
+Autopilot runs can pause on an approval gate (a deploy, a guarded action) and wait for a human decision. This lists the session's approval requests so an unattended run that stalls can be diagnosed in-band. Resolve with [Resolve Approval](/cloud-api/sessions/approvals-resolve).
+
+**Required scope:** `sessions:read`
+
+## Path Parameters
+
+<ParamField path="session_id" type="string" required>
+  The session ID.
+</ParamField>
+
+## Response
+
+A JSON array of approval objects.
+
+<ResponseField name="id" type="string">
+  Approval ID.
+</ResponseField>
+
+<ResponseField name="session_id" type="string">
+  The session that requested it.
+</ResponseField>
+
+<ResponseField name="kind" type="string">
+  What is being approved, for example `deploy`.
+</ResponseField>
+
+<ResponseField name="message" type="string | null">
+  The agent's request message.
+</ResponseField>
+
+<ResponseField name="required_role" type="string | null">
+  Org role required to resolve, when constrained.
+</ResponseField>
+
+<ResponseField name="required_team_id" type="string | null">
+  Group membership required to resolve, when constrained.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  `pending`, `approved`, or `rejected`.
+</ResponseField>
+
+<ResponseField name="requested_by" type="string">
+  Who requested the approval (usually the sandbox).
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  When the request was made.
+</ResponseField>
+
+<ResponseField name="resolved_by" type="string | null">
+  Who resolved it.
+</ResponseField>
+
+<ResponseField name="resolved_at" type="string | null">
+  When it was resolved.
+</ResponseField>
+
+<ResponseField name="resolution_note" type="string | null">
+  The note left at resolution.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/cloud/sessions/a6414511-4430-4e1f-8c51-8ea8824dadec/approvals" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```bash CLI
+runtm-api session approvals list a6414511-4430-4e1f-8c51-8ea8824dadec
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+[
+  {
+    "id": "ap_7c2d",
+    "session_id": "a6414511-4430-4e1f-8c51-8ea8824dadec",
+    "kind": "deploy",
+    "message": "Deploy the updated landing page to production?",
+    "required_role": "admin",
+    "required_team_id": null,
+    "status": "pending",
+    "requested_by": "sandbox",
+    "created_at": "2026-07-28T18:12:00Z",
+    "resolved_by": null,
+    "resolved_at": null,
+    "resolution_note": null
+  }
+]
+```
+</ResponseExample>

@@ -1,0 +1,35 @@
+---
+title: "Delete Email Integration"
+api: "DELETE /api/v1/email/integration/{integration_id}"
+description: "Remove an email inbox"
+---
+
+Deletes the integration and its inbox. Mail sent to the address stops launching sessions.
+
+**Required scope:** `integrations:write`, and the caller must be an org admin or owner.
+
+## Path Parameters
+
+<ParamField path="integration_id" type="string" required>
+  The email integration ID.
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE "https://app.runtm.com/api/cloud/v1/email/integration/em_8d7c" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```bash CLI
+runtm-api agents delete em_8d7c --type email --yes
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "success": true
+}
+```
+</ResponseExample>

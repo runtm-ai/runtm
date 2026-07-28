@@ -1,0 +1,60 @@
+---
+title: "List Email Integrations"
+api: "GET /api/v1/email/integrations"
+description: "List the organization's email inboxes"
+---
+
+Lists the org's email trigger inboxes. Each inbox launches or follows up a session when mail arrives at its address. There is no get-by-id route; filter this list client-side.
+
+**Required scope:** `integrations:read`
+
+## Headers
+
+<ParamField header="X-Organization-Id" type="string" required>
+  Organization ID.
+</ParamField>
+
+## Response
+
+<ResponseField name="available" type="boolean">
+  Whether the email provider is configured.
+</ResponseField>
+
+<ResponseField name="integrations" type="array">
+  Integration objects: `{id, name, inbox_email, inbox_id, enabled, default_template, default_github_repo, default_agent, rate_limit_per_hour, config, created_at}`.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/cloud/v1/email/integrations" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```bash CLI
+runtm-api agents list --type email
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "available": true,
+  "integrations": [
+    {
+      "id": "em_8d7c",
+      "name": "support-inbox",
+      "inbox_email": "acme-support-inbox@agentmail.to",
+      "inbox_id": "in_123",
+      "enabled": true,
+      "default_template": "support-bot",
+      "default_github_repo": null,
+      "default_agent": "claude-code",
+      "rate_limit_per_hour": 15,
+      "config": {"agent_id": "a1b2c3d4-0000-0000-0000-000000000000"},
+      "created_at": "2026-07-20T12:00:00Z"
+    }
+  ]
+}
+```
+</ResponseExample>

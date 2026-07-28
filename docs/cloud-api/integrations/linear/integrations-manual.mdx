@@ -1,0 +1,88 @@
+---
+title: "Create Manual Linear Bot"
+api: "POST /api/v1/linear/integrations/manual"
+description: "Create a Linear bot headlessly from a personal API key"
+---
+
+The headless path to a Linear trigger: no OAuth browser step. The API key is verified against Linear, stored encrypted, and the webhook is registered automatically. Sessions launched by the bot run as `service_user_id`.
+
+**Required scope:** `integrations:write`, and the caller must be an org admin or owner.
+
+## Request Body
+
+<ParamField body="api_key" type="string" required>
+  A Linear personal API key (min 10 characters).
+</ParamField>
+
+<ParamField body="service_user_id" type="string" required>
+  The Runtm user ID the bot's sessions run as.
+</ParamField>
+
+<ParamField body="name" type="string">
+  Display name.
+</ParamField>
+
+<ParamField body="default_github_repo" type="string">
+  Default repo (owner/name) for launched sessions.
+</ParamField>
+
+<ParamField body="default_template" type="string">
+  Default org template.
+</ParamField>
+
+<ParamField body="default_agent" type="string" default="claude-code">
+  Coding agent harness.
+</ParamField>
+
+<ParamField body="rate_limit_per_hour" type="integer" default="15">
+  Max events handled per hour (1 to 100).
+</ParamField>
+
+<ParamField body="project_repo_map" type="object">
+  Map of Linear project ID to repo, overriding the default repo per project.
+</ParamField>
+
+<ParamField body="config" type="object">
+  Additional configuration, for example `{"agent_id": "..."}` to bind a roster agent.
+</ParamField>
+
+## Response
+
+The created integration object, as in [List Linear Integrations](/cloud-api/integrations/linear/integrations-list).
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/cloud/v1/linear/integrations/manual" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{"api_key": "lin_api_...", "service_user_id": "user_123", "name": "Runtime Bot"}'
+```
+
+```bash CLI
+runtm-api agents create --type linear --linear-api-key lin_api_... \
+  --service-user user_123 --name "Runtime Bot"
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "id": "li_2e4f",
+  "connection_type": "manual",
+  "name": "Runtime Bot",
+  "workspace_name": "Acme",
+  "actor_name": "Runtime Bot",
+  "service_user_id": "user_123",
+  "default_github_repo": null,
+  "default_template": null,
+  "default_agent": "claude-code",
+  "rate_limit_per_hour": 15,
+  "enabled": true,
+  "webhook_active": true,
+  "bot_linear_user_id": "lin_usr_1",
+  "project_repo_map": null,
+  "config": null
+}
+```
+</ResponseExample>

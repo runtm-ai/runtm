@@ -1,0 +1,87 @@
+---
+title: "List Template Guardrails"
+api: "GET /api/org-templates/{template_id}/guardrails"
+description: "List guardrails scoped to one template"
+---
+
+Template guardrails apply only to sessions launched from this template, layered on top of the org-wide set. Three types exist: `allowlist_rule_v0` (command patterns), `hook_v0` (lifecycle hooks), and `network_rule_v0` (egress rules). Use [Resolve Template Guardrails](/cloud-api/templates/guardrails-resolve) to see the merged effective set.
+
+**Required scope:** `guardrails:read`
+
+## Path Parameters
+
+<ParamField path="template_id" type="string" required>
+  The template ID.
+</ParamField>
+
+## Query Parameters
+
+<ParamField query="type_family" type="string">
+  Filter by family: `allowlist`, `hook`, or `network`.
+</ParamField>
+
+<ParamField query="include_disabled" type="boolean" default="false">
+  Include disabled guardrails.
+</ParamField>
+
+<ParamField query="limit" type="integer" default="20">
+  Results per page (1 to 100).
+</ParamField>
+
+<ParamField query="offset" type="integer" default="0">
+  Pagination offset.
+</ParamField>
+
+## Response
+
+<ResponseField name="guardrails" type="array">
+  Guardrail objects: `{id, template_id, organization_id, type, name, display_name, description, content, content_hash, enabled, position, created_by_user_id, updated_by_user_id, created_at, updated_at}`.
+</ResponseField>
+
+<ResponseField name="total" type="integer">
+  Total matches before paging.
+</ResponseField>
+
+<ResponseField name="has_more" type="boolean">
+  Whether another page exists.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/cloud/org-templates/tmpl_abc123/guardrails?type_family=allowlist" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```bash CLI
+runtm-api template guardrails list tmpl_abc123 --type allowlist
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "guardrails": [
+    {
+      "id": "tg_4b2c",
+      "template_id": "tmpl_abc123",
+      "organization_id": "org_abc123",
+      "type": "allowlist_rule_v0",
+      "name": "block-force-push",
+      "display_name": null,
+      "description": null,
+      "content": {"kind": "deny", "pattern": "git push --force*"},
+      "content_hash": "9c1185a5c5e9fc54612808977ee8f548b2258d31",
+      "enabled": true,
+      "position": 0,
+      "created_by_user_id": "user_123",
+      "updated_by_user_id": null,
+      "created_at": "2026-07-28T19:00:00Z",
+      "updated_at": null
+    }
+  ],
+  "total": 1,
+  "has_more": false
+}
+```
+</ResponseExample>

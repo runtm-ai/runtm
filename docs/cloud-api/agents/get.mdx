@@ -1,0 +1,55 @@
+---
+title: "Get Agent"
+api: "GET /api/v1/agents/{agent_id}"
+description: "Get one roster agent"
+---
+
+Returns a single [agent object](/cloud-api/agents/overview#the-agent-object). Agents outside the caller's organization return `404`.
+
+**Required scope:** `activity:read`
+
+## Path Parameters
+
+<ParamField path="agent_id" type="string" required>
+  The agent ID.
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token.
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string">
+  Organization ID. Omit for personal agents.
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/cloud/v1/agents/a1b2c3d4-0000-0000-0000-000000000000" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```bash CLI
+runtm-api agents get a1b2c3d4-0000-0000-0000-000000000000
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "id": "a1b2c3d4-0000-0000-0000-000000000000",
+  "organization_id": "org_abc123",
+  "name": "Donna",
+  "description": "GTM research agent",
+  "avatar": {"kind": "icon", "icon": "bot", "color": "blue"},
+  "avatar_image_url": null,
+  "system_instructions": "Be terse.",
+  "default_template": "gtm-machine",
+  "default_agent": "claude-code",
+  "evaluator_criteria": {"version": 2, "objective": "Ship weekly lists", "checks": ["lists posted"]},
+  "economics": null
+}
+```
+</ResponseExample>

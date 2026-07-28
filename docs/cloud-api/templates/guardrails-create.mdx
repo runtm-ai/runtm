@@ -1,0 +1,101 @@
+---
+title: "Create Template Guardrail"
+api: "POST /api/org-templates/{template_id}/guardrails"
+description: "Add a guardrail scoped to one template"
+---
+
+Creates a template-scoped guardrail. Content shapes by type:
+
+| Type | Content |
+|------|---------|
+| `allowlist_rule_v0` | `{"kind": "allow" \| "ask" \| "deny", "pattern": "<glob>", "purpose": "..."}` |
+| `hook_v0` | `{"event": "PreToolUse" \| ..., "type": "command" \| "prompt", "script": "...", "prompt": "...", "matcher": "...", "timeout": 30, "async": false}` |
+| `network_rule_v0` | `{"kind": "host" \| "cidr", "value": "api.example.com", "purpose": "..."}` |
+
+Hook events: `PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `Notification`, `Stop`, `SubagentStop`, `SessionStart`, `SessionEnd`, `PreCompact`. Command hooks require `script`; prompt hooks require `prompt`. On the wire the async field is spelled `async`.
+
+**Required scope:** `guardrails:write`
+
+## Path Parameters
+
+<ParamField path="template_id" type="string" required>
+  The template ID.
+</ParamField>
+
+## Request Body
+
+<ParamField body="type" type="string" required>
+  `allowlist_rule_v0`, `hook_v0`, or `network_rule_v0`.
+</ParamField>
+
+<ParamField body="name" type="string" required>
+  Guardrail name (1 to 128 characters).
+</ParamField>
+
+<ParamField body="display_name" type="string">
+  Human-readable name.
+</ParamField>
+
+<ParamField body="description" type="string">
+  Short description (max 1024 characters).
+</ParamField>
+
+<ParamField body="content" type="object" required>
+  The typed content object (see the table above).
+</ParamField>
+
+<ParamField body="enabled" type="boolean" default="true">
+  Whether the guardrail is enforced.
+</ParamField>
+
+<ParamField body="position" type="integer" default="0">
+  Ordering position; lower applies first.
+</ParamField>
+
+## Errors
+
+| Status | Cause |
+|--------|-------|
+| `400` | `ITEM_TYPE_NOT_ALLOWED`: type is not one of the three guardrail types |
+| `422` | `VALIDATION_ERROR`: content does not match the type's schema |
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/cloud/org-templates/tmpl_abc123/guardrails" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "allowlist_rule_v0",
+    "name": "block-force-push",
+    "content": {"kind": "deny", "pattern": "git push --force*"}
+  }'
+```
+
+```bash CLI
+runtm-api template guardrails create tmpl_abc123 --type allowlist \
+  --name block-force-push --content '{"kind":"deny","pattern":"git push --force*"}'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 201
+{
+  "id": "tg_4b2c",
+  "template_id": "tmpl_abc123",
+  "organization_id": "org_abc123",
+  "type": "allowlist_rule_v0",
+  "name": "block-force-push",
+  "display_name": null,
+  "description": null,
+  "content": {"kind": "deny", "pattern": "git push --force*"},
+  "content_hash": "9c1185a5c5e9fc54612808977ee8f548b2258d31",
+  "enabled": true,
+  "position": 0,
+  "created_by_user_id": "user_123",
+  "updated_by_user_id": null,
+  "created_at": "2026-07-28T19:00:00Z",
+  "updated_at": null
+}
+```
+</ResponseExample>

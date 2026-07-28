@@ -1,0 +1,83 @@
+---
+title: "Agents"
+description: "Named agents with identity, instructions, session defaults, an evaluation rubric, and a budget"
+---
+
+An agent is a durable named identity: a description, an avatar, system instructions, session defaults (template and coding agent), an evaluation rubric (`evaluator_criteria`), and a budget (`economics`). Sessions launched for the agent inherit its defaults, and the run grader scores each run against its rubric.
+
+Agents are distinct from the trigger integrations that launch them. A Slack app, GitHub App, Linear bot, or email inbox binds to an agent through `config.agent_id` on the integration; the agent row is the source of truth for defaults, and editing them fans out to every linked trigger.
+
+## Endpoints
+
+| Method | Path | Scope |
+|--------|------|-------|
+| `GET` | `/api/v1/agents` | `activity:read` |
+| `GET` | `/api/v1/agents/{agent_id}` | `activity:read` |
+| `GET` | `/api/v1/agents/trigger-credentials` | `integrations:read` |
+| `POST` | `/api/v1/agents` | `integrations:write` |
+| `PATCH` | `/api/v1/agents/{agent_id}` | `integrations:write` |
+| `DELETE` | `/api/v1/agents/{agent_id}` | `integrations:write` |
+
+All endpoints are organization scoped when the `X-Organization-Id` header is present; without it they operate on personal agents.
+
+## The agent object
+
+<ResponseField name="id" type="string">
+  Agent ID.
+</ResponseField>
+
+<ResponseField name="organization_id" type="string | null">
+  Owning organization, or null for a personal agent.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Display name (max 200 characters).
+</ResponseField>
+
+<ResponseField name="description" type="string | null">
+  Short description (max 2000 characters).
+</ResponseField>
+
+<ResponseField name="avatar" type="object | null">
+  Avatar descriptor, for example `{"kind": "icon", "icon": "bot", "color": "blue"}`.
+</ResponseField>
+
+<ResponseField name="avatar_image_url" type="string | null">
+  Resolved avatar image URL (read only; synced from the avatar).
+</ResponseField>
+
+<ResponseField name="system_instructions" type="string | null">
+  Instructions injected into every session the agent runs (max 20000 characters).
+</ResponseField>
+
+<ResponseField name="default_template" type="string | null">
+  Org template slug sessions launch from. Editing it fans out to linked triggers.
+</ResponseField>
+
+<ResponseField name="default_agent" type="string | null">
+  Coding agent harness, for example `claude-code` or `codex`.
+</ResponseField>
+
+<ResponseField name="evaluator_criteria" type="object | null">
+  The rubric the run grader scores against: `{"version": 1, "objective": "...", "checks": ["..."]}`. The server bumps `version` on every edit so grades record which rubric produced them.
+</ResponseField>
+
+<ResponseField name="economics" type="object | null">
+  Task values and budget: `{"tasks": {"triage": {"value_usd": 10, "minutes": 20}}, "default_task": {...}, "budget": {"monthly_usd_cap": 50}}`. Feeds the scorecard's value and budget columns.
+</ResponseField>
+
+## The evaluation loop
+
+1. Set the rubric: `PATCH /api/v1/agents/{id}` with `evaluator_criteria`.
+2. The grader scores each completed run against it.
+3. Read one run's verdict: [Session Grade](/cloud-api/activity/session-grade).
+4. Read the aggregate: [Agent Scorecard](/cloud-api/activity/agent-scorecard).
+
+## CLI
+
+```bash
+runtm-api agents list
+runtm-api agents create --name Donna --instructions 'Be terse.'
+runtm-api agents update <id> --evaluator-criteria '{"objective":"Resolve the ticket","checks":["opened a PR"]}'
+runtm-api agents scorecard --days 30
+```

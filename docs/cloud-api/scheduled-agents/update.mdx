@@ -1,0 +1,99 @@
+---
+title: "Update Scheduled Agent"
+api: "PATCH /api/v1/scheduled-agents/{agent_id}"
+description: "Edit a scheduled agent; omitted fields are left unchanged"
+---
+
+Partial update. Changing `cron` or `enabled` reconciles the Cloud Scheduler job in the same request; other fields only touch the row. Prefer disabling over deleting when pausing a schedule: it removes the scheduler job but keeps the prompt, template binding, and Slack target, so re-enabling is one call.
+
+**Required scope:** `sessions:write` and an admin or owner role.
+
+## Path Parameters
+
+<ParamField path="agent_id" type="string" required>
+  The scheduled agent ID.
+</ParamField>
+
+## Request Body
+
+All fields optional; omitted fields are unchanged.
+
+<ParamField body="name" type="string">
+  New display name.
+</ParamField>
+
+<ParamField body="cron" type="string">
+  New 5-field UTC cron.
+</ParamField>
+
+<ParamField body="prompt" type="string">
+  New prompt.
+</ParamField>
+
+<ParamField body="org_template_id" type="string | null">
+  New template binding, or null to clear.
+</ParamField>
+
+<ParamField body="agent" type="string">
+  New coding agent harness.
+</ParamField>
+
+<ParamField body="model" type="string | null">
+  New model override.
+</ParamField>
+
+<ParamField body="enabled" type="boolean">
+  Turn the schedule on or off.
+</ParamField>
+
+<ParamField body="slack_integration_id" type="string | null">
+  New Slack integration. Travels with `slack_channel_id`.
+</ParamField>
+
+<ParamField body="slack_channel_id" type="string | null">
+  New Slack channel. Travels with `slack_integration_id`.
+</ParamField>
+
+## Response
+
+The updated [scheduled agent object](/cloud-api/scheduled-agents/overview#the-scheduled-agent-object).
+
+<RequestExample>
+```bash cURL
+curl -X PATCH "https://app.runtm.com/api/cloud/v1/scheduled-agents/sa_9f3c1a" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{"enabled": true}'
+```
+
+```bash CLI
+runtm-api scheduled-agents update sa_9f3c1a --enabled
+runtm-api scheduled-agents update sa_9f3c1a --cron '0 19 * * 1'
+runtm-api scheduled-agents update sa_9f3c1a --disabled
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "id": "sa_9f3c1a",
+  "name": "weekly-outbound",
+  "cron": "0 18 * * 1",
+  "prompt": "Build this week's outbound lists and post them for approval",
+  "org_template_id": "tmpl_abc123",
+  "template_name": "GTM Machine",
+  "agent": "claude-code",
+  "model": null,
+  "enabled": true,
+  "slack_integration_id": null,
+  "slack_integration_name": null,
+  "slack_channel_id": null,
+  "last_run_at": null,
+  "last_session_id": null,
+  "next_run_at": "2026-08-03T18:00:00Z",
+  "created_at": "2026-07-28T19:00:00Z",
+  "updated_at": "2026-07-28T19:05:00Z"
+}
+```
+</ResponseExample>

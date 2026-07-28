@@ -45,6 +45,10 @@ Writes need the context:write scope on the key.`,
 		newDirectiveAttachments(rt, "MCP server"),
 		newDirectiveAttach(rt, "MCP server"),
 		newDirectiveDetach(rt, "MCP server"),
+		newDirectiveResync(rt, "MCP server"),
+		newDirectiveLock(rt, "MCP server", true),
+		newDirectiveLock(rt, "MCP server", false),
+		newDirectiveFacets(rt, "MCP server", "mcp"),
 	)
 	return cmd
 }
@@ -219,6 +223,7 @@ func newSkillUpdate(rt *Runtime) *cobra.Command {
 		entry       string
 		contentJSON string
 		labels      []string
+		ownerTeam   string
 	)
 	cmd := &cobra.Command{
 		Use:   "update <id>",
@@ -246,8 +251,11 @@ func newSkillUpdate(rt *Runtime) *cobra.Command {
 				}
 				body["labels"] = lbl
 			}
+			if cmd.Flags().Changed("owner-team") {
+				body["owner_team_id"] = ownerTeamValue(ownerTeam)
+			}
 			if len(body) == 0 {
-				return fmt.Errorf("pass at least one field to update (--display-name, --description, --md/--content, --label)")
+				return fmt.Errorf("pass at least one field to update (--display-name, --description, --md/--content, --label, --owner-team)")
 			}
 			c, _, err := requireOrgClient(rt, "skills")
 			if err != nil {
@@ -263,7 +271,18 @@ func newSkillUpdate(rt *Runtime) *cobra.Command {
 	cmd.Flags().StringVar(&entry, "entry", "SKILL.md", "Entry filename for --md content")
 	cmd.Flags().StringVar(&contentJSON, "content", "", "Replace content with a raw JSON object")
 	cmd.Flags().StringArrayVar(&labels, "label", nil, "Replace labels; KEY=VALUE (repeatable)")
+	cmd.Flags().StringVar(&ownerTeam, "owner-team", "", "Owning group (Better Auth team id); pass an empty string to make it org-wide")
 	return cmd
+}
+
+// ownerTeamValue maps the --owner-team flag to the API's tri-state field:
+// a team id sets the owning group, an empty string sends explicit null
+// (org-wide). Absence of the flag means unchanged, handled by the caller.
+func ownerTeamValue(v string) any {
+	if v == "" {
+		return nil
+	}
+	return v
 }
 
 // resolveSkillContent builds the content object from --content (raw JSON, wins)
@@ -374,6 +393,7 @@ func newMcpUpdate(rt *Runtime) *cobra.Command {
 		headers     []string
 		contentJSON string
 		labels      []string
+		ownerTeam   string
 	)
 	cmd := &cobra.Command{
 		Use:   "update <id>",
@@ -405,8 +425,11 @@ func newMcpUpdate(rt *Runtime) *cobra.Command {
 				}
 				body["labels"] = lbl
 			}
+			if cmd.Flags().Changed("owner-team") {
+				body["owner_team_id"] = ownerTeamValue(ownerTeam)
+			}
 			if len(body) == 0 {
-				return fmt.Errorf("pass at least one field to update (--display-name, --description, MCP content flags, --label)")
+				return fmt.Errorf("pass at least one field to update (--display-name, --description, MCP content flags, --label, --owner-team)")
 			}
 			c, _, err := requireOrgClient(rt, "MCP servers")
 			if err != nil {
@@ -426,6 +449,7 @@ func newMcpUpdate(rt *Runtime) *cobra.Command {
 	cmd.Flags().StringArrayVar(&headers, "header", nil, "http/sse: header KEY=VALUE (repeatable)")
 	cmd.Flags().StringVar(&contentJSON, "content", "", "Raw MCP content object as JSON")
 	cmd.Flags().StringArrayVar(&labels, "label", nil, "Replace labels; KEY=VALUE (repeatable)")
+	cmd.Flags().StringVar(&ownerTeam, "owner-team", "", "Owning group (Better Auth team id); pass an empty string to make it org-wide")
 	return cmd
 }
 

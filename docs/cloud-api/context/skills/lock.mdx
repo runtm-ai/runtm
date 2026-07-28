@@ -1,0 +1,49 @@
+---
+title: "Lock Directive"
+api: "POST /api/agent-directives/{directive_id}:lock"
+description: "Lock a skill or MCP server against edits"
+---
+
+Locks a directive. A locked directive still loads into sessions and template builds; only edits, deletion, resync, and attachment changes are blocked until an org admin unlocks it. Use it to protect a skill that defines critical agent behaviour from accidental edits.
+
+**Required scope:** `context:write`, and the caller must be an org admin or owner.
+
+## Path Parameters
+
+<ParamField path="directive_id" type="string" required>
+  The directive ID.
+</ParamField>
+
+## Response
+
+<ResponseField name="directive" type="object">
+  The updated directive, with `locked: true`, `locked_by_user_id`, and `locked_at` set.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/cloud/agent-directives/dir_9f3c1a:lock" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```bash CLI
+runtm-api skills lock dir_9f3c1a
+runtm-api mcp lock dir_5e6f7a
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "directive": {
+    "id": "dir_9f3c1a",
+    "type": "skill_v0",
+    "name": "outbound-writing",
+    "locked": true,
+    "locked_by_user_id": "user_123",
+    "locked_at": "2026-07-28T19:00:00Z"
+  }
+}
+```
+</ResponseExample>

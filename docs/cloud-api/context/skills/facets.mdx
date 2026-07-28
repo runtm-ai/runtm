@@ -1,0 +1,62 @@
+---
+title: "Directive Facets"
+api: "GET /api/agent-directives:facets"
+description: "Aggregate label keys and values across directives"
+---
+
+Returns the label keys and values in use across the org's directives, with counts. Use it to discover what labels exist before filtering a list by one. The same scope filters as [List Directives](/cloud-api/context/skills/list) apply.
+
+**Required scope:** `context:read`
+
+## Query Parameters
+
+<ParamField query="type_family" type="string" default="skill">
+  `skill`, `mcp`, `doc`, `network`, `allowlist`, or `hook`.
+</ParamField>
+
+<ParamField query="repo_full_name" type="string">
+  Scope to directives attached to one repo.
+</ParamField>
+
+<ParamField query="template_id" type="string">
+  Scope to directives attached to one template.
+</ParamField>
+
+<ParamField query="labels" type="string[]">
+  Pre-filter by label, repeated as `?labels=key:value`.
+</ParamField>
+
+## Response
+
+<ResponseField name="facets" type="array">
+  `{key, values: [{value, count}]}` per label key.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/cloud/agent-directives:facets?type_family=skill" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```bash CLI
+runtm-api skills facets
+runtm-api mcp facets --template tmpl_abc123
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "facets": [
+    {
+      "key": "team",
+      "values": [
+        {"value": "gtm", "count": 7},
+        {"value": "platform", "count": 3}
+      ]
+    }
+  ]
+}
+```
+</ResponseExample>

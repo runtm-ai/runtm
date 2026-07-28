@@ -1,0 +1,65 @@
+---
+title: "List Scheduled Agents"
+api: "GET /api/v1/scheduled-agents"
+description: "List the organization's scheduled agents with next_run_at"
+---
+
+Returns every scheduled agent in the organization, newest first. Each entry carries `next_run_at` (the next UTC fire time derived from the cron, null when disabled) next to `last_run_at` and `last_session_id`, so one call answers whether a schedule is live and when it last did anything.
+
+**Required scope:** `sessions:read` (all org members)
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token.
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string" required>
+  Organization ID.
+</ParamField>
+
+## Response
+
+<ResponseField name="agents" type="array">
+  Array of [scheduled agent objects](/cloud-api/scheduled-agents/overview#the-scheduled-agent-object).
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/cloud/v1/scheduled-agents" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```bash CLI
+runtm-api scheduled-agents list
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "agents": [
+    {
+      "id": "sa_9f3c1a",
+      "name": "weekly-outbound",
+      "cron": "0 18 * * 1",
+      "prompt": "Build this week's outbound lists and post them for approval",
+      "org_template_id": "tmpl_abc123",
+      "template_name": "GTM Machine",
+      "agent": "claude-code",
+      "model": null,
+      "enabled": true,
+      "slack_integration_id": null,
+      "slack_integration_name": null,
+      "slack_channel_id": null,
+      "last_run_at": "2026-07-27T18:00:04Z",
+      "last_session_id": "a6414511-4430-4e1f-8c51-8ea8824dadec",
+      "next_run_at": "2026-08-03T18:00:00Z",
+      "created_at": "2026-07-20T16:00:00Z",
+      "updated_at": "2026-07-27T18:00:04Z"
+    }
+  ]
+}
+```
+</ResponseExample>

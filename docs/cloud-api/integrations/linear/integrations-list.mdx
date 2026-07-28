@@ -1,0 +1,53 @@
+---
+title: "List Linear Integrations"
+api: "GET /api/v1/linear/integrations"
+description: "List every Linear bot in the organization"
+---
+
+Lists all Linear integrations (multi-bot). The singular [Get Integration](/cloud-api/integrations/linear/integration-get) returns only the primary one; use this to see every bot with its connection type (`oauth`, `custom_oauth`, or `manual`).
+
+**Required scope:** `integrations:read`
+
+## Response
+
+<ResponseField name="integrations" type="array">
+  Integration objects: `{id, connection_type, name, workspace_name, actor_name, service_user_id, default_github_repo, default_template, default_agent, rate_limit_per_hour, enabled, webhook_active, bot_linear_user_id, project_repo_map, config}`.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/cloud/v1/linear/integrations" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```bash CLI
+runtm-api agents list --type linear
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "integrations": [
+    {
+      "id": "li_2e4f",
+      "connection_type": "manual",
+      "name": "Runtime Bot",
+      "workspace_name": "Acme",
+      "actor_name": "Runtime Bot",
+      "service_user_id": "user_123",
+      "default_github_repo": "acme/api",
+      "default_template": "backend",
+      "default_agent": "claude-code",
+      "rate_limit_per_hour": 15,
+      "enabled": true,
+      "webhook_active": true,
+      "bot_linear_user_id": "lin_usr_1",
+      "project_repo_map": null,
+      "config": null
+    }
+  ]
+}
+```
+</ResponseExample>

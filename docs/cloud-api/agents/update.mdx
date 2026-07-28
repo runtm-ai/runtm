@@ -1,0 +1,91 @@
+---
+title: "Update Agent"
+api: "PATCH /api/v1/agents/{agent_id}"
+description: "Edit a roster agent; omitted fields are left unchanged"
+---
+
+Partial update. Two fields have fan-out semantics: editing `default_template` or `default_agent` also updates every trigger integration linked to this agent (the roster row is the source of truth for defaults).
+
+**Required scope:** `integrations:write`
+
+## Path Parameters
+
+<ParamField path="agent_id" type="string" required>
+  The agent ID.
+</ParamField>
+
+## Request Body
+
+All fields optional; omitted fields are unchanged.
+
+<ParamField body="name" type="string">
+  New display name.
+</ParamField>
+
+<ParamField body="description" type="string">
+  New description.
+</ParamField>
+
+<ParamField body="avatar" type="object">
+  New avatar descriptor.
+</ParamField>
+
+<ParamField body="system_instructions" type="string">
+  New system instructions.
+</ParamField>
+
+<ParamField body="default_template" type="string | null">
+  New default template. Send an explicit `null` to clear it. Fans out to linked triggers either way.
+</ParamField>
+
+<ParamField body="default_agent" type="string">
+  New coding agent harness. Only concrete values apply; it cannot be cleared with null.
+</ParamField>
+
+<ParamField body="evaluator_criteria" type="object">
+  Replacement rubric. The server bumps `version` on every edit so run grades record which rubric produced them.
+</ParamField>
+
+<ParamField body="economics" type="object">
+  Replacement task values and budget.
+</ParamField>
+
+## Response
+
+The updated [agent object](/cloud-api/agents/overview#the-agent-object).
+
+<RequestExample>
+```bash cURL
+curl -X PATCH "https://app.runtm.com/api/cloud/v1/agents/a1b2c3d4-0000-0000-0000-000000000000" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{"economics": {"budget": {"monthly_usd_cap": 50}}}'
+```
+
+```bash CLI
+runtm-api agents update a1b2c3d4-0000-0000-0000-000000000000 \
+  --economics '{"budget":{"monthly_usd_cap":50}}'
+
+# Clear the default template (explicit null, fans out to triggers)
+runtm-api agents update a1b2c3d4-0000-0000-0000-000000000000 --clear-template
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "id": "a1b2c3d4-0000-0000-0000-000000000000",
+  "organization_id": "org_abc123",
+  "name": "Donna",
+  "description": "GTM research agent",
+  "avatar": null,
+  "avatar_image_url": null,
+  "system_instructions": "Be terse.",
+  "default_template": "gtm-machine",
+  "default_agent": "claude-code",
+  "evaluator_criteria": {"objective": "Ship weekly lists", "checks": ["lists posted"], "version": 2},
+  "economics": {"budget": {"monthly_usd_cap": 50}}
+}
+```
+</ResponseExample>

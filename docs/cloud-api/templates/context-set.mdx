@@ -1,0 +1,51 @@
+---
+title: "Set Template Context"
+api: "PUT /api/org-templates/{template_id}/context"
+description: "Replace or clear the template's instruction block"
+---
+
+Replaces the template's instruction block. Send a string to replace, or explicit `null` (or an empty string) to clear. Content changes apply to new sessions immediately; no rebuild is required for context.
+
+**Required scope:** `context:write`
+
+## Path Parameters
+
+<ParamField path="template_id" type="string" required>
+  The template ID.
+</ParamField>
+
+## Request Body
+
+<ParamField body="content" type="string | null">
+  The new instruction block (max 20000 characters). Null or blank clears it.
+</ParamField>
+
+## Response
+
+The updated context, same shape as [Get Template Context](/cloud-api/templates/context-get).
+
+<RequestExample>
+```bash cURL
+curl -X PUT "https://app.runtm.com/api/cloud/org-templates/tmpl_abc123/context" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{"content": "Always run the test suite before opening a PR."}'
+```
+
+```bash CLI
+runtm-api template context set tmpl_abc123 --text 'Always run the test suite before opening a PR.'
+runtm-api template context set tmpl_abc123 --clear
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "template_id": "tmpl_abc123",
+  "organization_id": "org_abc123",
+  "content": "Always run the test suite before opening a PR.",
+  "updated_at": "2026-07-28T19:00:00Z"
+}
+```
+</ResponseExample>

@@ -1,12 +1,12 @@
 ---
 title: "Resync Skill"
 api: "POST /api/agent-directives/{directive_id}:resync"
-description: "Re-fetch a directive's upstream source and optionally auto-publish"
+description: "Re-fetch a directive's content from its upstream source"
 ---
 
-Re-fetches the directive's content from its upstream source (e.g. GitHub repo). If no changes are detected, only provenance timestamps are updated. If changes exist, a new version row is created.
+Re-fetches the directive's content from its upstream source (for example a GitHub repo) and overwrites it in place. The directive keeps its id and its attachments, so everything already pointing at it picks up the new content; a rebuild is queued only when the content actually changed.
 
-When `auto_publish` is `true` and the previous version was already published, the new version is published atomically and inherits the old version's attachments.
+If the upstream payload is identical, nothing is written and the response carries `no_changes: true`. Locked directives cannot be resynced.
 
 **Required scope:** `context:write`
 
@@ -28,22 +28,16 @@ When `auto_publish` is `true` and the previous version was already published, th
 
 ## Body
 
-<ParamField body="auto_publish" type="boolean" default="false">
-  When `true`, automatically publish the new version if the previous was published and changes were detected.
-</ParamField>
+No fields. Send an empty object; the shape is reserved for future options.
 
 ## Response
 
 <ResponseField name="directive" type="object">
-  The directive resource (either updated existing or newly created version).
+  The directive resource after the resync.
 </ResponseField>
 
 <ResponseField name="no_changes" type="boolean">
-  `true` if upstream content was identical - no new version was created.
-</ResponseField>
-
-<ResponseField name="previous_version" type="integer">
-  The version number that was current before the resync.
+  `true` when the upstream content was identical and nothing was written.
 </ResponseField>
 
 <RequestExample>
@@ -52,7 +46,7 @@ curl -X POST "https://app.runtm.com/api/agent-directives/dir_abc123:resync" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "X-Organization-Id: org_abc123" \
   -H "Content-Type: application/json" \
-  -d '{"auto_publish": true}'
+  -d '{}'
 ```
 
 ```python Python
@@ -65,14 +59,14 @@ response = requests.post(
         "X-Organization-Id": "org_abc123",
         "Content-Type": "application/json",
     },
-    json={"auto_publish": True},
+    json={},
 )
 
 data = response.json()
 if data["no_changes"]:
     print("Already up to date")
 else:
-    print(f"Updated to v{data['directive']['version']}")
+    print(f"Updated to {data['directive']['content_hash'][:12]}")
 ```
 
 ```javascript JavaScript
@@ -85,7 +79,7 @@ const response = await fetch(
       "X-Organization-Id": "org_abc123",
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ auto_publish: true }),
+    body: JSON.stringify({}),
   }
 );
 
@@ -93,8 +87,12 @@ const data = await response.json();
 if (data.no_changes) {
   console.log("Already up to date");
 } else {
-  console.log(`Updated to v${data.directive.version}`);
+  console.log(`Updated to ${data.directive.content_hash.slice(0, 12)}`);
 }
+```
+
+```bash CLI
+runtm-api skills resync dir_abc123
 ```
 </RequestExample>
 
@@ -106,8 +104,6 @@ if (data.no_changes) {
     "type": "skill_v0",
     "name": "deploy-to-fly",
     "display_name": "Deploy to Fly.io",
-    "version": 3,
-    "is_published": true,
     "organization_id": "org_abc123",
     "owner_user_id": "user_xyz",
     "content_kind": "inline",
@@ -126,8 +122,7 @@ if (data.no_changes) {
     "created_at": "2026-05-09T21:00:00Z",
     "updated_at": "2026-05-09T21:00:00Z"
   },
-  "no_changes": false,
-  "previous_version": 2
+  "no_changes": false
 }
 ```
 </ResponseExample>

@@ -176,6 +176,8 @@ See https://docs.runtm.com/cloud-api/templates for the full schemas.`,
 		// "mcp" is the backend's type_family; the type name ("mcp_server")
 		// matches no family and silently disables the type filter.
 		newTemplateDirectives(rt, "mcp", "mcp"),
+		newTemplateContext(rt),
+		newTemplateGuardrails(rt),
 	)
 	return cmd
 }
@@ -383,6 +385,8 @@ func newTemplateUpdate(rt *Runtime) *cobra.Command {
 		sessionArgs      []string
 		restartAtStartup bool
 		startupScript    string
+		ownerTeam        string
+		rebuildSchedule  string
 	)
 	cmd := &cobra.Command{
 		Use:   "update <template_id>",
@@ -418,8 +422,19 @@ help, pass JSON per arg, e.g.
 			if cmd.Flags().Changed("startup-script") {
 				body["startup_script"] = startupScript
 			}
+			if cmd.Flags().Changed("owner-team") {
+				body["owner_team_id"] = ownerTeamValue(ownerTeam)
+			}
+			if cmd.Flags().Changed("rebuild-schedule") {
+				// 5-field UTC cron, or empty string to turn auto-rebuild off.
+				if rebuildSchedule == "" {
+					body["rebuild_schedule"] = nil
+				} else {
+					body["rebuild_schedule"] = rebuildSchedule
+				}
+			}
 			if len(body) == 0 {
-				return fmt.Errorf("pass at least one field to update (--display-name, --description, --session-arg, --restart-at-startup, --startup-script)")
+				return fmt.Errorf("pass at least one field to update (--display-name, --description, --session-arg, --restart-at-startup, --startup-script, --owner-team, --rebuild-schedule)")
 			}
 			resp, err := c.PatchJSON("/org-templates/"+url.PathEscape(args[0]), body)
 			return runJSON(rt, resp, err)
@@ -430,6 +445,8 @@ help, pass JSON per arg, e.g.
 	cmd.Flags().StringArrayVar(&sessionArgs, "session-arg", nil, `Replace session args (repeatable). Shorthand KEY=DEFAULT / KEY, or JSON for select/boolean/label/help.`)
 	cmd.Flags().BoolVar(&restartAtStartup, "restart-at-startup", false, "Force-restart services (and run the startup script) on first sandbox boot")
 	cmd.Flags().StringVar(&startupScript, "startup-script", "", "Path to a startup script, relative to the workdir or absolute (empty string clears)")
+	cmd.Flags().StringVar(&ownerTeam, "owner-team", "", "Owning group (Better Auth team id); pass an empty string to make it org-wide. Admin or creator only.")
+	cmd.Flags().StringVar(&rebuildSchedule, "rebuild-schedule", "", "Auto-rebuild cron (5-field, UTC); pass an empty string to turn it off")
 	return cmd
 }
 

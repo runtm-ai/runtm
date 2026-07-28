@@ -1,0 +1,36 @@
+---
+title: "Destroy Deployment"
+api: "DELETE /api/v0/deployments/{deployment_id}"
+description: "Tear down a deployment and take its URL offline"
+---
+
+Destroys the deployment. Its URL stops serving. Note the scope: destroy requires `deployments:delete`, not `deployments:write`.
+
+**Required scope:** `deployments:delete` (API key auth)
+
+## Path Parameters
+
+<ParamField path="deployment_id" type="string" required>
+  The deployment ID.
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE "https://app.runtm.com/api/cloud/v0/deployments/dep_3f2a" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```bash CLI
+runtm-api deployments destroy dep_3f2a --yes
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "deployment_id": "dep_3f2a",
+  "status": "destroying",
+  "message": "Deployment teardown started"
+}
+```
+</ResponseExample>

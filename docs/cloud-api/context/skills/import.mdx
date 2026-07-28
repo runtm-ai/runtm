@@ -90,7 +90,7 @@ response = requests.post(
 
 data = response.json()
 for d in data["directives"]:
-    print(f"Imported: {d['name']} (v{d['version']})")
+    print(f"Imported: {d['name']}")
 ```
 
 ```javascript JavaScript
@@ -115,7 +115,7 @@ const response = await fetch(
 
 const data = await response.json();
 data.directives.forEach((d) =>
-  console.log(`Imported: ${d.name} (v${d.version})`)
+  console.log(`Imported: ${d.name}`)
 );
 ```
 </RequestExample>
@@ -130,8 +130,6 @@ data.directives.forEach((d) =>
       "name": "deploy-to-fly",
       "display_name": "Deploy to Fly.io",
       "description": "Step-by-step Fly.io deployment guide",
-      "version": 1,
-      "is_published": true,
       "organization_id": "org_abc123",
       "owner_user_id": "user_xyz",
       "content_kind": "inline",

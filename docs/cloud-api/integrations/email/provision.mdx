@@ -1,0 +1,68 @@
+---
+title: "Provision Email Integration"
+api: "POST /api/v1/email/integration"
+description: "Create an email inbox that launches sessions"
+---
+
+Provisions an inbox headlessly (no browser step). The inbox address derives from the org and the name, for example `acme-support-inbox@agentmail.to`. Inbound mail to it launches a session; replies in the same thread follow up the same session. Bind the inbox to a roster agent with `agent_id` so runs inherit that agent's defaults and rubric.
+
+**Required scope:** `integrations:write`, and the caller must be an org admin or owner.
+
+## Request Body
+
+<ParamField body="name" type="string" required>
+  Display name (1 to 128 characters); becomes the inbox username slug. Name collisions return `409`.
+</ParamField>
+
+<ParamField body="agent_id" type="string">
+  Roster agent ID the inbox binds to (stored in `config.agent_id`).
+</ParamField>
+
+<ParamField body="default_template" type="string">
+  Org template sessions launch from.
+</ParamField>
+
+<ParamField body="default_github_repo" type="string">
+  Default repo (owner/name) for launched sessions.
+</ParamField>
+
+<ParamField body="default_agent" type="string" default="claude-code">
+  Coding agent harness.
+</ParamField>
+
+<ParamField body="config" type="object">
+  Additional configuration.
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/cloud/v1/email/integration" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "support-inbox", "agent_id": "a1b2c3d4-0000-0000-0000-000000000000", "default_template": "support-bot"}'
+```
+
+```bash CLI
+runtm-api agents create --type email --name support-inbox \
+  --agent-id a1b2c3d4-0000-0000-0000-000000000000 --template support-bot
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "id": "em_8d7c",
+  "name": "support-inbox",
+  "inbox_email": "acme-support-inbox@agentmail.to",
+  "inbox_id": "in_123",
+  "enabled": true,
+  "default_template": "support-bot",
+  "default_github_repo": null,
+  "default_agent": "claude-code",
+  "rate_limit_per_hour": 15,
+  "config": {"agent_id": "a1b2c3d4-0000-0000-0000-000000000000"},
+  "created_at": "2026-07-28T19:00:00Z"
+}
+```
+</ResponseExample>

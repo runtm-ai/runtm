@@ -1,0 +1,118 @@
+---
+title: "Search Sessions"
+api: "GET /api/sessions:search"
+description: "Fuzzy-search sessions with filters"
+---
+
+Searches sessions by text and structured filters. Where [List Sessions](/cloud-api/sessions/list) only pages, search finds a session when you know something about it: a phrase from the prompt, the agent that ran it, the template it came from, or a time window.
+
+Note the custom-method path: the verb is `:search` appended to the collection, not a path segment.
+
+**Required scope:** `sessions:read`
+
+## Query Parameters
+
+<ParamField query="q" type="string">
+  Fuzzy substring match on session name and prompt text.
+</ParamField>
+
+<ParamField query="agent" type="string[]">
+  Filter by coding agent (repeatable).
+</ParamField>
+
+<ParamField query="model" type="string[]">
+  Filter by model (repeatable).
+</ParamField>
+
+<ParamField query="template" type="string[]">
+  Filter by template slug (repeatable).
+</ParamField>
+
+<ParamField query="source" type="string[]">
+  Filter by source, for example `web_ui`, `agents`, `slack`, `schedule` (repeatable).
+</ParamField>
+
+<ParamField query="creator_id" type="string[]">
+  Filter by creator user ID (repeatable).
+</ParamField>
+
+<ParamField query="created_after" type="string">
+  ISO date or datetime lower bound on creation.
+</ParamField>
+
+<ParamField query="created_before" type="string">
+  ISO date or datetime upper bound on creation.
+</ParamField>
+
+<ParamField query="last_activity_after" type="string">
+  ISO lower bound on last activity.
+</ParamField>
+
+<ParamField query="last_activity_before" type="string">
+  ISO upper bound on last activity.
+</ParamField>
+
+<ParamField query="include_destroyed" type="boolean" default="false">
+  Include destroyed sessions.
+</ParamField>
+
+<ParamField query="team_mode" type="boolean" default="false">
+  Search team-shared sessions (requires organization context).
+</ParamField>
+
+<ParamField query="exclude_sources" type="string">
+  Comma-separated sources to exclude.
+</ParamField>
+
+<ParamField query="exclude_states" type="string">
+  Comma-separated states to exclude.
+</ParamField>
+
+<ParamField query="limit" type="integer" default="20">
+  Results per page (1 to 100).
+</ParamField>
+
+<ParamField query="offset" type="integer" default="0">
+  Pagination offset.
+</ParamField>
+
+## Response
+
+Same shape as [List Sessions](/cloud-api/sessions/list): `{sessions, total, limit, offset, has_more}`.
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/cloud/sessions:search?q=outbound&agent=claude-code&limit=10" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```bash CLI
+runtm-api session search -q outbound --agent claude-code --limit 10
+runtm-api session search --template gtm-machine --created-after 2026-07-01 --team-mode
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "sessions": [
+    {
+      "id": "a6414511-4430-4e1f-8c51-8ea8824dadec",
+      "state": "running",
+      "agent": "claude-code",
+      "template": "gtm-machine",
+      "name": "Weekly outbound lists",
+      "initial_prompt": "Build this week's outbound lists...",
+      "created_at": "2026-07-27T18:00:05Z",
+      "source": "schedule",
+      "visibility": "private"
+    }
+  ],
+  "total": 1,
+  "limit": 10,
+  "offset": 0,
+  "has_more": false
+}
+```
+</ResponseExample>

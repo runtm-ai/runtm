@@ -1,0 +1,139 @@
+---
+title: "Agent Scorecard"
+api: "GET /api/sessions/telemetry/agents"
+description: "Per-agent performance, spend, and value over a time window"
+---
+
+The aggregate side of the evaluation loop: for every roster agent, the sessions and turns it ran, token spend, graded runs and objective hit rate, the value returned (from the agent's `economics`), and budget state. Read one run's verdict with [Session Grade](/cloud-api/activity/session-grade); set the rubric with [Update Agent](/cloud-api/agents/update).
+
+**Required scope:** `activity:read`
+
+## Query Parameters
+
+<ParamField query="days" type="integer" default="30">
+  Rolling window in days (max 365). Ignored when `start` and `end` are set.
+</ParamField>
+
+<ParamField query="start" type="string">
+  Window start (ISO date or datetime).
+</ParamField>
+
+<ParamField query="end" type="string">
+  Window end (ISO date or datetime; a bare date means end of that day).
+</ParamField>
+
+## Response
+
+<ResponseField name="days" type="integer">
+  The resolved window length.
+</ResponseField>
+
+<ResponseField name="agents" type="array">
+  <Expandable title="properties">
+    <ResponseField name="agent_id" type="string">
+      Roster agent ID.
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Agent display name.
+    </ResponseField>
+    <ResponseField name="sessions" type="integer">
+      Sessions the agent ran in the window.
+    </ResponseField>
+    <ResponseField name="turns" type="integer">
+      Prompt turns across those sessions.
+    </ResponseField>
+    <ResponseField name="tokens" type="object">
+      `{input, output, cache_read, cache_write}` token counts.
+    </ResponseField>
+    <ResponseField name="spend_usd" type="number">
+      Estimated spend in USD.
+    </ResponseField>
+    <ResponseField name="graded_runs" type="integer">
+      Runs the grader has scored.
+    </ResponseField>
+    <ResponseField name="successful_runs" type="integer">
+      Graded runs that met the objective.
+    </ResponseField>
+    <ResponseField name="objective_hit_rate" type="number">
+      successful_runs / graded_runs.
+    </ResponseField>
+    <ResponseField name="tasks" type="object">
+      Per-task run and success counts, keyed by the task labels from `economics`.
+    </ResponseField>
+    <ResponseField name="value_usd" type="number">
+      Value returned, priced from the agent's `economics.tasks`.
+    </ResponseField>
+    <ResponseField name="minutes_returned" type="number">
+      Human minutes returned, priced the same way.
+    </ResponseField>
+    <ResponseField name="budget" type="object">
+      `{monthly_usd_cap, month_spend_usd, exceeded}`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="totals" type="object">
+  Cross-agent totals including `return_multiple` (value over spend) and the list of agents over budget.
+</ResponseField>
+
+<ResponseField name="parameters" type="object">
+  The pricing table used: per-model prices per million tokens and cache multipliers.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/cloud/sessions/telemetry/agents?days=30" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```bash CLI
+runtm-api agents scorecard --days 30
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "days": 30,
+  "agents": [
+    {
+      "agent_id": "a1b2c3d4-0000-0000-0000-000000000000",
+      "name": "Donna",
+      "avatar": null,
+      "avatar_image_url": null,
+      "sessions": 14,
+      "turns": 61,
+      "tokens": {"input": 5150000, "output": 420000, "cache_read": 20500000, "cache_write": 1200000},
+      "spend_usd": 41.72,
+      "duration_ms": 5400000,
+      "graded_runs": 12,
+      "successful_runs": 10,
+      "objective_hit_rate": 0.83,
+      "tasks": {"weekly-lists": {"runs": 4, "successes": 4}},
+      "unpriced_runs": 2,
+      "value_usd": 120.0,
+      "minutes_returned": 340,
+      "budget": {"monthly_usd_cap": 50, "month_spend_usd": 41.72, "exceeded": false},
+      "economics": {"budget": {"monthly_usd_cap": 50}}
+    }
+  ],
+  "totals": {
+    "spend_usd": 41.72,
+    "value_usd": 120.0,
+    "minutes_returned": 340,
+    "sessions": 14,
+    "turns": 61,
+    "duration_ms": 5400000,
+    "graded_runs": 12,
+    "successful_runs": 10,
+    "return_multiple": 2.88,
+    "budget": {"monthly_usd_cap": 50, "month_spend_usd": 41.72, "exceeded_agents": []}
+  },
+  "parameters": {
+    "prices_per_mtok": {"claude-sonnet": {"input": 3.0, "output": 15.0}},
+    "cache_multipliers": {"write_5m": 1.25, "write_1h": 2.0, "read": 0.1}
+  }
+}
+```
+</ResponseExample>

@@ -1,0 +1,33 @@
+---
+title: "List Linear Teams"
+api: "GET /api/v1/linear/teams"
+description: "Teams in the connected Linear workspace"
+---
+
+Lists the teams of the connected Linear workspace. Returns `404` when no integration is connected.
+
+**Required scope:** `integrations:read`
+
+## Response
+
+<ResponseField name="teams" type="array">
+  `{id, name, key}` per Linear team.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/cloud/v1/linear/teams" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "teams": [
+    {"id": "team_1", "name": "Engineering", "key": "ENG"}
+  ]
+}
+```
+</ResponseExample>

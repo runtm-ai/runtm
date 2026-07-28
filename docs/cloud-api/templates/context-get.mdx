@@ -1,0 +1,62 @@
+---
+title: "Get Template Context"
+api: "GET /api/org-templates/{template_id}/context"
+description: "Read the template's instruction block"
+---
+
+Template context is the instruction block injected into every session launched from the template, layered after the org-wide instructions. This returns the template's own block; use [Resolve Template Context](/cloud-api/templates/context-resolve) to see the full stack a session receives.
+
+**Required scope:** `context:read`
+
+## Path Parameters
+
+<ParamField path="template_id" type="string" required>
+  The template ID.
+</ParamField>
+
+## Headers
+
+<ParamField header="X-Organization-Id" type="string" required>
+  Organization ID.
+</ParamField>
+
+## Response
+
+<ResponseField name="template_id" type="string">
+  The template.
+</ResponseField>
+
+<ResponseField name="organization_id" type="string">
+  The owning organization.
+</ResponseField>
+
+<ResponseField name="content" type="string | null">
+  The instruction block (max 20000 characters), or null when unset.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string | null">
+  Last modification time.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/cloud/org-templates/tmpl_abc123/context" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123"
+```
+
+```bash CLI
+runtm-api template context get tmpl_abc123
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "template_id": "tmpl_abc123",
+  "organization_id": "org_abc123",
+  "content": "Always run the test suite before opening a PR.",
+  "updated_at": "2026-07-20T12:00:00Z"
+}
+```
+</ResponseExample>
