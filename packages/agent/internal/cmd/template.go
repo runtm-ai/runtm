@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/runtm-ai/runtm/packages/agent/internal/client"
 	"github.com/spf13/cobra"
@@ -571,26 +572,42 @@ Required scope: templates:write.`,
 
 func newTemplateSaveSnapshot(rt *Runtime) *cobra.Command {
 	var sessionID string
+	var timeoutSecs int
 	cmd := &cobra.Command{
 		Use:   "save-snapshot <template_id>",
 		Short: "Promote a session's sandbox state into the template snapshot",
 		Long: `After fixing or extending a fix-session, save its sandbox as the template's
-new snapshot. Existing sessions keep using the old snapshot until destroyed.`,
+new snapshot. Existing sessions keep using the old snapshot until destroyed.
+
+Snapshotting is synchronous and can take minutes on large templates, so this
+command waits longer than other calls; tune with --timeout.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if sessionID == "" {
 				return fmt.Errorf("--session is required")
+			}
+			// A zero http.Client.Timeout means "wait forever" — reject it so a
+			// typo can't silently disable the timeout.
+			if timeoutSecs <= 0 {
+				return fmt.Errorf("--timeout must be a positive number of seconds")
 			}
 			c, _, err := requireOrgClient(rt, "org templates")
 			if err != nil {
 				return err
 			}
 			body := map[string]any{"session_id": sessionID}
-			resp, err := c.PostJSON("/org-templates/"+url.PathEscape(args[0])+"/save-snapshot", body)
+			resp, err := c.PostJSONWithTimeout(
+				"/org-templates/"+url.PathEscape(args[0])+"/save-snapshot",
+				body,
+				time.Duration(timeoutSecs)*time.Second,
+			)
 			return runJSON(rt, resp, err)
 		},
 	}
 	cmd.Flags().StringVar(&sessionID, "session", "", "Session ID whose sandbox to snapshot (required)")
+	// Default sits above the server proxy's 150s ceiling so a slow save
+	// surfaces the server's error instead of the client hanging up first.
+	cmd.Flags().IntVar(&timeoutSecs, "timeout", 180, "Seconds to wait for the snapshot to complete")
 	_ = cmd.MarkFlagRequired("session")
 	return cmd
 }

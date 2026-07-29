@@ -79,6 +79,17 @@ func (c *Client) PostJSON(path string, body any) ([]byte, error) {
 	return c.do(http.MethodPost, path, nil, payload)
 }
 
+// PostJSONWithTimeout is PostJSON with a per-request timeout override for
+// long-running synchronous endpoints (e.g. template save-snapshot, which can
+// exceed the default cap on large templates).
+func (c *Client) PostJSONWithTimeout(path string, body any, timeout time.Duration) ([]byte, error) {
+	payload, err := marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	return c.doWithTimeout(http.MethodPost, path, nil, payload, timeout)
+}
+
 // PutJSON marshals body as JSON and PUTs it, returning the response body.
 func (c *Client) PutJSON(path string, body any) ([]byte, error) {
 	payload, err := marshal(body)
@@ -204,12 +215,16 @@ func (c *Client) streamSSE(method, path string, body []byte, out io.Writer) erro
 }
 
 func (c *Client) do(method, path string, query url.Values, body []byte) ([]byte, error) {
+	// Cap non-streaming requests at 2 minutes; SSE bypasses this path.
+	return c.doWithTimeout(method, path, query, body, 2*time.Minute)
+}
+
+func (c *Client) doWithTimeout(method, path string, query url.Values, body []byte, timeout time.Duration) ([]byte, error) {
 	req, err := c.newRequest(method, path, query, body)
 	if err != nil {
 		return nil, err
 	}
-	// Cap non-streaming requests at 2 minutes; SSE bypasses this path.
-	c.http.Timeout = 2 * time.Minute
+	c.http.Timeout = timeout
 
 	resp, err := c.http.Do(req)
 	if err != nil {
