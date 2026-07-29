@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/base64"
 	"net/url"
 	"strings"
 	"testing"
@@ -186,6 +187,27 @@ func TestNormalizeExecOutput(t *testing.T) {
 
 // --- payload construction -------------------------------------------------
 
+// payloadCommand recovers the command execPayload encoded, so the tests can
+// assert on what will actually run rather than on the wrapper's scaffolding.
+func payloadCommand(t *testing.T, payload string) string {
+	t.Helper()
+	const open = "printf %s '"
+	i := strings.Index(payload, open)
+	if i < 0 {
+		t.Fatalf("payload does not carry an encoded command: %q", payload)
+	}
+	rest := payload[i+len(open):]
+	j := strings.Index(rest, "'")
+	if j < 0 {
+		t.Fatalf("unterminated encoded command: %q", payload)
+	}
+	decoded, err := base64.StdEncoding.DecodeString(rest[:j])
+	if err != nil {
+		t.Fatalf("command is not valid base64: %v", err)
+	}
+	return string(decoded)
+}
+
 func TestExecPayloadDisablesHistoryExpansion(t *testing.T) {
 	// Bash history expansion rewrites '!' before the command runs, which has
 	// silently corrupted heredocs and commit messages. The subshell probe
@@ -193,8 +215,51 @@ func TestExecPayloadDisablesHistoryExpansion(t *testing.T) {
 	// the shell down before the fallback could run.
 	for _, split := range []bool{false, true} {
 		payload := execPayload("echo hi", split)
-		if !strings.HasPrefix(payload, "if (set +H) 2>/dev/null; then set +H; fi; ") {
+		if !strings.HasPrefix(payload, "if (set +H) 2>/dev/null; then set +H; fi\n") {
 			t.Errorf("split=%v: payload must start by disabling history expansion, got %q", split, payload)
+		}
+	}
+}
+
+func TestExecPayloadEncodesCommand(t *testing.T) {
+	// The real guard against history expansion: a '!' the caller wrote must
+	// never reach a line the interactive shell reads, because expansion
+	// happens as that line is accepted. Encoded, `!!` stays literal.
+	const cmdLine = `git commit -m "fix: don't drop events!!"`
+	for _, split := range []bool{false, true} {
+		payload := execPayload(cmdLine, split)
+		if strings.Contains(payload, "!") {
+			t.Errorf("split=%v: payload must not carry a raw '!', got %q", split, payload)
+		}
+		if got := payloadCommand(t, payload); got != cmdLine {
+			t.Errorf("split=%v: encoded command = %q, want %q", split, got, cmdLine)
+		}
+	}
+}
+
+func TestExecPayloadEncodesMultilineCommand(t *testing.T) {
+	// Inlined, a heredoc's newlines split the wrapper across lines, so the end
+	// marker never printed and the call hung until it timed out.
+	cmdLine := "cat <<EOF\nhello\nEOF"
+	for _, split := range []bool{false, true} {
+		payload := execPayload(cmdLine, split)
+		if got := payloadCommand(t, payload); got != cmdLine {
+			t.Errorf("split=%v: encoded command = %q, want %q", split, got, cmdLine)
+		}
+		// The wrapper itself stays on one line after the guard.
+		if body := payload[strings.Index(payload, "\n")+1:]; strings.Count(body, "\n") != 1 {
+			t.Errorf("split=%v: wrapper must be a single line, got %q", split, body)
+		}
+	}
+}
+
+func TestExecPayloadFailsLoudlyWithoutBase64(t *testing.T) {
+	// A missing base64 decodes to nothing, and running nothing would report
+	// success for a command that never executed.
+	for _, split := range []bool{false, true} {
+		payload := execPayload("npm test", split)
+		if !strings.Contains(payload, "exit 127") {
+			t.Errorf("split=%v: payload must fail when base64 is unavailable, got %q", split, payload)
 		}
 	}
 }
@@ -204,7 +269,7 @@ func TestExecPayloadRunsCommandInSubshell(t *testing.T) {
 	// printed the end marker, losing both the output and the exit code.
 	for _, split := range []bool{false, true} {
 		payload := execPayload("exit 3", split)
-		if !strings.Contains(payload, "( exit 3 )") {
+		if !strings.Contains(payload, `( eval "$__c" )`) {
 			t.Errorf("split=%v: command must run in a subshell, got %q", split, payload)
 		}
 	}
@@ -218,18 +283,18 @@ func TestExecPayloadMergedStreamsByDefault(t *testing.T) {
 	if strings.Contains(payload, "mktemp") {
 		t.Error("default payload must not redirect stderr to a file")
 	}
-	if !strings.Contains(payload, "npm test") {
-		t.Error("payload must contain the command")
+	if got := payloadCommand(t, payload); got != "npm test" {
+		t.Errorf("encoded command = %q, want %q", got, "npm test")
 	}
 }
 
 func TestExecPayloadSplitStreams(t *testing.T) {
 	payload := execPayload("npm test", true)
 	for _, want := range []string{
-		`( npm test ) 2>"$__errf"`, // stderr captured, not interleaved
-		`_M\n`,                     // mid marker separates the streams
-		`cat "$__errf"`,            // stderr replayed after the marker
-		`rm -f "$__errf"`,          // and cleaned up
+		`( eval "$__c" ) 2>"$__errf"`, // stderr captured, not interleaved
+		`_M\n`,                        // mid marker separates the streams
+		`cat "$__errf"`,               // stderr replayed after the marker
+		`rm -f "$__errf"`,             // and cleaned up
 	} {
 		if !strings.Contains(payload, want) {
 			t.Errorf("split payload missing %q\ngot: %s", want, payload)

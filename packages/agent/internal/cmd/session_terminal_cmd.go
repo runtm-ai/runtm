@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -315,46 +316,60 @@ func splitExecStreams(output []byte, pid string) (stdout, stderr []byte) {
 	return output[:m[0]], output[m[1]:]
 }
 
-// execPayload builds the one-line shell program the PTY runs.
+// execPayload builds the shell program the PTY runs.
 //
-// Three things it has to get right:
+// Four things it has to get right:
 //
-//  1. `set +H` disables bash history expansion. E2B's pty.create() always
-//     starts bash, and an interactive bash expands `!` against history as the
-//     line is read — before the command ever runs. So a literal `!` in a
-//     heredoc, a commit message, or a regex silently rewrites the command.
-//     The option is probed in a subshell first because `set +H` is an
-//     *unrecoverable* error in shells that lack it (dash aborts on the spot,
-//     before a trailing `|| true` can run); the subshell contains that.
+//  1. The command travels base64-encoded and is decoded into a variable the
+//     wrapper `eval`s. Nothing the caller wrote ever appears on a line the
+//     interactive shell reads, which is what makes `!` safe: bash expands `!`
+//     against history as it accepts a line, long before the command runs, so
+//     an inlined `!!` in a commit message or regex came back as the *previous*
+//     command's text. Expansion does not apply to `eval`, so encoding removes
+//     the hazard at the source rather than trying to switch it off in time.
 //
-//  2. The command runs in a subshell, so `exit 3` (or anything that calls
+//  2. Encoding also lets a command span lines. Inlined, the newlines in a
+//     heredoc split the wrapper itself across lines, so the end marker never
+//     printed and the call hung until it timed out.
+//
+//  3. The command runs in a subshell, so `exit 3` (or anything that calls
 //     `exit`) yields an exit code instead of killing the wrapper before it can
 //     print the end marker — which surfaced as "connection closed before the
 //     command completed" with the output lost.
 //
-//  3. When splitStreams is set, stderr is redirected to a pid-scoped temp file
+//  4. When splitStreams is set, stderr is redirected to a pid-scoped temp file
 //     and replayed after a mid sentinel, which is what lets --json hand back
 //     stdout and stderr separately. Otherwise the two interleave as before.
+//
+// `set +H` stays as a second line of defence for the wrapper itself. It is
+// probed in a subshell first because `set +H` is an *unrecoverable* error in
+// shells that lack it (dash aborts on the spot, before a trailing `|| true`
+// could run); the subshell contains that.
 func execPayload(cmdLine string, splitStreams bool) string {
-	const prelude = "if (set +H) 2>/dev/null; then set +H; fi; "
+	const prelude = "if (set +H) 2>/dev/null; then set +H; fi\n"
+
+	// A missing base64 would otherwise decode to nothing and run nothing,
+	// reporting success for a command that never executed.
+	decode := fmt.Sprintf(
+		"__c=$(printf %%s '%s' | base64 -d 2>/dev/null) || "+
+			"__c='echo \"runtm-api: exec needs base64, which is missing from this sandbox\" >&2; exit 127'; ",
+		base64.StdEncoding.EncodeToString([]byte(cmdLine)),
+	)
 
 	if !splitStreams {
-		return prelude + fmt.Sprintf(
-			"printf '__RUNTM_%%d_S\\n' \"$$\"; ( %s ); __rc=$?; printf '__RUNTM_%%d_E%%d\\n' \"$$\" \"$__rc\"; exit\n",
-			cmdLine,
-		)
+		return prelude + decode +
+			"printf '__RUNTM_%d_S\\n' \"$$\"; ( eval \"$__c\" ); __rc=$?; " +
+			"printf '__RUNTM_%d_E%d\\n' \"$$\" \"$__rc\"; exit\n"
 	}
 	// Order matters: print the start marker, run with stderr captured, then
 	// mid marker, then replay stderr, then the exit marker carrying $?.
-	return prelude + fmt.Sprintf(
-		"__errf=$(mktemp 2>/dev/null || echo /tmp/runtm-exec-$$.err); "+
-			"printf '__RUNTM_%%d_S\\n' \"$$\"; "+
-			"( %s ) 2>\"$__errf\"; __rc=$?; "+
-			"printf '__RUNTM_%%d_M\\n' \"$$\"; "+
-			"cat \"$__errf\" 2>/dev/null; rm -f \"$__errf\"; "+
-			"printf '__RUNTM_%%d_E%%d\\n' \"$$\" \"$__rc\"; exit\n",
-		cmdLine,
-	)
+	return prelude + decode +
+		"__errf=$(mktemp 2>/dev/null || echo /tmp/runtm-exec-$$.err); " +
+		"printf '__RUNTM_%d_S\\n' \"$$\"; " +
+		"( eval \"$__c\" ) 2>\"$__errf\"; __rc=$?; " +
+		"printf '__RUNTM_%d_M\\n' \"$$\"; " +
+		"cat \"$__errf\" 2>/dev/null; rm -f \"$__errf\"; " +
+		"printf '__RUNTM_%d_E%d\\n' \"$$\" \"$__rc\"; exit\n"
 }
 
 // normalizeExecOutput turns PTY line endings into plain newlines. The remote
@@ -387,8 +402,9 @@ the default merged stream also carries shell startup noise that otherwise has
 to be filtered out. The process still exits with the remote exit code, so
 check exit_code or the process status, not both.
 
-Bash history expansion is disabled for the command, so '!' is safe to use in
-heredocs, commit messages, and regexes.
+The command is sent encoded, so it may span lines (heredocs and short scripts
+work) and '!' stays literal in commit messages, regexes, and heredoc bodies
+instead of being replaced by bash history expansion.
 
 A paused sandbox is resumed automatically. Scope required: sessions:terminal.`,
 		Args: cobra.MinimumNArgs(2),

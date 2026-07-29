@@ -60,7 +60,7 @@ func Load(apiURLOverride, orgOverride string) (*Credentials, error) {
 }
 
 // LoadOptional returns credentials when present and nil when missing, without
-// erroring. Useful for `runtm auth status` which should not fail when unset.
+// erroring. Useful for `runtm-api auth status` which should not fail when unset.
 func LoadOptional(apiURLOverride, orgOverride string) *Credentials {
 	creds, err := Load(apiURLOverride, orgOverride)
 	if err != nil {

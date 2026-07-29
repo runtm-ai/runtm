@@ -239,3 +239,34 @@ func TestRequireOrgClientPersonalKeyGuidance(t *testing.T) {
 		t.Errorf("hint should explain the 403, got %q", payload.Hint)
 	}
 }
+
+func TestErrorHintsNameThisBinary(t *testing.T) {
+	// A hint that names a command of this binary has to spell it `runtm-api`.
+	// `runtm` is the separate pip CLI, so `runtm auth status` sent people to a
+	// tool that does not have the subcommand. Only `runtm login` is genuinely
+	// the pip CLI's, so that one stays.
+	for status, hint := range map[int]string{
+		http.StatusUnauthorized:    "Check RUNTM_API_KEY",
+		http.StatusForbidden:       "auth status",
+		http.StatusNotFound:        "list command",
+		http.StatusTooManyRequests: "Rate limited",
+	} {
+		stderr := &bytes.Buffer{}
+		rt := &Runtime{Flags: &GlobalFlags{}, Stdout: &bytes.Buffer{}, Stderr: stderr}
+
+		rt.ReportError(&client.APIError{Status: status, Detail: "nope"})
+
+		var payload struct {
+			Hint string `json:"hint"`
+		}
+		if err := json.Unmarshal(stderr.Bytes(), &payload); err != nil {
+			t.Fatalf("status %d: unmarshal %q: %v", status, stderr.String(), err)
+		}
+		if !strings.Contains(payload.Hint, hint) {
+			t.Errorf("status %d: hint %q should mention %q", status, payload.Hint, hint)
+		}
+		if strings.Contains(payload.Hint, "`runtm ") && !strings.Contains(payload.Hint, "`runtm login") {
+			t.Errorf("status %d: hint names the pip CLI for a runtm-api command: %q", status, payload.Hint)
+		}
+	}
+}
