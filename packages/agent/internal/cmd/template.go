@@ -586,6 +586,11 @@ command waits longer than other calls; tune with --timeout.`,
 			if sessionID == "" {
 				return fmt.Errorf("--session is required")
 			}
+			if timeoutSecs <= 0 {
+				return fmt.Errorf("--timeout must be positive")
+			}
+				return fmt.Errorf("--session is required")
+			}
 			c, _, err := requireOrgClient(rt, "org templates")
 			if err != nil {
 				return err
