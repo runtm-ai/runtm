@@ -586,10 +586,10 @@ command waits longer than other calls; tune with --timeout.`,
 			if sessionID == "" {
 				return fmt.Errorf("--session is required")
 			}
+			// A zero http.Client.Timeout means "wait forever" — reject it so a
+			// typo can't silently disable the timeout.
 			if timeoutSecs <= 0 {
-				return fmt.Errorf("--timeout must be positive")
-			}
-				return fmt.Errorf("--session is required")
+				return fmt.Errorf("--timeout must be a positive number of seconds")
 			}
 			c, _, err := requireOrgClient(rt, "org templates")
 			if err != nil {
