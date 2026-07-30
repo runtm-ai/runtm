@@ -2,7 +2,7 @@
 name: runtm-templates
 description: "Full lifecycle workflows for Runtm Cloud org templates: discover, create, build, monitor builds, verify attached skills and build staleness, manage template context and template-scoped guardrails, assign owning groups, set auto-rebuild schedules, fix broken templates via fix-session, save snapshots, manage template secrets."
 metadata:
-  version: "0.6.0"
+  version: "0.7.0"
   tags: runtm,runtime,templates,org,workflows
 ---
 
@@ -21,8 +21,17 @@ Org templates are **snapshots of fully configured sandbox environments**. Each t
 - Default agent system instructions
 - Compute tier (basic / standard / max)
 - One or more coding agents the snapshot was built for
+- **Attached skills, MCP servers, tools, and guardrails**
 
 A session created from a template boots instantly with the environment ready -- no install commands, no waiting on dependency builds.
+
+**A template is also the capability carrier for an agent.** That last bullet is
+the one people miss: a roster agent's `--template` is what decides which
+skills, MCP servers, credentials, and guardrails its sessions load. So
+templates are not only for coding agents: a support or research agent's
+template may clone nothing interesting and exist purely to carry its
+capabilities. If you are assembling an agent rather than a dev environment,
+see the `runtm-build-agent` skill for the order to create things in.
 
 ## All template commands require an org-scoped API key
 

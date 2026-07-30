@@ -2,7 +2,7 @@
 name: runtm-agents
 description: "Create, list/find, and edit Runtm Cloud agents: the named agent roster (identity, instructions, evaluation rubric, budget, scorecard) and the Slack/GitHub/Linear/Email trigger integrations that launch coding sessions on events. Use when the user wants to create or configure an agent, set evaluation criteria or budgets, read the agent scorecard or a run's grade, or wire a Slack, GitHub, Linear, or email trigger from the CLI."
 metadata:
-  version: "0.2.0"
+  version: "0.3.0"
   tags: runtm,runtime,agents,roster,evals,scorecard,slack,github,linear,email,integrations,bots
 ---
 
@@ -17,6 +17,36 @@ system instructions, session defaults, an evaluation rubric, and a budget.
 bindings that launch a session when an event arrives. Triggers bind to a
 roster agent via `config.agent_id`; the roster row is the source of truth for
 defaults and editing them fans out to every linked trigger.
+
+## `--template` is where the agent's capabilities come from
+
+Before creating an agent, understand what actually gives it abilities:
+
+```
+trigger -> roster agent -> template -> { skills, MCP servers, tools, guardrails } -> session
+```
+
+The roster row carries **identity** (name, instructions, rubric, budget). The
+**template** carries **capability**: the skills, MCP servers, credentials, and
+guardrails a launched session loads. So `--template` is not a nicety:
+
+- An agent with no `--template` has instructions and nothing to act with.
+- A skill that exists in the org but is not attached to *that* template is
+  never loaded, however good it is.
+- An attachment added after the template's last build does nothing until you
+  rebuild it.
+
+All three fail silently: the agent runs, it just can't do the job. If you are
+assembling an agent from scratch rather than editing an existing one, follow
+the **`runtm-build-agent`** skill, which sequences the template, its
+capabilities, and the trigger in the order that avoids this.
+
+Check what an agent can actually do:
+
+```bash
+runtm-api agents get <id> | jq .default_template
+runtm-api template get <template_id> | jq '{skills:[.skills[].name], stale:.attachments_changed_since_build}'
+```
 
 | Verb | Roster | Trigger integration |
 |------|--------|---------------------|
@@ -67,6 +97,15 @@ scope; reads need `integrations:read`.
 Slack, GitHub, and managed Linear finish in a **browser** (you authorize the
 app), so `create` returns something to open. Email and manual Linear are
 fully headless.
+
+**Preflight, so you fail with an explanation instead of a bare 400:** Slack
+needs the org's Slack app configuration token, which is set once in the
+dashboard and has no CLI equivalent. If create 400s, that is almost always
+why, so send the user to the dashboard rather than retrying. Linear headless
+needs both `--linear-api-key` and `--service-user`. Email needs the platform
+inbox provider to be available (`GET /api/v1/email/status`). When you are
+running unattended and the user cannot click, say so and stop rather than
+re-reading the manifest endpoint.
 
 ```bash
 # Slack — returns an authorize URL to click

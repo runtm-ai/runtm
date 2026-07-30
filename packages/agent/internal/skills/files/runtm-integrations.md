@@ -2,7 +2,7 @@
 name: runtm-integrations
 description: "Create, read, update, and delete the Runtm Cloud session-context directives from the CLI: skills (SKILL.md bundles), MCP servers (stdio or http/sse), tools (knowledge integrations / provider credentials), and custom tool providers — and attach skills/MCP servers to org templates, repos, or all repos so sessions load them. Use when the user wants to add/connect/create an integration — ALWAYS follow the 5-step process: (1) research every way to reach the service (API, SDK, CLI, MCP, GitHub repos, predefined skills), (2) investigate the auth methods (OAuth, API key, service account) with pros/cons, (3) ask the user to pick the interface + auth combination, (4) build the definition (MCP server or tool provider), (5) redirect the user to connect in the dashboard UI so secrets never pass through the agent — or to author/manage skills, wire up an MCP server, attach a skill or MCP to a template, or define a NEW custom tool provider (name, logo, mise/npm/github package, and auth fields) when no built-in provider exists. Keeps three concepts distinct: a DEFINITION (tool provider / MCP server — the wiring, no secrets), a CONNECTION (the credentials a user supplies against a definition — entered in the dashboard UI, one definition can have many), and an ATTACHMENT (which templates/repos load it)."
 metadata:
-  version: "0.4.0"
+  version: "0.5.0"
   tags: runtm,runtime,directives,skills,mcp,tools,knowledge,templates,attachments,integrations
 ---
 
@@ -377,6 +377,15 @@ runtm-api template build <template_id>
 last build, so sessions still boot with the old set until you rebuild. That
 flag is the reason to prefer `template get` over `template skills` when you are
 about to trust a template.
+
+**Attach everything, then build once.** Rebuilding after each attach costs
+minutes per round and churns the snapshot for anyone booting sessions
+meanwhile. When wiring several skills, attach them all, check `template get`
+once, then issue a single `template build`. Same for the reverse order trap:
+`template create --skip-agent` implies `--build`, so creating a template that
+way and attaching afterwards always leaves you a rebuild in debt. Assembling a
+whole agent rather than adding one integration? Use the `runtm-build-agent`
+skill, which sequences this end to end.
 
 ---
 

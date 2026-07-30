@@ -1,8 +1,8 @@
 ---
 name: runtm
-description: "Runtm (Runtime) Cloud CLI for AI agents. Full cloud-API surface: sessions (CRUD + search + files + upload/download + env + deploy + approvals + capability loading + lifecycle + history + events), the agent roster (identity + instructions + evaluation rubric + budget + scorecard + run grades), scheduled agents (cron automation + run-now), org templates (CRUD + build + context + guardrails + owning groups + secrets), guardrail content (allowlist rules, hooks, network rules), skills lifecycle (import, discover, resync, lock), deployments, GitHub App installations, groups, activity telemetry, secrets, instructions, LLM provider keys, external integrations (MCP, tools, Slack, GitHub, Linear, Email). Trigger on: runtm, runtime, runtm cloud, runtime cloud, runtm session, runtime session, cloud sandbox, integration, integrations, mcp, skill, provider key, scheduled agent, cron, automation, agent roster, evals, evaluation, scorecard, guardrail, approvals, deployment."
+description: "Runtm (Runtime) Cloud CLI for AI agents. Full cloud-API surface: sessions (CRUD + search + files + upload/download + env + deploy + approvals + capability loading + lifecycle + history + events), the agent roster (identity + instructions + evaluation rubric + budget + scorecard + run grades), scheduled agents (cron automation + run-now), org templates (CRUD + build + context + guardrails + owning groups + secrets), guardrail content (allowlist rules, hooks, network rules), skills lifecycle (import, discover, resync, lock), deployments, GitHub App installations, groups, activity telemetry, secrets, instructions, LLM provider keys, external integrations (MCP, tools, Slack, GitHub, Linear, Email). Trigger on: runtm, runtime, runtm cloud, runtime cloud, runtm session, runtime session, cloud sandbox, integration, integrations, mcp, skill, provider key, scheduled agent, cron, automation, agent roster, evals, evaluation, scorecard, guardrail, approvals, deployment, build an agent, create an agent, support agent."
 metadata:
-  version: "0.10.0"
+  version: "0.11.0"
   repository: https://github.com/runtm-ai/runtm
   tags: runtm,runtime,cli,sandboxes,coding-agents
 ---
@@ -54,6 +54,18 @@ Use `session connect` when a human wants a live shell; use `session exec` for sc
 **Always pass `--json` to `session exec` when you are going to parse the output.** The default is the raw PTY stream, which merges stderr into stdout and carries shell startup noise (mise/nvm banners and the like) that you would otherwise have to filter out with `grep -v`. `--json` captures the two streams separately and strips PTY carriage returns.
 
 To parameterize a template, declare **session arguments** with `--session-arg` (each becomes an env var in the session); supply values at boot with `session create --template-id <uuid> --template-args KEY=VALUE`. See the `runtm-templates` skill.
+
+## Other common path: building an agent
+
+The loop above is for **driving a sandbox yourself**. When the ask is "build me an agent that does X" (support triage, on-call, research, code review), the shape is different and the order matters. Read the **`runtm-build-agent`** skill first.
+
+The one thing to know before you start: **every capability an agent has hangs off one template.**
+
+```
+trigger -> roster agent -> template -> { skills, MCP servers, tools, guardrails, context } -> session
+```
+
+So a roster agent without `--template` can do nothing special, a skill that is never attached to that template is never loaded, and an attachment made after the last build does nothing until you rebuild. All three fail **silently**. Create the template, attach everything, verify with `template get`, then build **once**. Note that `template create --skip-agent` implies `--build`, so the fast path above will bake an empty template if you meant to attach skills to it.
 
 ## Quick Reference
 
@@ -424,7 +436,8 @@ If `authenticated: false`, ask the user to set `RUNTM_API_KEY` (or run `runtm-ap
 - `runtm-templates` -- full template lifecycle (create, build, fix, snapshot).
 - `runtm-debug` -- inspect a session's state when something is wrong.
 - `runtm-integrations` -- add/connect an **external** integration (research API/SDK/CLI/MCP/repos/skills → weigh auth methods → user picks → build definition → connect in the UI); CRUD skills, MCP servers, and tools. NB: "integration" means external tooling; LLM provider keys (Anthropic/OpenAI) live under `runtm-api providers`.
-- `runtm-agents` -- create, list, and edit Slack/GitHub integration agents (event-driven).
+- `runtm-build-agent` -- **"build me an agent that does X"**: the end-to-end assembly recipe across templates, skills/MCPs/tools, guardrails, the roster, and triggers, in the order that avoids baking an empty template.
+- `runtm-agents` -- the agent roster (identity, instructions, rubric, budget, scorecard) and its Slack/GitHub/Linear/Email triggers.
 - `runtm-automation` -- scheduled agents: cron syntax, the create-disabled → `run-now` → enable order, and debugging a schedule that didn't fire.
 
 ## Subcommand Discovery
