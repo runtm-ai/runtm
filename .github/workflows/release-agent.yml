@@ -37,9 +37,14 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          # 1.25.9+ fixes the Go-stdlib CVEs (CVE-2025-68121, CVE-2026-27143)
-          # flagged by Artifact Registry scanning on the released binaries.
-          go-version: '1.25.12'
+          # Exact pin — bump on Go security releases, then tag a new
+          # packages/agent/vX.Y.Z so the published binary picks the fix up.
+          # setup-go forces GOTOOLCHAIN=local, so a `toolchain` directive in
+          # go.mod cannot override this; this pin IS the stdlib version.
+          # 1.26.6 fixes CVE-2026-39821 (CRITICAL) + CVE-2026-33818 /
+          # 46600 / 56853 / 56859 / 56862 / 56864 / 56865 (HIGH), all flagged
+          # by Artifact Registry scanning on the released runtm-api binary.
+          go-version: '1.26.6'
           cache-dependency-path: packages/agent/go.sum
 
       - name: Compute clean version
