@@ -78,8 +78,8 @@ Required scope: sessions:write`,
 				return fmt.Errorf("--email is required")
 			}
 			body := map[string]any{"email": email, "port": port}
-			// Only sent when the caller already knows the live URL (the web
-			// app does, including any path). The server derives one otherwise.
+			// The server pins the emailed link's host to the session's own
+			// preview host; passing a URL only contributes its path/query.
 			if previewURL != "" {
 				body["preview_url"] = previewURL
 			}
@@ -89,7 +89,7 @@ Required scope: sessions:write`,
 	}
 	cmd.Flags().StringVar(&email, "email", "", "Email address to invite (required)")
 	cmd.Flags().IntVar(&port, "port", 3000, "Preview port to share")
-	cmd.Flags().StringVar(&previewURL, "preview-url", "", "Override the emailed link (defaults to the session's preview URL for this port)")
+	cmd.Flags().StringVar(&previewURL, "preview-url", "", "Add a path/query to the emailed link (host is always the session's own preview host)")
 	return cmd
 }
 

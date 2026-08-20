@@ -45,7 +45,7 @@ Re-inviting an address that already has this port is a no-op and does not send a
 </ParamField>
 
 <ParamField body="preview_url" type="string">
-  Override the link that gets emailed. Omit this and the server derives the preview URL for `port`. Pass it when you need a specific path (e.g. `.../index.html`).
+  Optional. Only the **path and query** are honored — the emailed link's host is always the server-derived preview host for this session and port, so this cannot redirect the invite elsewhere. Pass it when you need a specific path (e.g. `.../index.html`); omit it and the server derives the bare preview URL.
 </ParamField>
 
 ## Response
