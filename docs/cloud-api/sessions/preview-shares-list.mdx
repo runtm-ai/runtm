@@ -1,0 +1,93 @@
+---
+title: "List Preview Shares"
+api: "GET /api/sessions/{session_id}/preview-shares"
+description: "See who has access to a session's live preview"
+---
+
+Lists the preview shares on a session, newest first. Optionally narrowed to a single port.
+
+Use `has_accessed` to tell whether an invitee ever actually opened the preview — useful for chasing a client who says they never got the link.
+
+**Required scope:** `sessions:read`
+
+<Info>
+  From the CLI: `runtm-api session share list <session_id>`
+</Info>
+
+## Path Parameters
+
+<ParamField path="session_id" type="string" required>
+  The session ID (e.g. `ses_abc123`).
+</ParamField>
+
+## Query Parameters
+
+<ParamField query="port" type="integer">
+  Only return shares for this port. Omit for all ports.
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string">
+  Scope to an organization.
+</ParamField>
+
+## Response
+
+<ResponseField name="shares" type="array">
+  Each share: `id`, `port`, `invited_email`, `user_id`, `created_by`, `created_by_email`, `created_at`, `last_accessed_at`, `has_accessed`.
+</ResponseField>
+
+<ResponseField name="count" type="integer">
+  Number of shares returned.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl "https://app.runtm.com/api/cloud/sessions/ses_abc123/preview-shares?port=3000" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```bash CLI
+runtm-api session share list ses_abc123 --port 3000
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://app.runtm.com/api/cloud/sessions/ses_abc123/preview-shares",
+    headers={"Authorization": "Bearer runtm_xxx"},
+    params={"port": 3000},
+)
+
+for share in response.json()["shares"]:
+    seen = "opened" if share["has_accessed"] else "not opened yet"
+    print(share["invited_email"], seen)
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "shares": [
+    {
+      "id": "9c1f0b7e-4b1a-4c2e-8f3d-2a5b6c7d8e9f",
+      "port": 3000,
+      "invited_email": "dev@acme.com",
+      "user_id": "user_xyz",
+      "created_by": "user_abc",
+      "created_by_email": "you@yourcompany.com",
+      "created_at": "2026-08-19T22:10:00Z",
+      "last_accessed_at": "2026-08-19T22:41:12Z",
+      "has_accessed": true
+    }
+  ],
+  "count": 1
+}
+```
+</ResponseExample>

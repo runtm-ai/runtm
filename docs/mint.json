@@ -114,6 +114,14 @@
         "cloud-api/sessions/rename",
         "cloud-api/sessions/visibility",
         {
+          "group": "Sharing",
+          "pages": [
+            "cloud-api/sessions/preview-shares-create",
+            "cloud-api/sessions/preview-shares-list",
+            "cloud-api/sessions/preview-shares-revoke"
+          ]
+        },
+        {
           "group": "Lifecycle",
           "pages": [
             "cloud-api/sessions/pause",

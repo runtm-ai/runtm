@@ -1,0 +1,73 @@
+---
+title: "Revoke a Preview Share"
+api: "DELETE /api/sessions/{session_id}/preview-shares/{share_id}"
+description: "Withdraw someone's access to a shared preview"
+---
+
+Deletes a preview share.
+
+Revocation takes effect once the holder's current preview cookie expires — a few minutes — rather than instantly. To cut access off immediately, pause or destroy the session as well.
+
+Get `share_id` from [List Preview Shares](/cloud-api/sessions/preview-shares-list).
+
+**Required scope:** `sessions:write`
+
+<Info>
+  From the CLI: `runtm-api session share revoke <session_id> <share_id>`
+</Info>
+
+## Path Parameters
+
+<ParamField path="session_id" type="string" required>
+  The session ID (e.g. `ses_abc123`).
+</ParamField>
+
+<ParamField path="share_id" type="string" required>
+  The share ID. Scoped by session, so an id alone is not enough to revoke.
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string">
+  Scope to an organization.
+</ParamField>
+
+## Response
+
+<ResponseField name="revoked" type="boolean">
+  `true` when the share was deleted. Returns `404` when no such share exists on this session.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE \
+  "https://app.runtm.com/api/cloud/sessions/ses_abc123/preview-shares/9c1f0b7e-4b1a-4c2e-8f3d-2a5b6c7d8e9f" \
+  -H "Authorization: Bearer runtm_xxx"
+```
+
+```bash CLI
+runtm-api session share revoke ses_abc123 9c1f0b7e-4b1a-4c2e-8f3d-2a5b6c7d8e9f
+```
+
+```python Python
+import requests
+
+requests.delete(
+    "https://app.runtm.com/api/cloud/sessions/ses_abc123"
+    "/preview-shares/9c1f0b7e-4b1a-4c2e-8f3d-2a5b6c7d8e9f",
+    headers={"Authorization": "Bearer runtm_xxx"},
+)
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "revoked": true
+}
+```
+</ResponseExample>

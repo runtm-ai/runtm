@@ -91,7 +91,11 @@ So a roster agent without `--template` can do nothing special, a skill that is n
 | Inspect workspace state | `runtm-api session workspace-state <id>` |
 | Pause / resume / rename | `runtm-api session pause\|resume\|rename <id> [...]` |
 | Bump idle timer | `runtm-api session heartbeat <id>` |
-| Change visibility | `runtm-api session visibility <id> private\|team` |
+| Change visibility (inside the org) | `runtm-api session visibility <id> private\|team` |
+| **Share a preview outside the org** | `runtm-api session share create <id> --email <addr> [--port N]` |
+| List who a preview is shared with | `runtm-api session share list <id> [--port N]` |
+| Revoke a preview share | `runtm-api session share revoke <id> <share_id>` |
+| **List my own preview URLs** | `runtm-api session previews` |
 | Per-session instructions | `runtm-api session instructions get\|set <id> ...` |
 | Collaborators | `runtm-api session collaborators <id>` |
 | Start dev server | `runtm-api session run-server <id> [--port N]` |
@@ -372,8 +376,10 @@ If `authenticated: false`, ask the user to set `RUNTM_API_KEY` (or run `runtm-ap
 
 | Operation | Required scope(s) |
 |-----------|------------------|
-| `session list\|get\|status\|history\|workspace-state\|collaborators` | `sessions:read` |
+| `session list\|get\|status\|history\|workspace-state\|collaborators\|previews` | `sessions:read` |
+| `session share list` | `sessions:read` |
 | `session create\|destroy\|rename\|pause\|resume\|git\|visibility\|heartbeat\|run-server` | `sessions:write` (`sessions:delete` for destroy) |
+| `session share create\|revoke` | `sessions:write` |
 | `session launch` | `sessions:write` + `sessions:prompt` |
 | `session connect\|exec` | `sessions:terminal` |
 | `session prompt\|prompt-cancel\|events` | `sessions:prompt` |
