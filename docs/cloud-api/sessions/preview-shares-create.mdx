@@ -1,0 +1,134 @@
+---
+title: "Share a Preview"
+api: "POST /api/sessions/{session_id}/preview-shares"
+description: "Give someone outside your organization access to one port of a session's live preview"
+---
+
+Grants one email address access to one port of a session's live preview, and emails them the link.
+
+This is the narrowest grant in Runtm. The invitee can open that preview and nothing else — no workspace, no terminal, no prompting — and they are **not** added to your organization. They need a Runtm account to open it, but not before you invite them: the grant binds to their user id the first time they sign in and open the link.
+
+Paused sandboxes wake up automatically when a shared link is opened, so a share keeps working after the ~20 minute idle pause.
+
+Re-inviting an address that already has this port is a no-op and does not send a second email.
+
+**Required scope:** `sessions:write`
+
+<Info>
+  From the CLI: `runtm-api session share create <session_id> --email dev@acme.com --port 3000`
+</Info>
+
+## Path Parameters
+
+<ParamField path="session_id" type="string" required>
+  The session ID (e.g. `ses_abc123`).
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token. Example: `Bearer runtm_xxx`
+</ParamField>
+
+<ParamField header="X-Organization-Id" type="string">
+  Scope to an organization. Must match the API key's own organization.
+</ParamField>
+
+## Body
+
+<ParamField body="email" type="string" required>
+  Address to invite. Max 320 characters.
+</ParamField>
+
+<ParamField body="port" type="integer" required>
+  The single port to share. Ports `22` and `2222` are rejected — they carry sandbox tooling rather than your app.
+</ParamField>
+
+<ParamField body="preview_url" type="string">
+  Override the link that gets emailed. Omit this and the server derives the preview URL for `port`. Pass it when you need a specific path (e.g. `.../index.html`).
+</ParamField>
+
+## Response
+
+<ResponseField name="share" type="object">
+  The grant: `id`, `port`, `invited_email`, `user_id`, `created_by`, `created_at`, `last_accessed_at`, `has_accessed`.
+</ResponseField>
+
+<ResponseField name="created" type="boolean">
+  `false` when the address already had this port.
+</ResponseField>
+
+<ResponseField name="emailed" type="boolean">
+  Whether the invite email went out. `false` when the grant already existed or email delivery is not configured — send `preview_url` yourself in that case.
+</ResponseField>
+
+<ResponseField name="preview_url" type="string">
+  The link the invitee should open.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST "https://app.runtm.com/api/cloud/sessions/ses_abc123/preview-shares" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "dev@acme.com", "port": 3000}'
+```
+
+```bash CLI
+runtm-api session share create ses_abc123 --email dev@acme.com --port 3000
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://app.runtm.com/api/cloud/sessions/ses_abc123/preview-shares",
+    headers={
+        "Authorization": "Bearer runtm_xxx",
+        "Content-Type": "application/json",
+    },
+    json={"email": "dev@acme.com", "port": 3000},
+)
+
+body = response.json()
+if not body["emailed"]:
+    print("Send this yourself:", body["preview_url"])
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://app.runtm.com/api/cloud/sessions/ses_abc123/preview-shares",
+  {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer runtm_xxx",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email: "dev@acme.com", port: 3000 }),
+  }
+);
+
+const { share, emailed, preview_url } = await response.json();
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "share": {
+    "id": "9c1f0b7e-4b1a-4c2e-8f3d-2a5b6c7d8e9f",
+    "port": 3000,
+    "invited_email": "dev@acme.com",
+    "user_id": null,
+    "created_by": "user_abc",
+    "created_by_email": "you@yourcompany.com",
+    "created_at": "2026-08-19T22:10:00Z",
+    "last_accessed_at": null,
+    "has_accessed": false
+  },
+  "created": true,
+  "emailed": true,
+  "preview_url": "https://3000-iqsaph2xwcvxthiznmwro.dev.runtm.com"
+}
+```
+</ResponseExample>

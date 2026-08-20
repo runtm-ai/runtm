@@ -47,6 +47,7 @@ Docs: https://docs.runtm.com`,
 	AddSessionDeploy(sessionCmd, rt)
 	AddSessionTerminal(sessionCmd, rt)
 	AddSessionOps(sessionCmd, rt)
+	AddSessionShare(sessionCmd, rt)
 
 	root.AddCommand(
 		NewAuthCommand(rt),

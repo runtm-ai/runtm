@@ -31,6 +31,9 @@ Workflow recipes for the `runtm-api session` subcommands. For endpoint details s
 | Hold a sandbox without spending | `session pause` then `session resume` later |
 | Edit files programmatically | `session file write` |
 | Inject configuration | `session env set <id> KEY=VAL ...` |
+| **Show a preview to someone outside the org** | `session share create <id> --email <addr> --port N` |
+| **Get the preview URLs of my own sessions** | `session previews` (NOT `session list --team-mode`) |
+| Let teammates in the same org open a session | `session visibility <id> team` |
 
 ## Recipe: boot a session from a template, then run commands
 
@@ -170,6 +173,69 @@ runtm-api session search --source schedule --created-after 2026-07-01
 
 `session list` only pages; `search` filters by agent, model, template, source,
 creator, and time windows, and matches name/prompt text with `-q`.
+
+## Recipe: find my own preview URLs
+
+When the user asks "what are my preview URLs" / "give me the link to my
+prototype", use `session previews`. It is scoped to the API key's own user and
+returns just `id`, `name`, `state`, `preview_url`.
+
+```bash
+runtm-api session previews              # my sessions that have a preview URL
+runtm-api session previews --all        # include ones with no URL yet
+runtm-api session previews --team-mode  # opt in to teammates' shared sessions
+```
+
+Do **not** reach for `session list --team-mode` here. In a busy org that
+returns every teammate's sessions, so the user gets back a wall of URLs that
+are mostly not theirs. `session previews` defaults to `scope: "mine"` and says
+so in its output.
+
+A `paused` session still lists its URL. Opening a shared preview wakes the
+sandbox automatically, so a paused state is not a reason to withhold the link.
+
+## Recipe: share a live preview with someone outside the org
+
+Two different things, often confused:
+
+| You want | Use |
+|----------|-----|
+| A teammate **in the org** to open the whole session | `session visibility <id> team` |
+| Someone **outside the org** to view only the running app | `session share create ...` |
+
+A preview share grants exactly one `(session, port)` pair. The invitee gets the
+app and nothing else -- no workspace, no terminal, no prompting -- and is not
+added to the organization. They need a Runtm account to open it, but not before
+being invited: the grant binds to their account the first time they sign in.
+
+```bash
+# 1. Make sure something is actually serving on the port
+runtm-api session run-server <id> --port 3000
+
+# 2. Grant access and email the link
+runtm-api session share create <id> --email client@acme.com --port 3000
+# -> {"created": true, "emailed": true, "preview_url": "https://3000-....dev.runtm.com"}
+
+# 3. See who has access and whether they opened it
+runtm-api session share list <id>
+# -> shares[].has_accessed
+
+# 4. Withdraw access
+runtm-api session share revoke <id> <share_id>
+```
+
+If `emailed` is `false`, delivery is not configured -- send `preview_url` to the
+invitee yourself. Re-inviting an address that already has the port is a no-op
+and sends no second email.
+
+Sessions auto-pause after ~20 minutes idle. A shared link keeps working
+regardless: opening it wakes the sandbox and lands the visitor on the preview
+after a few seconds. Do not pre-emptively `session resume` just to keep a share
+alive.
+
+Revocation applies once the holder's current preview cookie expires (a few
+minutes), not instantly. To cut access immediately, also pause or destroy the
+session.
 
 ## Recipe: ship a deployment and track it afterwards
 
