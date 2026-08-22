@@ -1,19 +1,20 @@
-version: "3.8"
-
 services:
   api:
+    profiles:
+      - app
     build:
       context: ..
       dockerfile: infra/Dockerfile.api
     # Note: USER directive in Dockerfile handles non-root for production
     # For local dev, we don't override user to avoid volume permission issues
     ports:
-      - "8000:8000"
+      - "${RUNTM_API_BIND:-0.0.0.0}:${RUNTM_API_PORT:-8000}:8000"
     env_file:
       - ../.env  # Load from project root .env file
     environment:
       - DATABASE_URL=postgresql://runtm:runtm@postgres:5432/runtm
       - REDIS_URL=redis://redis:6379
+      - RUNTM_API_URL=http://api:8000
       - API_SECRET=${RUNTM_API_SECRET:?Set RUNTM_API_SECRET environment variable}
       - ARTIFACT_STORAGE_PATH=/artifacts
       - ARTIFACT_STORAGE_BACKEND=local
@@ -34,6 +35,8 @@ services:
       retries: 5
 
   worker:
+    profiles:
+      - app
     build:
       context: ..
       dockerfile: infra/Dockerfile.worker
@@ -44,6 +47,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://runtm:runtm@postgres:5432/runtm
       - REDIS_URL=redis://redis:6379
+      - RUNTM_API_URL=http://api:8000
       - API_SECRET=${RUNTM_API_SECRET:?Set RUNTM_API_SECRET environment variable}
       - FLY_ORG=${FLY_ORG:-personal}
       - ARTIFACT_STORAGE_PATH=/artifacts
@@ -78,13 +82,13 @@ services:
       retries: 5
     ports:
       # SECURITY: Bind to localhost only - prevent external access
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${RUNTM_POSTGRES_PORT:-5432}:5432"
 
   redis:
     image: redis:7-alpine
     ports:
       # SECURITY: Bind to localhost only - prevent external access
-      - "127.0.0.1:6379:6379"
+      - "127.0.0.1:${RUNTM_REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -96,4 +100,3 @@ volumes:
     driver: local
   pgdata:
     driver: local
-

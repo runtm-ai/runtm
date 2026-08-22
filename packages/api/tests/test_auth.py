@@ -1,26 +1,33 @@
 """Tests for authentication."""
 
 import pytest
-from fastapi.testclient import TestClient
+import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
 
 from runtm_api.main import app
 
 
-@pytest.fixture
-def client():
+@pytest_asyncio.fixture
+async def client():
     """Create test client."""
-    return TestClient(app)
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as test_client:
+        yield test_client
 
 
-def test_deployment_requires_auth(client):
+@pytest.mark.asyncio
+async def test_deployment_requires_auth(client):
     """Deployment endpoints should require auth."""
-    response = client.get("/v0/deployments/dep_abc123")
+    response = await client.get("/v0/deployments/dep_abc123")
     assert response.status_code == 401
 
 
-def test_deployment_with_invalid_token(client):
+@pytest.mark.asyncio
+async def test_deployment_with_invalid_token(client):
     """Invalid token should return 401."""
-    response = client.get(
+    response = await client.get(
         "/v0/deployments/dep_abc123",
         headers={"Authorization": "Bearer invalid-token"},
     )

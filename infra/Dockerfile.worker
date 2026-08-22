@@ -1,5 +1,9 @@
 FROM python:3.12-slim
 
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_ROOT_USER_ACTION=ignore \
+    DEBIAN_FRONTEND=noninteractive
+
 # Create non-root user early
 # SECURITY: Running as non-root prevents container escape attacks
 RUN useradd --create-home --uid 1000 --shell /bin/bash runtm

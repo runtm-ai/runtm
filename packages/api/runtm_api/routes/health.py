@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from fastapi import APIRouter
 from pydantic import BaseModel
 
@@ -13,6 +15,34 @@ class HealthResponse(BaseModel):
 
     status: str
     version: str
+
+
+class RootResponse(BaseModel):
+    """Root status response."""
+
+    service: str
+    status: str
+    version: str
+    timestamp: str
+    health_url: str
+    docs_url: str
+
+
+@router.get("/", response_model=RootResponse, include_in_schema=False)
+async def home() -> RootResponse:
+    """Root API status endpoint."""
+    from runtm_api import __version__
+
+    timestamp = datetime.now(UTC).isoformat(timespec="seconds")
+
+    return RootResponse(
+        service="runtm-api",
+        status="healthy",
+        version=__version__,
+        timestamp=timestamp,
+        health_url="/health",
+        docs_url="/docs",
+    )
 
 
 @router.get("/health", response_model=HealthResponse)

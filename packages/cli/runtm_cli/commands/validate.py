@@ -716,7 +716,7 @@ def _run_validation_with_uv_sync(
         try:
             # uv sync creates venv and installs deps in one fast step
             result = subprocess.run(
-                ["uv", "sync", "--frozen", "--no-dev"],
+                ["uv", "sync", "--frozen", "--no-dev", "--python", sys.executable],
                 capture_output=True,
                 text=True,
                 timeout=120,
@@ -784,7 +784,7 @@ def _run_validation_with_uv_pip(
         try:
             # Create venv with uv (much faster than python -m venv)
             result = subprocess.run(
-                ["uv", "venv", str(venv_path)],
+                ["uv", "venv", "--python", sys.executable, str(venv_path)],
                 capture_output=True,
                 text=True,
                 timeout=30,
