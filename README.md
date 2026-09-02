@@ -107,19 +107,68 @@ It is JSON-in / JSON-out, has stable exit codes, and ships with embedded skill f
 
 ## Commands
 
+### Sandbox Sessions
+
 | Command | Description |
 |---------|-------------|
-| `runtm session start` | Start a new sandbox session |
+| `runtm start` | Start a new sandbox session |
+| `runtm prompt "..."` | Send a prompt to the agent |
+| `runtm attach [id]` | Reattach to a sandbox |
 | `runtm session list` | List all sandboxes |
-| `runtm session attach <id>` | Reattach to a sandbox |
 | `runtm session stop <id>` | Stop a sandbox (preserves files) |
 | `runtm session destroy <id>` | Destroy sandbox and delete files |
 | `runtm session deploy` | Deploy from sandbox to live URL |
-| `runtm init` | Initialize a new project |
-| `runtm deploy` | Deploy to a live URL |
-| `runtm logs <id>` | View build, deploy, and runtime logs |
+
+### Projects & Deployment
+
+| Command | Description |
+|---------|-------------|
+| `runtm init [template]` | Initialize a new project from template |
+| `runtm deploy [path]` | Deploy to a live URL |
 | `runtm status <id>` | Check deployment status |
+| `runtm logs <id>` | View build, deploy, and runtime logs |
 | `runtm destroy <id>` | Tear down a deployment |
+| `runtm list` | List all deployments |
+| `runtm search "query"` | Search deployments by description |
+
+### Development
+
+| Command | Description |
+|---------|-------------|
+| `runtm validate [path]` | Validate project before deployment |
+| `runtm fix [path]` | Fix common project issues (lockfiles, etc.) |
+| `runtm run [path]` | Run project locally |
+| `runtm approve [path]` | Apply agent-proposed changes |
+
+### Secrets & Configuration
+
+| Command | Description |
+|---------|-------------|
+| `runtm secrets set KEY=VAL` | Set a secret in .env.local |
+| `runtm secrets get KEY` | Get a secret value |
+| `runtm secrets list` | List all secrets and status |
+| `runtm secrets unset KEY` | Remove a secret |
+| `runtm config set KEY=VAL` | Set CLI configuration |
+| `runtm config get KEY` | Get configuration value |
+| `runtm config list` | List all configuration |
+| `runtm config reset` | Reset to defaults |
+
+### Custom Domains
+
+| Command | Description |
+|---------|-------------|
+| `runtm domain add <id> <host>` | Add custom domain to deployment |
+| `runtm domain status <id> <host>` | Check domain and certificate status |
+| `runtm domain remove <id> <host>` | Remove custom domain |
+
+### Auth & Diagnostics
+
+| Command | Description |
+|---------|-------------|
+| `runtm login` | Authenticate with Runtm API |
+| `runtm logout` | Remove saved credentials |
+| `runtm doctor` | Check setup and diagnose issues |
+| `runtm version` | Show CLI version |
 
 See the [CLI docs](https://docs.runtm.com/cli/overview) for the full reference.
 
