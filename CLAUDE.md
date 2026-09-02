@@ -17,7 +17,8 @@ Open-source sandboxes where coding agents build and deploy. Spin up isolated env
 
 ```bash
 # Setup
-./scripts/dev.sh setup              # Install all packages in dev mode
+./scripts/dev.sh setup              # Install all packages in dev mode (creates .env if missing)
+./scripts/dev.sh doctor             # Verify setup (Python, .env, Docker, services)
 cp infra/local.env.example .env     # Configure environment (add FLY_API_TOKEN)
 
 # Development CLI (use runtm-dev, not runtm)
