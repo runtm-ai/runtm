@@ -3,5 +3,4 @@ template: web-app
 runtime: fullstack
 health_path: /health
 port: 3000
-tier: standard  # Fullstack apps need 512MB+ RAM for Node.js + Python
-
+tier: starter  # starter (2GB RAM, 2 shared CPUs) runs fullstack; use performance/pro for heavier apps
