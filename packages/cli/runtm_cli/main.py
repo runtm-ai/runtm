@@ -232,7 +232,7 @@ def deploy(
         "--new",
         help="DANGEROUS: Create new Fly app instead of redeploying. Loses custom domains and secrets!",
     ),
-    tier: str = typer.Option(None, "--tier", help="Machine tier: starter, standard, performance"),
+    tier: str = typer.Option(None, "--tier", help="Machine tier: starter, performance, pro"),
     yes: bool = typer.Option(
         False, "--yes", "-y", help="Auto-fix lockfile issues without prompting"
     ),

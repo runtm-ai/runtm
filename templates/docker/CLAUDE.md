@@ -149,12 +149,12 @@ runtm deploy    # Deploy
 
 | Tier | Memory | CPUs |
 |------|--------|------|
-| `starter` | 256 MB | 1 shared |
-| `standard` | 512 MB | 1 shared |
-| `performance` | 1 GB | 2 shared |
+| `starter` | 2 GB | 2 shared |
+| `performance` | 4 GB | 4 shared |
+| `pro` | 8 GB | 4 shared |
 
 Set in `runtm.yaml`:
 
 ```yaml
-tier: standard
+tier: performance
 ```

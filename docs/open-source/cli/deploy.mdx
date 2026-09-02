@@ -21,7 +21,7 @@ runtm deploy [path]
 
 | Option | Short | Description |
 |--------|-------|-------------|
-| `--tier TIER` | | Machine tier: `starter`, `standard`, `performance` |
+| `--tier TIER` | | Machine tier: `starter`, `performance`, `pro` |
 | `--wait/--no-wait` | | Wait for deployment to complete (default: wait) |
 | `--timeout N` | `-t` | Timeout in seconds (default: 500) |
 | `--yes` | `-y` | Auto-fix lockfile issues without prompting |
@@ -46,11 +46,11 @@ runtm deploy ./my-project
 ### Machine Tiers
 
 ```bash
-# Deploy with standard tier (512MB RAM)
-runtm deploy --tier standard
-
-# Deploy with performance tier (1GB RAM)
+# Deploy with performance tier (4GB RAM)
 runtm deploy --tier performance
+
+# Deploy with pro tier (8GB RAM)
+runtm deploy --tier pro
 ```
 
 ### Auto-Fix Issues
@@ -150,14 +150,14 @@ runtm deploy --new
 
 | Tier | Memory | CPUs | Best for |
 |------|--------|------|----------|
-| `starter` | 256 MB | 1 shared | Simple APIs, webhooks |
-| `standard` | 512 MB | 1 shared | Web apps, fullstack |
-| `performance` | 1 GB | 2 shared | AI/ML, heavy workloads |
+| `starter` | 2 GB | 2 shared | APIs, webhooks, starter fullstack apps |
+| `performance` | 4 GB | 4 shared | Web apps, background work, moderate traffic |
+| `pro` | 8 GB | 4 shared | Memory-intensive apps, heavy workloads |
 
 All tiers use **suspended state** - machines pause when idle and resume quickly on requests.
 
 <Note>
-The `web-app` template requires `standard` or higher.
+The `starter` tier is the default. Use `performance` or `pro` when your app needs more CPU or memory.
 </Note>
 
 ## Config-Only Deploys

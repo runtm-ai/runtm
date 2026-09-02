@@ -76,10 +76,10 @@ Auth requires database to be enabled. Only available on `web-app` template.
 |----------|----------|------|---------|
 | `backend-service` | starter | 8080 | `python` |
 | `static-site` | starter | 3000 | `node` |
-| `web-app` | standard | 3000 | `fullstack` |
+| `web-app` | starter | 3000 | `fullstack` |
 | `docker` | starter | your choice | not required |
 
-The `web-app` template requires `standard` tier because it runs both Node.js and Python.
+Use `performance` or `pro` for web apps that need more CPU or memory.
 
 <Note>
 The `docker` template doesn't require a `runtime` field in `runtm.yaml` since you provide your own Dockerfile.

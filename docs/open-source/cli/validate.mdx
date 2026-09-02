@@ -28,11 +28,11 @@ runtm validate [path] [options]
 ### 1. Manifest (runtm.yaml)
 
 - Required fields present (`name`, `template`)
-- `runtime` required for standard templates (not for `docker` template)
+- `runtime` required for non-Docker templates
 - Valid template type (`backend-service`, `static-site`, `web-app`, `docker`)
 - Valid runtime type (`python`, `node`, `fullstack`)
 - Valid port number
-- Tier requirements (fullstack needs standard+)
+- Valid machine tier (`starter`, `performance`, or `pro`)
 - Feature requirements (auth needs database)
 
 ### 2. Lockfile
@@ -109,7 +109,7 @@ Ready to deploy!
 ✗ Validation failed
 
 Errors:
-  • Manifest: tier must be 'standard' or higher for fullstack runtime
+  • Manifest: tier must be one of: performance, pro, starter
   • Lockfile: bun.lockb is out of sync. Run 'runtm fix' or 'bun install'
   • Import: Cannot import 'httpx' - add to [project] dependencies
 ```
@@ -144,11 +144,11 @@ Errors:
     ]
     ```
   </Accordion>
-  <Accordion title="Fullstack tier error">
-    Web apps need at least `standard` tier:
+  <Accordion title="Invalid tier">
+    Use one of the supported machine tiers:
     ```yaml
     # runtm.yaml
-    tier: standard  # Not starter
+    tier: performance
     ```
   </Accordion>
   <Accordion title="Auth without database">

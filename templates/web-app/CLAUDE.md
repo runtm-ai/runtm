@@ -31,7 +31,7 @@ Interactive UI + backend for real user workflows.
 2. **Health endpoint required**: `/health` must return 200
 3. **Keep types in sync**: Pydantic models ↔ TypeScript types
 4. **No database**: In-memory storage only for V0
-5. **Minimum tier: standard**: Fullstack needs 512MB+ RAM (starter tier rejected)
+5. **Machine tier**: `starter` is valid by default; use `performance` or `pro` for heavier workloads
 6. **Dependencies in `[project] dependencies`**: NOT in `dev` (see below)
 
 ## Project Structure
@@ -198,11 +198,11 @@ Then run `runtm approve` to merge into manifest.
 - ✅ Each page folder has its own `actions.ts` for data fetching
 - ✅ Reusable UI goes in `components/ui/`
 - ✅ Sync Pydantic and TypeScript types
-- ✅ Use `tier: standard` or higher in runtm.yaml
+- ✅ Use a valid tier in runtm.yaml: `starter`, `performance`, or `pro`
 - ✅ Add new imports to `[project] dependencies` in pyproject.toml
 - ❌ Don't put logic in API endpoints
 - ❌ Don't mix page-specific and reusable components
-- ❌ Don't use `tier: starter` (256MB is not enough for Node.js + Python)
+- ❌ Don't use old tier names such as `standard` in runtm.yaml
 - ❌ Don't add production deps to `[project.optional-dependencies] dev`
 - ❌ Don't scale SQLite to multiple machines (use Postgres instead)
 

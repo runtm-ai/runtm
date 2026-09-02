@@ -3,5 +3,4 @@ template: static-site
 runtime: node
 health_path: /health
 port: 3000
-tier: starter  # Options: starter (cheapest), standard, performance
-
+tier: starter  # Options: starter (cheapest), performance, pro

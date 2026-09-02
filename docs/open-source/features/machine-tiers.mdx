@@ -9,37 +9,33 @@ Runtime offers three machine tiers. All deployments use **suspended state** by d
 
 <Tabs>
   <Tab title="starter">
-    **256 MB RAM • 1 shared CPU**
-    
-    The default for most workloads. Good for simple APIs, webhooks, and tools.
-    
+    **2 GB RAM • 2 shared CPUs**
+
+    The default for most workloads. Good for APIs, webhooks, static sites, and fullstack starter apps.
+
     ```yaml
     # runtm.yaml
     tier: starter
     ```
   </Tab>
-  <Tab title="standard">
-    **512 MB RAM • 1 shared CPU**
-    
-    Required for fullstack apps. Good for web apps with moderate memory usage.
-    
-    ```yaml
-    # runtm.yaml
-    tier: standard
-    ```
-    
-    <Note>
-    The `web-app` template requires at least `standard` because it runs Node.js and Python simultaneously.
-    </Note>
-  </Tab>
   <Tab title="performance">
-    **1 GB RAM • 2 shared CPUs**
-    
-    For heavy workloads like AI/ML processing or high-traffic services.
-    
+    **4 GB RAM • 4 shared CPUs**
+
+    Good for heavier web apps, background work, and moderate traffic.
+
     ```yaml
     # runtm.yaml
     tier: performance
+    ```
+  </Tab>
+  <Tab title="pro">
+    **8 GB RAM • 4 shared CPUs**
+
+    For memory-intensive apps and larger workloads.
+
+    ```yaml
+    # runtm.yaml
+    tier: pro
     ```
   </Tab>
 </Tabs>
@@ -64,7 +60,7 @@ This gives you the cost benefits of serverless with near-instant response times.
 name: my-service
 template: backend-service
 runtime: python
-tier: standard
+tier: performance
 ```
 
 ### At deploy time
@@ -80,7 +76,7 @@ runtm deploy --tier performance
 Use config-only deploys to change tier instantly:
 
 ```bash
-runtm deploy --tier standard --config-only
+runtm deploy --tier performance --config-only
 ```
 
 ## Template requirements
@@ -89,7 +85,7 @@ runtm deploy --tier standard --config-only
 |----------|--------------|
 | `backend-service` | starter |
 | `static-site` | starter |
-| `web-app` | standard |
+| `web-app` | starter |
 
 ## When to upgrade
 

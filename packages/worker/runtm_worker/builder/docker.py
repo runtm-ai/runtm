@@ -176,8 +176,8 @@ class DockerBuilder:
 
         # Map memory to Fly VM size and memory strings
         # Fly.io requires explicit memory setting; size only controls CPU
-        # shared-cpu-1x: 1 shared CPU (starter 512MB)
-        # shared-cpu-2x: 2 shared CPUs (standard 2GB)
+        # shared-cpu-1x: 1 shared CPU (custom/sub-1GB memory)
+        # shared-cpu-2x: 2 shared CPUs (starter 2GB)
         # shared-cpu-4x: 4 shared CPUs (performance 4GB, pro 8GB)
         if memory_mb >= 4096:
             vm_size = "shared-cpu-4x"

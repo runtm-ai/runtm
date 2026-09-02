@@ -24,12 +24,12 @@ Visit `http://localhost:3000` for the frontend and `http://localhost:8080/docs` 
 | Frontend | Next.js 14 (App Router) |
 | Backend | Python FastAPI |
 | Port | 3000 (frontend proxies to backend) |
-| **Minimum Tier** | **standard** (512MB required) |
+| **Minimum Tier** | **starter** |
 | Health Endpoint | `/health` |
 
-<Warning>
-  This template requires at least `standard` tier because it runs both Node.js and Python simultaneously. The `starter` tier (256MB) is insufficient.
-</Warning>
+<Note>
+  The `starter` tier works for the generated template. Use `performance` or `pro` for heavier fullstack apps.
+</Note>
 
 ## Project Structure
 
@@ -235,8 +235,7 @@ The frontend proxies `/api/*` requests to the backend.
 ## Deployment
 
 ```bash
-# Set tier to standard (required)
-# This is already set in runtm.yaml
+# The starter tier is already set in runtm.yaml
 
 # Deploy
 runtm deploy
@@ -309,7 +308,7 @@ env_schema:
     required: true
     secret: true
     description: "Session signing secret"
-  
+
   - name: DATABASE_URL
     type: url
     required: false
@@ -322,4 +321,3 @@ Set locally:
 ```bash
 runtm secrets set AUTH_SECRET=$(openssl rand -base64 32)
 ```
-

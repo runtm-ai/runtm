@@ -155,7 +155,7 @@ class Settings(BaseSettings):
     default_deploys_per_day: int | None = None
     default_concurrent_deploys: int | None = None
 
-    # Comma-separated list of allowed machine tiers (e.g., "starter,standard")
+    # Comma-separated list of allowed machine tiers (e.g., "starter,performance")
     # None/empty = all tiers allowed
     default_allowed_tiers: str | None = None
 
