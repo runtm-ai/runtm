@@ -134,6 +134,25 @@ jobs:
           RUNTM_API_SECRET: test-secret-for-ci-at-least-32-chars
           ARTIFACT_STORAGE_PATH: /tmp/artifacts
 
+  test-worker:
+    name: Test Worker Package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install -e packages/shared[dev]
+          pip install -e packages/worker[dev]
+
+      - name: Run tests
+        run: pytest packages/worker/tests -v
+
   test-cli:
     name: Test CLI Package
     runs-on: ubuntu-latest
