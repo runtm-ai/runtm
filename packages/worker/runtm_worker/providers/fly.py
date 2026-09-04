@@ -130,94 +130,6 @@ class FlyProvider(DeployProvider):
         )
         return response.json()
 
-    def _allocate_ip_addresses(self, app_name: str) -> list[str]:
-        """Allocate IP addresses for the app using GraphQL API.
-
-        This is required for the app to be accessible on the .fly.dev domain.
-        Allocates both a shared IPv4 and an IPv6 address.
-
-        Args:
-            app_name: App name
-
-        Returns:
-            List of allocated IP addresses
-        """
-        allocated_ips = []
-
-        # Allocate shared IPv4 (free tier)
-        ipv4_mutation = """
-        mutation($input: AllocateIPAddressInput!) {
-            allocateIpAddress(input: $input) {
-                ipAddress {
-                    id
-                    address
-                    type
-                }
-            }
-        }
-        """
-
-        try:
-            response = httpx.post(
-                self.FLY_GRAPHQL_URL,
-                headers={
-                    "Authorization": f"Bearer {self.api_token}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "query": ipv4_mutation,
-                    "variables": {
-                        "input": {
-                            "appId": app_name,
-                            "type": "shared_v4",
-                        }
-                    },
-                },
-                timeout=30.0,
-            )
-
-            if response.status_code == 200:
-                data = response.json()
-                if "data" in data and data["data"].get("allocateIpAddress"):
-                    ip_data = data["data"]["allocateIpAddress"]["ipAddress"]
-                    if ip_data:
-                        allocated_ips.append(ip_data.get("address", "shared_v4"))
-        except Exception:
-            # Continue even if IPv4 allocation fails
-            pass
-
-        # Allocate IPv6 (always free)
-        try:
-            response = httpx.post(
-                self.FLY_GRAPHQL_URL,
-                headers={
-                    "Authorization": f"Bearer {self.api_token}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "query": ipv4_mutation,
-                    "variables": {
-                        "input": {
-                            "appId": app_name,
-                            "type": "v6",
-                        }
-                    },
-                },
-                timeout=30.0,
-            )
-
-            if response.status_code == 200:
-                data = response.json()
-                if "data" in data and data["data"].get("allocateIpAddress"):
-                    ip_data = data["data"]["allocateIpAddress"]["ipAddress"]
-                    if ip_data:
-                        allocated_ips.append(ip_data.get("address", "v6"))
-        except Exception:
-            # Continue even if IPv6 allocation fails
-            pass
-
-        return allocated_ips
-
     def _get_app(self, app_name: str) -> dict[str, Any] | None:
         """Get app details.
 
@@ -557,14 +469,6 @@ class FlyProvider(DeployProvider):
             if not existing_app:
                 self._create_app(app_name)
                 logs_buffer.append(f"Created app: {app_name}")
-
-                # Allocate IP addresses for public access
-                logs_buffer.append("Allocating IP addresses...")
-                allocated_ips = self._allocate_ip_addresses(app_name)
-                if allocated_ips:
-                    logs_buffer.append(f"Allocated IPs: {', '.join(allocated_ips)}")
-                else:
-                    logs_buffer.append("Warning: Could not allocate IP addresses")
             else:
                 logs_buffer.append(f"Using existing app: {app_name}")
 
@@ -953,51 +857,11 @@ class FlyProvider(DeployProvider):
         """
         app_name = resource.app_name
 
-        # First, get the app's IP addresses for DNS records
+        # Report the app's existing IP addresses as DNS records. Runtm never
+        # allocates IPs, so an app with none yields no A/AAAA records here and
+        # the caller must point DNS at the app another way (e.g. a CNAME to
+        # {app}.fly.dev).
         ips = self._get_app_ips(app_name)
-
-        # Check if we have IPv4 - if not, try to allocate it
-        has_ipv4 = any(ip.get("type", "").lower() in ("v4", "shared_v4") for ip in ips)
-
-        if not has_ipv4:
-            # Try to allocate shared IPv4 (FREE) if missing (required for many DNS providers like Squarespace)
-            # Note: shared_v4 is free, dedicated v4 costs $2/month
-            try:
-                ipv4_mutation = """
-                mutation($input: AllocateIPAddressInput!) {
-                    allocateIpAddress(input: $input) {
-                        ipAddress {
-                            id
-                            address
-                            type
-                        }
-                    }
-                }
-                """
-                result = self._graphql_request(
-                    ipv4_mutation,
-                    {
-                        "input": {
-                            "appId": app_name,
-                            "type": "shared_v4",  # FREE shared IPv4, not dedicated ($2/mo)
-                        }
-                    },
-                )
-                # Check if allocation succeeded
-                ip_data = result.get("allocateIpAddress", {}).get("ipAddress")
-                if ip_data:
-                    # Brief wait for IP to propagate, then refresh
-                    import time
-
-                    time.sleep(1)
-                    ips = self._get_app_ips(app_name)
-            except FlyError:
-                # If allocation fails, continue with what we have
-                # User will see a warning about IPv6-only with manual allocation instructions
-                pass
-            except Exception:
-                # Other errors - continue with what we have
-                pass
 
         dns_records = []
         record_name = "@" if hostname.count(".") == 1 else hostname.split(".")[0]
@@ -1258,50 +1122,9 @@ class FlyProvider(DeployProvider):
             app_data = data.get("app", {})
             cert = app_data.get("certificate")
 
-            # Use _get_app_ips to get complete IP list (including shared IPv4)
+            # Report whatever IPs the app already has. Runtm never allocates
+            # them, so this list is empty for an app that was never given one.
             ips = self._get_app_ips(app_name)
-
-            # Check if we have IPv4 - if not, try to allocate it
-            has_ipv4 = any(ip.get("type", "").lower() in ("v4", "shared_v4") for ip in ips)
-
-            if not has_ipv4:
-                # Try to allocate shared IPv4 (FREE) if missing (required for many DNS providers)
-                # Note: shared_v4 is free, dedicated v4 costs $2/month
-                try:
-                    ipv4_mutation = """
-                    mutation($input: AllocateIPAddressInput!) {
-                        allocateIpAddress(input: $input) {
-                            ipAddress {
-                                id
-                                address
-                                type
-                            }
-                        }
-                    }
-                    """
-                    result = self._graphql_request(
-                        ipv4_mutation,
-                        {
-                            "input": {
-                                "appId": app_name,
-                                "type": "shared_v4",  # FREE shared IPv4, not dedicated ($2/mo)
-                            }
-                        },
-                    )
-                    # Check if allocation succeeded
-                    ip_data = result.get("allocateIpAddress", {}).get("ipAddress")
-                    if ip_data:
-                        # Brief wait for IP to propagate, then refresh
-                        import time
-
-                        time.sleep(1)
-                        ips = self._get_app_ips(app_name)
-                except FlyError:
-                    # If allocation fails, continue with what we have
-                    pass
-                except Exception:
-                    # Other errors - continue with what we have
-                    pass
 
             # Build DNS records (prioritize IPv4)
             dns_records = []
