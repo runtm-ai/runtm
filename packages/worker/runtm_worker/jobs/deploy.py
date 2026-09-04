@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import concurrent.futures
 import contextlib
 import logging
 import os
@@ -430,15 +429,18 @@ class DeployJob:
                     f"App is accessible at https://{app_name}.fly.dev in the meantime."
                 )
 
-    def _ensure_fly_app_with_ips(
+    def _ensure_fly_app(
         self,
         provider: FlyProvider,
         app_name: str,
         build_log,
     ) -> bool:
-        """Ensure Fly app exists and has IP addresses allocated.
+        """Ensure the Fly app exists (the registry push requires it).
 
-        Uses concurrent execution for IP allocation to save time.
+        No IP addresses are allocated here, by design: runtm never calls
+        allocateIpAddress. `flyctl deploy` allocates what the generated
+        fly.toml's [http_service] needs, so the remote-builder path still
+        ends up publicly reachable without us provisioning anything.
 
         Args:
             provider: Fly provider instance
@@ -458,19 +460,6 @@ class DeployJob:
         # Create app
         provider._create_app(app_name)
         build_log.write(f"Created Fly app: {app_name}")
-
-        # Allocate IP addresses concurrently
-        build_log.write("Allocating IP addresses...")
-
-        # Use ThreadPoolExecutor for concurrent IP allocation
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-            future = executor.submit(provider._allocate_ip_addresses, app_name)
-            allocated_ips = future.result(timeout=30)
-
-        if allocated_ips:
-            build_log.write(f"Allocated IPs: {', '.join(allocated_ips)}")
-        else:
-            build_log.write("Warning: Could not allocate IP addresses")
 
         return True
 
@@ -675,7 +664,7 @@ class DeployJob:
                 # For redeployments, the app already exists so this is a no-op
                 provider = FlyProvider(api_token=self.fly_api_token)
                 try:
-                    self._ensure_fly_app_with_ips(provider, app_name, build_log)
+                    self._ensure_fly_app(provider, app_name, build_log)
                 except Exception as e:
                     raise BuildError(f"Failed to create Fly app: {e}") from e
 
