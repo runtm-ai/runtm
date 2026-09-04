@@ -44,7 +44,10 @@ def test_remote_builder_deploys_http_service_successfully(tmp_path: Path) -> Non
         stdout="Deployment complete",
         stderr="",
     )
-    with patch("subprocess.run", return_value=completed) as run:
+    with (
+        patch.dict("os.environ", {"RUNTM_BASE_DOMAIN": "runtm.com"}),
+        patch("subprocess.run", return_value=completed) as run,
+    ):
         result = builder.build_remote(
             context_path=context,
             app_name="test-app",
