@@ -801,6 +801,7 @@ async def create_deployment(
             s3_bucket=settings.s3_bucket,
             s3_endpoint_url=settings.s3_endpoint_url or None,
             s3_region=settings.s3_region,
+            gcs_bucket=settings.gcs_bucket,
         )
         await asyncio.to_thread(store.put, artifact_key, artifact_content)
 

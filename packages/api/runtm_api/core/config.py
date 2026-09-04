@@ -73,6 +73,9 @@ class Settings(BaseSettings):
     # S3 / Tigris configuration (only used when artifact_storage_backend = "s3")
     # Fly.io auto-injects these when you run `fly storage create`
     s3_bucket: str = Field(default="", validation_alias="BUCKET_NAME")
+    # GCS configuration (only used when artifact_storage_backend = "gcs";
+    # ambient credentials — Workload Identity/ADC, no key material)
+    gcs_bucket: str = Field(default="", validation_alias="ARTIFACTS_BUCKET")
     s3_endpoint_url: str = Field(default="", validation_alias="AWS_ENDPOINT_URL_S3")
     s3_region: str = "auto"
 
