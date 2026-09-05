@@ -32,6 +32,7 @@ from runtm_shared.urls import (
     get_subdomain_for_app,
 )
 from runtm_worker.builder import DockerBuilder
+from runtm_worker.builder.docker import no_public_ips_flags
 from runtm_worker.logs import LogCapture
 from runtm_worker.providers import FlyProvider
 
@@ -564,6 +565,14 @@ class DeployJob:
                     app_name = previous_resource.app_name
                     image_ref = f"registry.fly.io/{app_name}:{previous_image_label}"
 
+                    # The app already exists on this path, so this is only here
+                    # for its second job: ensuring the Flycast address. A
+                    # config-only redeploy is a full deploy as far as the app's
+                    # reachability goes, and it is the one path that can reach a
+                    # private app that has never had one.
+                    provider = FlyProvider(api_token=self.fly_api_token)
+                    self._ensure_fly_app(provider, app_name, deploy_log)
+
                     # Stage secrets BEFORE deploy - they'll be picked up by flyctl deploy
                     # This avoids a second release/restart after deploy completes
                     if self.secrets:
@@ -574,6 +583,10 @@ class DeployJob:
 
                     deploy_log.write(f"Deploying image: {image_ref}")
 
+                    # Same flag as the build path, for the same reason: flyctl
+                    # allocates public ingress for an [http_service] app with no
+                    # IPs, so without this a config-only redeploy would hand
+                    # back the public IPs the rollout released.
                     cmd = [
                         "flyctl",
                         "deploy",
@@ -584,7 +597,7 @@ class DeployJob:
                         "--yes",
                         "--wait-timeout",
                         "5m",
-                    ]
+                    ] + no_public_ips_flags()
 
                     result = subprocess.run(
                         cmd,
@@ -609,6 +622,17 @@ class DeployJob:
 
                     # Secrets were staged before deploy, no need to inject again
 
+                    # The previous deployment's URL is inherited, except when it
+                    # predates private mode: that URL names a public host this
+                    # app no longer answers on, so carrying it forward would
+                    # publish a dead link. Rebuilt from the app name instead,
+                    # which is what every other path already does.
+                    deploy_url = (
+                        construct_deployment_url(app_name)
+                        if deployments_are_private()
+                        else previous_resource.url
+                    )
+
                     # Save provider resource (reuse previous but update deployment link)
                     from runtm_shared.types import ProviderResource
 
@@ -617,17 +641,17 @@ class DeployJob:
                         machine_id=previous_resource.machine_id,
                         region=previous_resource.region,
                         image_ref=image_ref,
-                        url=previous_resource.url,
+                        url=deploy_url,
                     )
                     self._save_provider_resource(deployment, resource, previous_image_label)
 
-                    deploy_log.write(f"URL: {previous_resource.url}")
+                    deploy_log.write(f"URL: {deploy_url}")
 
                 # === SUCCESS (config-only) ===
                 self._transition_state(
                     deployment,
                     DeploymentState.READY,
-                    url=previous_resource.url,
+                    url=deploy_url,
                 )
                 return True
 

@@ -19,6 +19,20 @@ from runtm_shared.errors import BuildError
 from runtm_shared.urls import construct_deployment_url, deployments_are_private
 
 
+def no_public_ips_flags() -> list[str]:
+    """``flyctl deploy`` flags that keep a private app off the public internet.
+
+    flyctl allocates public ingress for any app whose config declares an
+    ``[http_service]`` and has no IPs yet — including an app whose IPs were
+    released by the rollout. That makes this a property of *every* deploy
+    invocation, not of the first one, so both call sites share this helper
+    rather than each remembering the flag: ``build_remote`` below, and the
+    config-only redeploy in ``jobs/deploy.py``, which reuses a previous image
+    and never reaches this module.
+    """
+    return ["--no-public-ips"] if deployments_are_private() else []
+
+
 @dataclass
 class BuildResult:
     """Result of a Docker build operation."""
@@ -285,19 +299,18 @@ destination = "{vol.path}"
             ]
 
             # The [http_service] written above makes flyctl allocate a
-            # dedicated IPv6 and a shared IPv4 on first deploy — the last thing
-            # still putting deployments on the public internet after Runtm
-            # stopped calling allocateIpAddress itself. --no-public-ips turns
-            # that off; the app is then addressable only over the Flycast
-            # address _ensure_fly_app allocated. [http_service] itself has to
-            # stay: Flycast routes through the same service definition, and it
-            # is what lets the Fly proxy auto-start a suspended machine.
+            # dedicated IPv6 and a shared IPv4 — the last thing still putting
+            # deployments on the public internet after Runtm stopped calling
+            # allocateIpAddress itself. --no-public-ips turns that off; the app
+            # is then addressable only over the Flycast address _ensure_fly_app
+            # allocated. [http_service] itself has to stay: Flycast routes
+            # through the same service definition, and it is what lets the Fly
+            # proxy auto-start a suspended machine.
             #
             # Only new allocations are suppressed — an app that already has
             # public IPs keeps them until they are released (see
             # scripts/backfill-private-deployments.sh in runtm-cloud).
-            if deployments_are_private():
-                base_cmd.append("--no-public-ips")
+            base_cmd += no_public_ips_flags()
 
             # Use BuildKit directly — Depot requires mTLS/DEPOT_TOKEN auth that is
             # unavailable inside Fly worker machines; it times out after 5 min before
