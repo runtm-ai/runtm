@@ -16,7 +16,7 @@ from docker.errors import DockerException
 
 from runtm_shared import AppDiscovery
 from runtm_shared.errors import BuildError
-from runtm_shared.urls import construct_deployment_url
+from runtm_shared.urls import construct_deployment_url, deployments_are_private
 
 
 @dataclass
@@ -283,6 +283,21 @@ destination = "{vol.path}"
                 "--wait-timeout",
                 "5m",
             ]
+
+            # The [http_service] written above makes flyctl allocate a
+            # dedicated IPv6 and a shared IPv4 on first deploy — the last thing
+            # still putting deployments on the public internet after Runtm
+            # stopped calling allocateIpAddress itself. --no-public-ips turns
+            # that off; the app is then addressable only over the Flycast
+            # address _ensure_fly_app allocated. [http_service] itself has to
+            # stay: Flycast routes through the same service definition, and it
+            # is what lets the Fly proxy auto-start a suspended machine.
+            #
+            # Only new allocations are suppressed — an app that already has
+            # public IPs keeps them until they are released (see
+            # scripts/backfill-private-deployments.sh in runtm-cloud).
+            if deployments_are_private():
+                base_cmd.append("--no-public-ips")
 
             # Use BuildKit directly — Depot requires mTLS/DEPOT_TOKEN auth that is
             # unavailable inside Fly worker machines; it times out after 5 min before

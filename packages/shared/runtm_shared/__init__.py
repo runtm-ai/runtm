@@ -110,7 +110,10 @@ from runtm_shared.types import (
 )
 from runtm_shared.urls import (
     construct_deployment_url,
+    deployment_label,
+    deployments_are_private,
     get_base_domain,
+    get_deployment_proxy_domain,
     get_subdomain_for_app,
 )
 
@@ -197,7 +200,10 @@ __all__ = [
     "find_project_root",
     # URLs
     "construct_deployment_url",
+    "deployment_label",
+    "deployments_are_private",
     "get_base_domain",
+    "get_deployment_proxy_domain",
     "get_subdomain_for_app",
     # Lockfiles
     "LockfileStatus",
