@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import time
 from typing import Any
@@ -10,9 +11,11 @@ import httpx
 
 from runtm_shared.errors import FlyError, ProviderNotConfiguredError
 from runtm_shared.types import CustomDomainInfo, DnsRecord, MachineConfig, ProviderResource
-from runtm_shared.urls import construct_deployment_url
+from runtm_shared.urls import construct_deployment_url, deployments_are_private
 
 from .base import DeployProvider, DeployResult, ProviderStatus
+
+logger = logging.getLogger(__name__)
 
 
 class FlyProvider(DeployProvider):
@@ -472,6 +475,13 @@ class FlyProvider(DeployProvider):
             else:
                 logs_buffer.append(f"Using existing app: {app_name}")
 
+            # This path drives the Machines API directly, with no flyctl to
+            # allocate anything, so an app deployed here has never had a public
+            # IP. Give it the Flycast address the proxy needs.
+            if deployments_are_private():
+                address = self.ensure_private_ipv6(app_name)
+                logs_buffer.append(f"Flycast address: {address or 'unavailable'}")
+
             # Create machine
             logs_buffer.append(f"Creating machine with image: {config.image}")
             machine = self._create_machine(app_name, config)
@@ -837,6 +847,59 @@ class FlyProvider(DeployProvider):
             return nodes
         except FlyError:
             return []
+
+    def ensure_private_ipv6(self, app_name: str) -> str | None:
+        """Allocate the app's Flycast address, unless it already has one.
+
+        Flycast is a private IPv6 on the org's WireGuard mesh, reachable only
+        from other apps in the same org. It is what makes an app with no public
+        IP addressable at all — ``{app}.flycast`` resolves to it, and requests
+        to it go through Fly's proxy, so ``auto_start_machines`` still wakes a
+        suspended machine (verified against a live suspended deployment: 200 in
+        1.3s from a cold stop).
+
+        This is the one ``allocateIpAddress`` call Runtm makes. It is
+        deliberately narrow — ``private_v6`` only, never a public type — and
+        idempotent, so a redeploy of an app created before private deployments
+        existed backfills its Flycast address on the way through.
+
+        Args:
+            app_name: Fly app name
+
+        Returns:
+            The Flycast address, or None if allocation failed. Failure is not
+            fatal to the caller: the deploy still produces a running app, it is
+            simply unreachable until an address exists.
+        """
+        for ip in self._get_app_ips(app_name):
+            if ip.get("type", "").lower() == "private_v6":
+                logger.info("Flycast address already allocated for %s", app_name)
+                return ip.get("address")
+
+        mutation = """
+        mutation($input: AllocateIPAddressInput!) {
+            allocateIpAddress(input: $input) {
+                ipAddress {
+                    address
+                    type
+                }
+            }
+        }
+        """
+
+        try:
+            data = self._graphql_request(
+                mutation,
+                {"input": {"appId": app_name, "type": "private_v6"}},
+            )
+            address = ((data.get("allocateIpAddress") or {}).get("ipAddress", {}) or {}).get(
+                "address"
+            )
+            logger.info("Allocated Flycast address %s for %s", address, app_name)
+            return address
+        except FlyError as e:
+            logger.error("Flycast allocation failed for %s: %s", app_name, e)
+            return None
 
     def add_custom_domain(
         self,

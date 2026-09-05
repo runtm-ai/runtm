@@ -26,8 +26,13 @@ from runtm_shared.types import (
     can_transition,
     get_tier_spec,
 )
-from runtm_shared.urls import construct_deployment_url, get_subdomain_for_app
+from runtm_shared.urls import (
+    construct_deployment_url,
+    deployments_are_private,
+    get_subdomain_for_app,
+)
 from runtm_worker.builder import DockerBuilder
+from runtm_worker.builder.docker import no_public_ips_flags
 from runtm_worker.logs import LogCapture
 from runtm_worker.providers import FlyProvider
 
@@ -301,6 +306,10 @@ class DeployJob:
 
         This hides provider URLs - users only see runtm.com URLs.
 
+        Does nothing when deployments are private: a public DNS record is one
+        of the three things that make an app reachable from outside, and the
+        proxy addresses the app over Flycast, which needs no DNS of ours.
+
         Args:
             provider: Fly provider instance (for SSL cert)
             app_name: Fly app name (e.g., "runtm-abc123")
@@ -309,6 +318,10 @@ class DeployJob:
         import time
 
         from runtm_shared.urls import get_base_domain
+
+        if deployments_are_private():
+            deploy_log.write("Private deployment: skipping public DNS and certificate")
+            return
 
         base_domain = get_base_domain()
         subdomain = get_subdomain_for_app(app_name)
@@ -437,10 +450,14 @@ class DeployJob:
     ) -> bool:
         """Ensure the Fly app exists (the registry push requires it).
 
-        No IP addresses are allocated here, by design: runtm never calls
-        allocateIpAddress. `flyctl deploy` allocates what the generated
-        fly.toml's [http_service] needs, so the remote-builder path still
-        ends up publicly reachable without us provisioning anything.
+        No *public* IP is allocated here, by design. On the public path
+        `flyctl deploy` allocates what the generated fly.toml's [http_service]
+        needs. On the private path it is told not to (`--no-public-ips`) and the
+        app gets a Flycast address instead, which only the proxy can reach.
+
+        The Flycast allocation runs for existing apps too, not just newly
+        created ones: it is idempotent, and it is what backfills an app that
+        was first deployed before private deployments existed.
 
         Args:
             provider: Fly provider instance
@@ -453,15 +470,25 @@ class DeployJob:
         build_log.write(f"Ensuring Fly app exists: {app_name}")
 
         existing_app = provider._get_app(app_name)
-        if existing_app:
+        created = existing_app is None
+
+        if created:
+            provider._create_app(app_name)
+            build_log.write(f"Created Fly app: {app_name}")
+        else:
             build_log.write(f"Using existing Fly app: {app_name}")
-            return False
 
-        # Create app
-        provider._create_app(app_name)
-        build_log.write(f"Created Fly app: {app_name}")
+        if deployments_are_private():
+            address = provider.ensure_private_ipv6(app_name)
+            if address:
+                build_log.write(f"Flycast address: {address} (private, proxy-only)")
+            else:
+                build_log.write(
+                    "WARNING: could not allocate a Flycast address. The app will "
+                    "deploy but stay unreachable until one exists."
+                )
 
-        return True
+        return created
 
     def run(self, deployment_id: str) -> bool:
         """Run the deploy pipeline.
@@ -538,6 +565,14 @@ class DeployJob:
                     app_name = previous_resource.app_name
                     image_ref = f"registry.fly.io/{app_name}:{previous_image_label}"
 
+                    # The app already exists on this path, so this is only here
+                    # for its second job: ensuring the Flycast address. A
+                    # config-only redeploy is a full deploy as far as the app's
+                    # reachability goes, and it is the one path that can reach a
+                    # private app that has never had one.
+                    provider = FlyProvider(api_token=self.fly_api_token)
+                    self._ensure_fly_app(provider, app_name, deploy_log)
+
                     # Stage secrets BEFORE deploy - they'll be picked up by flyctl deploy
                     # This avoids a second release/restart after deploy completes
                     if self.secrets:
@@ -548,6 +583,10 @@ class DeployJob:
 
                     deploy_log.write(f"Deploying image: {image_ref}")
 
+                    # Same flag as the build path, for the same reason: flyctl
+                    # allocates public ingress for an [http_service] app with no
+                    # IPs, so without this a config-only redeploy would hand
+                    # back the public IPs the rollout released.
                     cmd = [
                         "flyctl",
                         "deploy",
@@ -558,7 +597,7 @@ class DeployJob:
                         "--yes",
                         "--wait-timeout",
                         "5m",
-                    ]
+                    ] + no_public_ips_flags()
 
                     result = subprocess.run(
                         cmd,
@@ -583,6 +622,17 @@ class DeployJob:
 
                     # Secrets were staged before deploy, no need to inject again
 
+                    # The previous deployment's URL is inherited, except when it
+                    # predates private mode: that URL names a public host this
+                    # app no longer answers on, so carrying it forward would
+                    # publish a dead link. Rebuilt from the app name instead,
+                    # which is what every other path already does.
+                    deploy_url = (
+                        construct_deployment_url(app_name)
+                        if deployments_are_private()
+                        else previous_resource.url
+                    )
+
                     # Save provider resource (reuse previous but update deployment link)
                     from runtm_shared.types import ProviderResource
 
@@ -591,17 +641,17 @@ class DeployJob:
                         machine_id=previous_resource.machine_id,
                         region=previous_resource.region,
                         image_ref=image_ref,
-                        url=previous_resource.url,
+                        url=deploy_url,
                     )
                     self._save_provider_resource(deployment, resource, previous_image_label)
 
-                    deploy_log.write(f"URL: {previous_resource.url}")
+                    deploy_log.write(f"URL: {deploy_url}")
 
                 # === SUCCESS (config-only) ===
                 self._transition_state(
                     deployment,
                     DeploymentState.READY,
-                    url=previous_resource.url,
+                    url=deploy_url,
                 )
                 return True
 
