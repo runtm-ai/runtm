@@ -31,7 +31,7 @@ These files are automatically loaded by Cursor and provide essential context for
 
 ### Prerequisites
 
-- Python 3.9+
+- Python 3.11+ (the `api` and `worker` packages require >= 3.11)
 - Docker & Docker Compose
 - Git
 - Fly.io account + API token (for deployment testing)
@@ -81,6 +81,16 @@ These files are automatically loaded by Cursor and provide essential context for
    pip install pre-commit
    pre-commit install
    ```
+
+6. Verify your setup:
+   ```bash
+   ./scripts/dev.sh doctor
+   ```
+
+   The doctor checks your Python version, `.env` configuration,
+   `FLY_API_TOKEN`, Docker, sandbox dependencies, and whether local
+   services are healthy — with a hint for fixing anything that fails.
+   Use `runtm-dev doctor --json` for machine-readable output.
 
 ### Development CLI (`runtm-dev`)
 
