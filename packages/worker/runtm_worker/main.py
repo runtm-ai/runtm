@@ -15,6 +15,7 @@ from redis import Redis
 from redis.exceptions import ConnectionError as RedisConnectionError
 from rq import Queue, Worker
 
+from runtm_shared.types import Limits
 from runtm_worker.jobs import process_deployment
 from runtm_worker.telemetry import init_telemetry, shutdown_telemetry
 
@@ -64,7 +65,7 @@ def enqueue_deployment(deployment_id: str) -> str:
     job = queue.enqueue(
         process_deployment,
         deployment_id,
-        job_timeout="20m",  # 20 minutes max
+        job_timeout=Limits.JOB_TIMEOUT_SECONDS,  # build + deploy + grace; see runtm_shared.types.Limits
         result_ttl=86400,  # Keep result for 24 hours
     )
     return job.id

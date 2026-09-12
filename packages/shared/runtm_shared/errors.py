@@ -186,6 +186,17 @@ class BuildTimeoutError(DeploymentError):
         )
 
 
+class DeployError(DeploymentError):
+    """Raised when the deploy step (rollout of an already-built image) fails."""
+
+    def __init__(self, message: str):
+        super().__init__(
+            message=f"Deploy failed: {message}",
+            recovery_hint="Check the deploy logs with `runtm logs <deployment_id>`",
+            error_code="DEPLOY_FAILED",
+        )
+
+
 class DeployTimeoutError(DeploymentError):
     """Raised when deployment exceeds timeout."""
 

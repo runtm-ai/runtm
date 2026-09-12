@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -386,6 +387,23 @@ class BuildLogEntry:
     created_at: datetime
 
 
+def _env_int(name: str, default: int) -> int:
+    """Read a positive integer override from the environment, else ``default``.
+
+    Malformed or non-positive values fall back to the default rather than
+    crashing worker/API import, so a typo in a deploy env can never take the
+    service down.
+    """
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        value = int(raw.strip())
+    except ValueError:
+        return default
+    return value if value > 0 else default
+
+
 # Guardrails - tuned for V0
 class Limits:
     """Hard limits for V0 guardrails."""
@@ -393,9 +411,23 @@ class Limits:
     # Artifact limits
     MAX_ARTIFACT_SIZE_BYTES: int = 20 * 1024 * 1024  # 20 MB
 
-    # Timeout limits
-    BUILD_TIMEOUT_SECONDS: int = 15 * 60  # 15 minutes
-    DEPLOY_TIMEOUT_SECONDS: int = 10 * 60  # 10 minutes
+    # Timeout limits.
+    #
+    # Overridable via BUILD_TIMEOUT_SECONDS / DEPLOY_TIMEOUT_SECONDS (documented in
+    # docs/open-source/self-hosting/configuration.mdx). The build ceiling covers the
+    # whole `flyctl deploy --buildkit` run (remote image build + rolling machine
+    # update), so a large Next.js build on a shared remote builder needs headroom:
+    # 15 minutes killed three consecutive real customer builds on 2026-09-11.
+    BUILD_TIMEOUT_SECONDS: int = _env_int("BUILD_TIMEOUT_SECONDS", 25 * 60)  # 25 minutes
+    DEPLOY_TIMEOUT_SECONDS: int = _env_int("DEPLOY_TIMEOUT_SECONDS", 10 * 60)  # 10 minutes
+
+    # RQ job ceiling for process_deployment. Must exceed build + deploy so RQ never
+    # kills a job that the build/deploy timeouts would have failed cleanly (an RQ
+    # kill leaves the row stuck in BUILDING with no error message).
+    JOB_TIMEOUT_GRACE_SECONDS: int = 5 * 60
+    JOB_TIMEOUT_SECONDS: int = (
+        BUILD_TIMEOUT_SECONDS + DEPLOY_TIMEOUT_SECONDS + JOB_TIMEOUT_GRACE_SECONDS
+    )
 
     # Resource limits (defaults for starter tier)
     DEFAULT_MEMORY_MB: int = 2048

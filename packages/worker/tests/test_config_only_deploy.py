@@ -17,7 +17,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from runtm_shared.types import DeploymentState, ProviderResource
+from runtm_shared.types import DeploymentState, Limits, ProviderResource
 from runtm_worker.jobs.deploy import DeployJob
 
 APP_NAME = "runtm-dep-abc123de"
@@ -40,13 +40,20 @@ class _Result:
 
     def __init__(self) -> None:
         self.argv: list[str] = []
+        self.run_kwargs: dict[str, Any] = {}
         self.ready_url: str | None = None
+        self.error_message: str | None = None
         self.provider: MagicMock | None = None
+        self.log: MagicMock = MagicMock()
         self.ok: bool = False
 
 
-def _run_config_only() -> _Result:
-    """Drive ``DeployJob.run`` down the config-only branch."""
+def _run_config_only(flyctl: Any | None = None) -> _Result:
+    """Drive ``DeployJob.run`` down the config-only branch.
+
+    ``flyctl`` optionally replaces the fake flyctl runner (a callable taking
+    ``(cmd, **kwargs)``); the default returns a successful ``CompletedProcess``.
+    """
     out = _Result()
 
     job = DeployJob(
@@ -74,14 +81,19 @@ def _run_config_only() -> _Result:
 
     @contextmanager
     def fake_log_capture(*args: Any, **kwargs: Any):
-        yield MagicMock()
+        yield out.log
 
     def record_state(_deployment: Any, state: Any, **kwargs: Any) -> None:
         if state == DeploymentState.READY:
             out.ready_url = kwargs.get("url")
+        if state == DeploymentState.FAILED:
+            out.error_message = kwargs.get("error_message")
 
     def record_run(cmd: list[str], **kwargs: Any) -> subprocess.CompletedProcess:
         out.argv = cmd
+        out.run_kwargs = kwargs
+        if flyctl is not None:
+            return flyctl(cmd, **kwargs)
         return subprocess.CompletedProcess(args=cmd, returncode=0, stdout="ok", stderr="")
 
     provider = MagicMock()
@@ -95,7 +107,7 @@ def _run_config_only() -> _Result:
         patch.object(job, "_save_provider_resource"),
         patch("runtm_worker.jobs.deploy.LogCapture", fake_log_capture),
         patch("runtm_worker.jobs.deploy.FlyProvider", return_value=provider),
-        patch("subprocess.run", side_effect=record_run),
+        patch("runtm_worker.jobs.deploy.run_with_graceful_timeout", side_effect=record_run),
     ):
         out.ok = job.run(DEPLOYMENT_ID)
 
@@ -143,3 +155,46 @@ class TestPublicMode:
         assert out.ready_url == PUBLIC_URL
         assert out.provider is not None
         out.provider.ensure_private_ipv6.assert_not_called()
+
+
+class TestDeployTimeout:
+    """The config-only rollout must use the same ceiling and runner as the build path."""
+
+    def test_uses_env_backed_deploy_timeout(
+        self, public: None, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(Limits, "DEPLOY_TIMEOUT_SECONDS", 123)
+        out = _run_config_only()
+        assert out.ok is True
+        assert out.run_kwargs["timeout"] == 123
+        assert out.argv[:2] == ["flyctl", "deploy"]
+
+    def test_timeout_keeps_partial_output_and_reports_the_real_ceiling(
+        self, public: None, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(Limits, "DEPLOY_TIMEOUT_SECONDS", 123)
+
+        def hanging_flyctl(cmd: list[str], **kwargs: Any) -> subprocess.CompletedProcess:
+            raise subprocess.TimeoutExpired(
+                cmd, kwargs["timeout"], output=b"==> Updating machine abc\n", stderr=b""
+            )
+
+        out = _run_config_only(flyctl=hanging_flyctl)
+        assert out.ok is False
+        assert out.error_message is not None
+        assert out.error_message.splitlines()[0] == "Deployment timed out after 123 seconds"
+        written = [c.args[0] for c in out.log.write.call_args_list]
+        assert "==> Updating machine abc" in written
+        assert "Deploy timeout expired after 123s" in written
+
+    def test_nonzero_exit_is_a_deploy_failure_not_a_timeout(self, public: None) -> None:
+        def failing_flyctl(cmd: list[str], **kwargs: Any) -> subprocess.CompletedProcess:
+            return subprocess.CompletedProcess(
+                args=cmd, returncode=1, stdout="", stderr="Error: image not found"
+            )
+
+        out = _run_config_only(flyctl=failing_flyctl)
+        assert out.ok is False
+        assert out.error_message is not None
+        assert out.error_message.splitlines()[0] == "Deploy failed: Error: image not found"
+        assert "timed out" not in out.error_message
