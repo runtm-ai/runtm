@@ -51,8 +51,8 @@ These must be set for Runtime to function:
 |----------|---------|-------------|
 | `FLY_API_TOKEN` | Required | Fly.io deploy token |
 | `ARTIFACT_STORAGE_PATH` | `/tmp/artifacts` | Local artifact storage |
-| `BUILD_TIMEOUT_SECONDS` | `600` | Max build time |
-| `DEPLOY_TIMEOUT_SECONDS` | `300` | Max deploy time |
+| `BUILD_TIMEOUT_SECONDS` | `1500` | Max build time (covers the whole remote build + rolling update) |
+| `DEPLOY_TIMEOUT_SECONDS` | `600` | Max deploy time |
 
 ### Token Security
 
@@ -125,8 +125,8 @@ CORS_ORIGINS=https://app.runtm.example.com
 # Worker
 FLY_API_TOKEN=FlyV1_production_token
 ARTIFACT_STORAGE_PATH=/data/artifacts
-BUILD_TIMEOUT_SECONDS=600
-DEPLOY_TIMEOUT_SECONDS=300
+BUILD_TIMEOUT_SECONDS=1500
+DEPLOY_TIMEOUT_SECONDS=600
 
 # Token Security
 TOKEN_PEPPER_V1=generated-32-char-pepper

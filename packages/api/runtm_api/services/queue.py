@@ -7,6 +7,8 @@ import logging
 from redis import Redis
 from rq import Queue
 
+from runtm_shared.types import Limits
+
 logger = logging.getLogger(__name__)
 
 
@@ -63,7 +65,7 @@ def enqueue_deployment(
             redeploy_from,  # Pass the previous deployment ID if redeploying
             secrets=secrets,  # Pass secrets (never stored)
             config_only=config_only,  # Skip build and reuse image
-            job_timeout="20m",  # 20 minutes max
+            job_timeout=Limits.JOB_TIMEOUT_SECONDS,  # build + deploy + grace; see runtm_shared.types.Limits
             result_ttl=86400,  # Keep result for 24 hours
             description=job_description(deployment_id, redeploy_from, config_only),
         )

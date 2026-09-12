@@ -88,12 +88,56 @@ class TestLimits:
         assert Limits.MAX_ARTIFACT_SIZE_BYTES == 20 * 1024 * 1024
 
     def test_build_timeout(self) -> None:
-        """Build timeout should be 15 minutes."""
-        assert Limits.BUILD_TIMEOUT_SECONDS == 15 * 60
+        """Build timeout defaults to 25 minutes (15 killed real customer builds)."""
+        assert Limits.BUILD_TIMEOUT_SECONDS == 25 * 60
 
     def test_deploy_timeout(self) -> None:
         """Deploy timeout should be 10 minutes."""
         assert Limits.DEPLOY_TIMEOUT_SECONDS == 10 * 60
+
+    def test_job_timeout_exceeds_build_plus_deploy(self) -> None:
+        """RQ must never kill a job before the build/deploy timeouts fail it cleanly."""
+        assert (
+            Limits.JOB_TIMEOUT_SECONDS
+            > Limits.BUILD_TIMEOUT_SECONDS + Limits.DEPLOY_TIMEOUT_SECONDS
+        )
+        assert Limits.JOB_TIMEOUT_SECONDS == (
+            Limits.BUILD_TIMEOUT_SECONDS
+            + Limits.DEPLOY_TIMEOUT_SECONDS
+            + Limits.JOB_TIMEOUT_GRACE_SECONDS
+        )
+
+    def test_timeouts_honor_env_overrides(self, monkeypatch) -> None:
+        """BUILD_TIMEOUT_SECONDS / DEPLOY_TIMEOUT_SECONDS are documented env knobs."""
+        import importlib
+
+        import runtm_shared.types as types_module
+
+        monkeypatch.setenv("BUILD_TIMEOUT_SECONDS", "1800")
+        monkeypatch.setenv("DEPLOY_TIMEOUT_SECONDS", "300")
+        reloaded = importlib.reload(types_module)
+        try:
+            assert reloaded.Limits.BUILD_TIMEOUT_SECONDS == 1800
+            assert reloaded.Limits.DEPLOY_TIMEOUT_SECONDS == 300
+            assert (
+                reloaded.Limits.JOB_TIMEOUT_SECONDS
+                == 1800 + 300 + reloaded.Limits.JOB_TIMEOUT_GRACE_SECONDS
+            )
+        finally:
+            monkeypatch.delenv("BUILD_TIMEOUT_SECONDS")
+            monkeypatch.delenv("DEPLOY_TIMEOUT_SECONDS")
+            importlib.reload(types_module)
+
+    def test_timeout_env_override_ignores_garbage(self) -> None:
+        """A typo in the env must fall back to the default, never crash import."""
+        from runtm_shared.types import _env_int
+
+        assert _env_int("RUNTM_TEST_NOPE", 7) == 7
+        for bad in ("", "  ", "abc", "0", "-5"):
+            with __import__("unittest").mock.patch.dict("os.environ", {"RUNTM_TEST_NOPE": bad}):
+                assert _env_int("RUNTM_TEST_NOPE", 7) == 7
+        with __import__("unittest").mock.patch.dict("os.environ", {"RUNTM_TEST_NOPE": " 42 "}):
+            assert _env_int("RUNTM_TEST_NOPE", 7) == 42
 
     def test_rate_limit(self) -> None:
         """Rate limit should be 10 deployments per hour."""

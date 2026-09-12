@@ -50,6 +50,64 @@ class BuildResult:
     discovery_json: dict | None = None
 
 
+# How long to give flyctl to cancel the remote build after SIGTERM before SIGKILL.
+_GRACEFUL_TERMINATE_SECONDS = 15
+# How many trailing output lines to surface in the timeout error message.
+_TIMEOUT_TAIL_LINES = 40
+
+
+def _decode_output(data: bytes | str | None) -> str:
+    """TimeoutExpired carries partial output as bytes even in text mode."""
+    if not data:
+        return ""
+    if isinstance(data, bytes):
+        return data.decode("utf-8", errors="replace")
+    return data
+
+
+def _run_with_graceful_timeout(
+    cmd: list[str],
+    *,
+    cwd: str,
+    timeout: int,
+    env: dict[str, str],
+) -> subprocess.CompletedProcess[str]:
+    """Run ``cmd`` like ``subprocess.run(capture_output=True, text=True, timeout=...)``,
+    but on timeout send SIGTERM first and only SIGKILL after a grace period.
+
+    ``subprocess.run`` SIGKILLs on timeout. flyctl never gets to cancel the
+    remote BuildKit solve, so the builder keeps grinding the abandoned build
+    for 15-20 more minutes and competes with the customer's retry (seen on the
+    prod builder 2026-09-11). SIGTERM lets flyctl tear the build down.
+
+    Raises ``subprocess.TimeoutExpired`` carrying the partial output, exactly
+    as ``subprocess.run`` would, so callers keep their existing handling.
+    """
+    proc = subprocess.Popen(
+        cmd,
+        cwd=cwd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=env,
+    )
+    try:
+        stdout, stderr = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        proc.terminate()
+        try:
+            stdout, stderr = proc.communicate(timeout=_GRACEFUL_TERMINATE_SECONDS)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            stdout, stderr = proc.communicate()
+        raise subprocess.TimeoutExpired(cmd, timeout, output=stdout, stderr=stderr) from None
+    return subprocess.CompletedProcess(
+        cmd,
+        proc.returncode,
+        _decode_output(stdout),
+        _decode_output(stderr),
+    )
+
+
 class DockerBuilder:
     """Docker image builder with BuildKit and remote builder support.
 
@@ -318,11 +376,9 @@ destination = "{vol.path}"
             # works reliably from within Fly machines.
             self._log("Using BuildKit builder...", logs)
 
-            result = subprocess.run(
+            result = _run_with_graceful_timeout(
                 base_cmd + ["--buildkit"],
                 cwd=str(context_path),
-                capture_output=True,
-                text=True,
                 timeout=timeout_seconds,
                 env=env,
             )
@@ -359,11 +415,21 @@ destination = "{vol.path}"
                 url=url,
             )
 
-        except subprocess.TimeoutExpired:
-            self._log("Build timeout expired", logs)
+        except subprocess.TimeoutExpired as e:
+            # Keep whatever flyctl printed before we gave up: a blind timeout
+            # tells the customer nothing about which build step was slow.
+            partial = _decode_output(e.stdout) + _decode_output(e.stderr)
+            partial_lines = [line for line in partial.splitlines() if line.strip()]
+            for line in partial_lines:
+                self._log(line, logs)
+            self._log(f"Build timeout expired after {timeout_seconds}s", logs)
+            tail = "\n".join(partial_lines[-_TIMEOUT_TAIL_LINES:])
+            error = f"Build timeout after {timeout_seconds}s"
+            if tail:
+                error = f"{error}\n\nLast build output before timeout:\n{tail}"
             return BuildResult(
                 success=False,
-                error=f"Build timeout after {timeout_seconds}s",
+                error=error,
                 logs=logs,
             )
         except FileNotFoundError:

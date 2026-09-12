@@ -237,7 +237,7 @@ class TestFlyTomlKeepsHttpService:
         (context / "Dockerfile").write_text("FROM alpine")
 
         builder = DockerBuilder(use_remote_builder=True)
-        with patch("subprocess.run") as mock_run:
+        with patch("runtm_worker.builder.docker._run_with_graceful_timeout") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout="Deployed", stderr="")
             builder.build_remote(
                 context_path=context,
@@ -259,7 +259,7 @@ def _run_remote_build(tmp_path: Path) -> list[str]:
     (context / "Dockerfile").write_text("FROM alpine")
 
     builder = DockerBuilder(use_remote_builder=True)
-    with patch("subprocess.run") as mock_run:
+    with patch("runtm_worker.builder.docker._run_with_graceful_timeout") as mock_run:
         mock_run.return_value = MagicMock(returncode=0, stdout="Deployed", stderr="")
         builder.build_remote(
             context_path=context,

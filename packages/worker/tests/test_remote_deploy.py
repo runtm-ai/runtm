@@ -46,7 +46,9 @@ def test_remote_builder_deploys_http_service_successfully(tmp_path: Path) -> Non
     )
     with (
         patch.dict("os.environ", {"RUNTM_BASE_DOMAIN": "runtm.com"}),
-        patch("subprocess.run", return_value=completed) as run,
+        patch(
+            "runtm_worker.builder.docker._run_with_graceful_timeout", return_value=completed
+        ) as run,
     ):
         result = builder.build_remote(
             context_path=context,
