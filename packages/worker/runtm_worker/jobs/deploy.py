@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from runtm_shared import Manifest
 from runtm_shared.errors import (
     BuildError,
+    DeployError,
     DeploymentNotFoundError,
     DeploymentStateError,
     DeployTimeoutError,
@@ -32,7 +33,7 @@ from runtm_shared.urls import (
     get_subdomain_for_app,
 )
 from runtm_worker.builder import DockerBuilder
-from runtm_worker.builder.docker import no_public_ips_flags
+from runtm_worker.builder.docker import no_public_ips_flags, run_with_graceful_timeout
 from runtm_worker.logs import LogCapture
 from runtm_worker.providers import FlyProvider
 
@@ -599,13 +600,26 @@ class DeployJob:
                         "5m",
                     ] + no_public_ips_flags()
 
-                    result = subprocess.run(
-                        cmd,
-                        capture_output=True,
-                        text=True,
-                        timeout=300,
-                        env=env,
-                    )
+                    # Same runner and ceiling as the build path: DEPLOY_TIMEOUT_SECONDS
+                    # is honored, flyctl gets SIGTERM before SIGKILL so it can cancel
+                    # the rollout, and whatever it printed survives a timeout.
+                    deploy_timeout = Limits.DEPLOY_TIMEOUT_SECONDS
+                    try:
+                        result = run_with_graceful_timeout(
+                            cmd,
+                            cwd=os.getcwd(),
+                            timeout=deploy_timeout,
+                            env=env,
+                        )
+                    except subprocess.TimeoutExpired as e:
+                        for chunk in (e.stdout, e.stderr):
+                            if isinstance(chunk, bytes):
+                                chunk = chunk.decode("utf-8", errors="replace")
+                            for line in (chunk or "").splitlines():
+                                if line.strip():
+                                    deploy_log.write(line)
+                        deploy_log.write(f"Deploy timeout expired after {deploy_timeout}s")
+                        raise DeployTimeoutError(deploy_timeout) from None
 
                     # Log output
                     if result.stdout:
@@ -618,7 +632,7 @@ class DeployJob:
                             result.stderr.strip() if result.stderr else "Config-only deploy failed"
                         )
                         deploy_log.write(f"ERROR: {error_msg}")
-                        raise DeployTimeoutError(300)
+                        raise DeployError(error_msg)
 
                     # Secrets were staged before deploy, no need to inject again
 

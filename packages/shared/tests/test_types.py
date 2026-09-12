@@ -130,13 +130,15 @@ class TestLimits:
 
     def test_timeout_env_override_ignores_garbage(self) -> None:
         """A typo in the env must fall back to the default, never crash import."""
+        from unittest.mock import patch
+
         from runtm_shared.types import _env_int
 
         assert _env_int("RUNTM_TEST_NOPE", 7) == 7
         for bad in ("", "  ", "abc", "0", "-5"):
-            with __import__("unittest").mock.patch.dict("os.environ", {"RUNTM_TEST_NOPE": bad}):
+            with patch.dict("os.environ", {"RUNTM_TEST_NOPE": bad}):
                 assert _env_int("RUNTM_TEST_NOPE", 7) == 7
-        with __import__("unittest").mock.patch.dict("os.environ", {"RUNTM_TEST_NOPE": " 42 "}):
+        with patch.dict("os.environ", {"RUNTM_TEST_NOPE": " 42 "}):
             assert _env_int("RUNTM_TEST_NOPE", 7) == 42
 
     def test_rate_limit(self) -> None:

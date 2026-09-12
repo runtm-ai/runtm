@@ -65,7 +65,7 @@ def _decode_output(data: bytes | str | None) -> str:
     return data
 
 
-def _run_with_graceful_timeout(
+def run_with_graceful_timeout(
     cmd: list[str],
     *,
     cwd: str,
@@ -376,7 +376,7 @@ destination = "{vol.path}"
             # works reliably from within Fly machines.
             self._log("Using BuildKit builder...", logs)
 
-            result = _run_with_graceful_timeout(
+            result = run_with_graceful_timeout(
                 base_cmd + ["--buildkit"],
                 cwd=str(context_path),
                 timeout=timeout_seconds,

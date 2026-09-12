@@ -18,7 +18,7 @@ from unittest.mock import patch
 import pytest
 
 from runtm_worker.builder import docker as docker_module
-from runtm_worker.builder.docker import DockerBuilder, _run_with_graceful_timeout
+from runtm_worker.builder.docker import DockerBuilder, run_with_graceful_timeout
 
 FAKE_FLYCTL_GRACEFUL = """#!/bin/sh
 # Prints progress, then hangs. On SIGTERM it records the signal and exits,
@@ -51,7 +51,7 @@ def test_graceful_timeout_sends_sigterm_and_keeps_partial_output(tmp_path: Path)
     env = {**os.environ, "FAKE_FLYCTL_MARKER": str(marker)}
 
     with pytest.raises(subprocess.TimeoutExpired) as excinfo:
-        _run_with_graceful_timeout(
+        run_with_graceful_timeout(
             [str(bin_dir / "flyctl"), "deploy"],
             cwd=str(tmp_path),
             timeout=1,
@@ -71,7 +71,7 @@ def test_graceful_timeout_falls_back_to_sigkill(tmp_path: Path) -> None:
         patch.object(docker_module, "_GRACEFUL_TERMINATE_SECONDS", 1),
         pytest.raises(subprocess.TimeoutExpired),
     ):
-        _run_with_graceful_timeout(
+        run_with_graceful_timeout(
             [str(bin_dir / "flyctl"), "deploy"],
             cwd=str(tmp_path),
             timeout=1,
@@ -81,7 +81,7 @@ def test_graceful_timeout_falls_back_to_sigkill(tmp_path: Path) -> None:
 
 
 def test_graceful_runner_matches_subprocess_run_on_success(tmp_path: Path) -> None:
-    result = _run_with_graceful_timeout(
+    result = run_with_graceful_timeout(
         ["sh", "-c", "echo out; echo err 1>&2; exit 3"],
         cwd=str(tmp_path),
         timeout=5,
