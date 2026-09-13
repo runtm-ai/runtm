@@ -102,6 +102,16 @@ def live_deployment_ids(
         if dep:
             live.add(dep)
 
+    # RQ 2.x parks a dequeued job in an intermediate queue until the work horse
+    # registers it as started. A job in that gap is neither queued nor started,
+    # yet very much alive (Guardian review, runtm#65).
+    intermediate = getattr(queue, "intermediate_queue", None)
+    if intermediate is not None:
+        for job in Job.fetch_many(intermediate.get_job_ids(), connection=queue.connection):
+            dep = _job_deployment_id(job)
+            if dep:
+                live.add(dep)
+
     workers = live_worker_names(
         Worker.all(connection=queue.connection), now, heartbeat_grace_seconds
     )
