@@ -51,15 +51,26 @@ class TestLiveWorkers:
 
 
 class TestLiveDeploymentIds:
-    def _queue(self, queued: list, started: list) -> MagicMock:
+    def _queue(self, queued: list, started: list, intermediate: list | None = None):
+        """Fake RQ queue: ids prefixed by registry so the fetch_many fake can route them."""
         q = MagicMock()
         q.jobs = queued
-        q.started_job_registry.get_job_ids.return_value = [f"job-{i}" for i in range(len(started))]
+        q.started_job_registry.get_job_ids.return_value = [
+            f"started-{i}" for i in range(len(started))
+        ]
+        mid = intermediate or []
+        q.intermediate_queue.get_job_ids.return_value = [f"mid-{i}" for i in range(len(mid))]
         q.connection = object()
-        return q, started
+
+        def fetch_many(ids: list[str], connection: object) -> list:
+            if not ids:
+                return []
+            return mid if ids[0].startswith("mid-") else started
+
+        return q, fetch_many
 
     def test_queued_jobs_and_jobs_on_live_workers_count_as_live(self) -> None:
-        q, started = self._queue(
+        q, fetch_many = self._queue(
             queued=[_job("dep_queued")],
             started=[
                 _job("dep_live", "w-live"),
@@ -71,10 +82,24 @@ class TestLiveDeploymentIds:
             patch.object(
                 r.Worker, "all", return_value=[_worker("w-live", 10), _worker("w-dead", 3600)]
             ),
-            patch.object(r.Job, "fetch_many", return_value=started),
+            patch.object(r.Job, "fetch_many", side_effect=fetch_many),
         ):
             live = r.live_deployment_ids(q, NOW)
         assert live == {"dep_queued", "dep_live"}
+
+    def test_job_in_rq_intermediate_queue_is_live(self) -> None:
+        """Dequeue gap (Guardian, runtm#65): the job has left queue.jobs but the work
+        horse has not registered it as started yet. An old QUEUED row for it must
+        not be judged an orphan."""
+        q, fetch_many = self._queue(queued=[], started=[], intermediate=[_job("dep_just_dequeued")])
+        with (
+            patch.object(r.Worker, "all", return_value=[]),
+            patch.object(r.Job, "fetch_many", side_effect=fetch_many),
+        ):
+            live = r.live_deployment_ids(q, NOW)
+        assert live == {"dep_just_dequeued"}
+        old_row = _row("dep_just_dequeued", DeploymentState.QUEUED, age_s=3600)
+        assert r.find_orphans([old_row], live, NOW) == []
 
 
 class TestFindOrphans:
