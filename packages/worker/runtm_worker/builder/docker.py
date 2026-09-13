@@ -389,6 +389,16 @@ destination = "{vol.path}"
                     if line.strip():
                         self._log(line, logs)
 
+            # flyctl writes the BuildKit progress — every "#N [i/n] RUN …" step and
+            # its "#N DONE 123.4s" timing — to stderr. Keep it on success too, or a
+            # slow build leaves a log with no way to see which step took the time
+            # (a customer's 18-minute build produced a 48-line log with zero step
+            # timings on 2026-09-12).
+            if result.stderr:
+                for line in result.stderr.strip().split("\n"):
+                    if line.strip():
+                        self._log(line, logs)
+
             if result.returncode != 0:
                 error_msg = result.stderr.strip() if result.stderr else "Remote build failed"
                 # Also include stdout in error for debugging

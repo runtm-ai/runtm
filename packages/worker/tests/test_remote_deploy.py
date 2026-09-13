@@ -66,3 +66,30 @@ def test_remote_builder_deploys_http_service_successfully(tmp_path: Path) -> Non
     assert "internal_port = 3000" in fly_toml
     assert run.call_args.args[0][:4] == ["flyctl", "deploy", "--app", "test-app"]
     assert "--buildkit" in run.call_args.args[0]
+
+
+def test_remote_builder_keeps_buildkit_progress_from_stderr_on_success(tmp_path: Path) -> None:
+    """flyctl's step timings live on stderr; a successful build must not drop them."""
+    context = tmp_path / "context"
+    context.mkdir()
+    (context / "Dockerfile").write_text("FROM scratch\n")
+    builder = DockerBuilder(use_remote_builder=True)
+    completed = subprocess.CompletedProcess(
+        args=[],
+        returncode=0,
+        stdout="Deployment complete",
+        stderr="#5 [3/6] RUN npm ci\n#5 DONE 240.3s\n#7 [5/6] RUN next build\n#7 DONE 605.2s\n",
+    )
+    with (
+        patch.dict("os.environ", {"RUNTM_BASE_DOMAIN": "runtm.com"}),
+        patch("runtm_worker.builder.docker.run_with_graceful_timeout", return_value=completed),
+    ):
+        result = builder.build_remote(
+            context_path=context,
+            app_name="test-app",
+            deployment_id="dep_abc123test",
+            fly_api_token="test-token",
+        )
+    assert result.success is True
+    assert "#5 DONE 240.3s" in result.logs
+    assert "#7 DONE 605.2s" in result.logs
