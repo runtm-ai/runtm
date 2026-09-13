@@ -131,12 +131,25 @@ def find_orphans(
     return orphans
 
 
-def reconcile_orphaned_deployments(db: Any, queue: Queue, now: datetime | None = None) -> list[str]:
-    """Mark orphaned in-flight deployments FAILED. Returns the deployment ids it failed."""
+def _load_in_flight_rows(db: Any) -> list[Any]:
+    """All deployments in an in-flight state. runtm_api is imported lazily: the worker
+    has it on its path in the image (jobs/deploy.py relies on the same), CI's worker
+    job does not."""
     from runtm_api.db.models import Deployment
 
+    return db.query(Deployment).filter(Deployment.state.in_(IN_FLIGHT_STATES)).all()
+
+
+def _create_session() -> Any:
+    from runtm_api.db import create_session
+
+    return create_session()
+
+
+def reconcile_orphaned_deployments(db: Any, queue: Queue, now: datetime | None = None) -> list[str]:
+    """Mark orphaned in-flight deployments FAILED. Returns the deployment ids it failed."""
     now = now or datetime.now(timezone.utc)
-    rows = db.query(Deployment).filter(Deployment.state.in_(IN_FLIGHT_STATES)).all()
+    rows = _load_in_flight_rows(db)
     if not rows:
         return []
     live = live_deployment_ids(queue, now)
@@ -162,9 +175,7 @@ def reconcile_orphaned_deployments(db: Any, queue: Queue, now: datetime | None =
 
 def run_reconcile_once(redis_conn: Any) -> list[str]:
     """One reconciliation pass with its own DB session. Never raises."""
-    from runtm_api.db import create_session
-
-    db = create_session()
+    db = _create_session()
     try:
         return reconcile_orphaned_deployments(db, Queue("deployments", connection=redis_conn))
     except Exception:  # noqa: BLE001 — a reconciler bug must never take the worker down

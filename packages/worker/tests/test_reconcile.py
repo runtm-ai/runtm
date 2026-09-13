@@ -100,8 +100,10 @@ class TestReconcile:
         orphan = _row("dep_orphan", DeploymentState.BUILDING, age_s=600)
         live = _row("dep_live", DeploymentState.BUILDING, age_s=600)
         db = MagicMock()
-        db.query.return_value.filter.return_value.all.return_value = [orphan, live]
-        with patch.object(r, "live_deployment_ids", return_value={"dep_live"}):
+        with (
+            patch.object(r, "_load_in_flight_rows", return_value=[orphan, live]),
+            patch.object(r, "live_deployment_ids", return_value={"dep_live"}),
+        ):
             failed = r.reconcile_orphaned_deployments(db, queue=MagicMock(), now=NOW)
         assert failed == ["dep_orphan"]
         assert orphan.state == DeploymentState.FAILED
@@ -113,15 +115,17 @@ class TestReconcile:
 
     def test_nothing_in_flight_means_no_redis_calls_and_no_commit(self) -> None:
         db = MagicMock()
-        db.query.return_value.filter.return_value.all.return_value = []
-        with patch.object(r, "live_deployment_ids") as live:
+        with (
+            patch.object(r, "_load_in_flight_rows", return_value=[]),
+            patch.object(r, "live_deployment_ids") as live,
+        ):
             assert r.reconcile_orphaned_deployments(db, queue=MagicMock(), now=NOW) == []
         live.assert_not_called()
         db.commit.assert_not_called()
 
     def test_run_once_never_raises(self) -> None:
         with (
-            patch("runtm_api.db.create_session", return_value=MagicMock()),
+            patch.object(r, "_create_session", return_value=MagicMock()),
             patch.object(
                 r, "reconcile_orphaned_deployments", side_effect=RuntimeError("redis down")
             ),
