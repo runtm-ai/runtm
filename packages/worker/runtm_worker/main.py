@@ -17,6 +17,7 @@ from rq import Queue, Worker
 
 from runtm_shared.types import Limits
 from runtm_worker.jobs import process_deployment
+from runtm_worker.reconcile import start_reconciler
 from runtm_worker.telemetry import init_telemetry, shutdown_telemetry
 
 
@@ -111,6 +112,10 @@ def run_worker() -> None:
     redis_conn = get_redis_connection()
     _warm_redis(redis_conn)
     queue = create_queue(redis_conn)
+
+    # Rows orphaned by a dead worker (platform deploy replaced the machine mid-build)
+    # never leave BUILDING on their own. Sweep now and every few minutes.
+    start_reconciler(redis_conn)
 
     # Create and run worker
     worker = Worker(
