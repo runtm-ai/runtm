@@ -132,8 +132,14 @@ class TestReconcile:
             failed = r.reconcile_orphaned_deployments(db, queue=MagicMock(), now=NOW)
         assert failed == ["dep_orphan"]
         assert orphan.state == DeploymentState.FAILED
-        assert orphan.error_message.startswith("Build interrupted: the build worker was replaced")
-        assert "Your app was not changed" in orphan.error_message
+        assert orphan.error_message.startswith(
+            "Deployment interrupted: the build worker was replaced"
+        )
+        # The remote builder deploys inside BUILDING, so a late death may already have
+        # changed the app: the message must not promise otherwise (Guardian, runtm#65).
+        assert "may or may not have been updated" in orphan.error_message
+        assert "not changed" not in orphan.error_message
+        assert "redeploy" in orphan.error_message
         assert orphan.updated_at == NOW
         assert live.state == DeploymentState.BUILDING
         db.commit.assert_called_once()
@@ -147,6 +153,11 @@ class TestReconcile:
             assert r.reconcile_orphaned_deployments(db, queue=MagicMock(), now=NOW) == []
         live.assert_not_called()
         db.commit.assert_not_called()
+
+    def test_run_once_survives_unreachable_database(self) -> None:
+        """Session creation itself failing (DB down) must not kill the daemon thread."""
+        with patch.object(r, "_create_session", side_effect=RuntimeError("db unreachable")):
+            assert r.run_reconcile_once(redis_conn=MagicMock()) == []
 
     def test_run_once_never_raises(self) -> None:
         with (

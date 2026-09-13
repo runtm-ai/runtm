@@ -52,10 +52,10 @@ SETTLE_SECONDS = 3 * 60
 HEARTBEAT_GRACE_SECONDS = 5 * 60
 
 ORPHAN_ERROR_MESSAGE = (
-    "Build interrupted: the build worker was replaced while this deployment was in "
-    "flight (usually a platform deploy) and the job was lost before it could finish. "
-    "Your app was not changed.\n"
-    "Recovery: redeploy to start a fresh build."
+    "Deployment interrupted: the build worker was replaced while this deployment was in "
+    "flight (usually a platform deploy) and the job was lost before it could record a "
+    "result. The app may or may not have been updated.\n"
+    "Recovery: redeploy to start a fresh build and bring the app to a known state."
 )
 
 
@@ -184,19 +184,26 @@ def reconcile_orphaned_deployments(db: Any, queue: Queue, now: datetime | None =
 
 
 def run_reconcile_once(redis_conn: Any) -> list[str]:
-    """One reconciliation pass with its own DB session. Never raises."""
-    db = _create_session()
+    """One reconciliation pass with its own DB session. Never raises — not even when
+    the database is unreachable and the session cannot be created."""
+    db = None
     try:
+        db = _create_session()
         return reconcile_orphaned_deployments(db, Queue("deployments", connection=redis_conn))
     except Exception:  # noqa: BLE001 — a reconciler bug must never take the worker down
         logger.exception("reconcile: pass failed")
-        try:
-            db.rollback()
-        except Exception:  # noqa: BLE001
-            pass
+        if db is not None:
+            try:
+                db.rollback()
+            except Exception:  # noqa: BLE001
+                pass
         return []
     finally:
-        db.close()
+        if db is not None:
+            try:
+                db.close()
+            except Exception:  # noqa: BLE001
+                pass
 
 
 def start_reconciler(
@@ -206,11 +213,15 @@ def start_reconciler(
 
     def loop() -> None:
         while True:
-            failed = run_reconcile_once(redis_conn)
-            if failed:
-                print(
-                    f"reconcile: marked {len(failed)} orphaned deployment(s) FAILED: {', '.join(failed)}"
-                )
+            try:
+                failed = run_reconcile_once(redis_conn)
+                if failed:
+                    print(
+                        f"reconcile: marked {len(failed)} orphaned deployment(s) FAILED: "
+                        f"{', '.join(failed)}"
+                    )
+            except Exception:  # noqa: BLE001 — belt and braces; the thread must outlive any bug
+                logger.exception("reconcile: loop iteration failed")
             time.sleep(interval_seconds)
 
     t = threading.Thread(target=loop, name="deployment-reconciler", daemon=True)
