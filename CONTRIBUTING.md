@@ -31,10 +31,10 @@ These files are automatically loaded by Cursor and provide essential context for
 
 ### Prerequisites
 
-- Python 3.9+
+- Python 3.11+ or uv
 - Docker & Docker Compose
 - Git
-- Fly.io account + API token (for deployment testing)
+- Fly.io account + API token only when testing real deployments
 
 ### Getting Started
 
@@ -45,13 +45,18 @@ These files are automatically loaded by Cursor and provide essential context for
    cd runtm
    ```
 
-3. Copy environment template and configure:
+3. Create the local development environment:
    ```bash
-   cp infra/local.env.example .env
-   # Edit .env and add your FLY_API_TOKEN
+   ./.runtm/setup.local.sh
    ```
 
-4. Install packages using the dev script:
+   This copies `.env.local.example` when needed, allocates stable per-workspace
+   ports, starts Postgres/Redis through Docker Compose, applies migrations from
+   `.venv`, and runs `runtm-dev doctor` against a temporary host API process.
+   If a remembered port is later taken by another process, setup allocates a new
+   free port window and rewrites `.env` plus `.runtm/ports.json`.
+
+4. Refresh Python packages manually when needed:
    ```bash
    ./scripts/dev.sh setup
    ```
@@ -76,7 +81,7 @@ These files are automatically loaded by Cursor and provide essential context for
    pip install -e packages/agents
    ```
 
-5. Set up pre-commit hooks:
+5. Set up pre-commit hooks manually when needed:
    ```bash
    pip install pre-commit
    pre-commit install
@@ -106,18 +111,35 @@ The setup script installs everything (Python packages, Bun, sandbox-runtime, Cla
 
 ### Running Local Services
 
-Start the full local stack (API, worker, database, Redis):
+Start the fast local stack. Docker runs only Postgres and Redis; API and worker
+run directly from `.venv`:
+
+```bash
+./scripts/dev.sh run-local
+```
+
+The existing full Docker stack remains available when testing Dockerfiles or
+container parity:
 
 ```bash
 ./scripts/dev.sh up
+./scripts/dev.sh rebuild-docker
 ```
 
 Configure CLI to use local API:
 
 ```bash
-export RUNTM_API_URL=http://localhost:8000
+export RUNTM_API_URL="$(python -c 'import json; print(json.load(open(".runtm/ports.json"))["services"]["api"]["url"])')"
 export RUNTM_API_KEY=dev-token-change-in-production
 ```
+
+The generated `.runtm/ports.json` file records the API, Postgres, and Redis
+ports for this workspace. This keeps multiple worktrees or AI agents from
+colliding on fixed ports, and gives agents the exact setup/run/teardown
+commands to use. Run `./scripts/dev.sh doctor-local` when you want a pass/fail
+check for generated ports, `.env`, Docker project ownership, and port
+conflicts. Run `./scripts/dev.sh diagnose-env` when you need a masked summary
+of the local environment and Compose state.
 
 ### Dev Script Commands
 
@@ -125,15 +147,27 @@ The `./scripts/dev.sh` helper automatically loads your `.env` file:
 
 | Command | Description |
 |---------|-------------|
+| `./scripts/dev.sh setup-local` | Create isolated local dev environment for this workspace |
+| `./scripts/dev.sh teardown-local` | Stop this workspace's local services |
+| `./scripts/dev.sh run-local` | Start API + worker from `.venv` and follow logs |
 | `./scripts/dev.sh setup` | Install all packages in dev mode |
-| `./scripts/dev.sh up` | Start local services (auto-loads .env) |
+| `./scripts/dev.sh up` | Start full Docker stack including API + worker |
+| `./scripts/dev.sh deps-up` | Start local Postgres + Redis only |
+| `./scripts/dev.sh up-docker` | Alias for `up` |
 | `./scripts/dev.sh down` | Stop local services |
-| `./scripts/dev.sh restart` | Restart services (auto-loads .env) |
-| `./scripts/dev.sh rebuild` | Rebuild images and restart (after code changes) |
-| `./scripts/dev.sh logs [service]` | View logs (e.g., `logs worker`) |
+| `./scripts/dev.sh restart` | Restart full Docker stack |
+| `./scripts/dev.sh rebuild-docker` | Rebuild API/worker images and restart full Docker stack |
+| `./scripts/dev.sh logs [service]` | View full Docker stack logs |
+| `./scripts/dev.sh deps-logs` | View Postgres/Redis logs |
+| `./scripts/dev.sh logs-docker [service]` | Alias for `logs` |
+| `./scripts/dev.sh doctor` | Check local CLI/API/sandbox setup |
+| `./scripts/dev.sh doctor-local` | Validate generated local ports, `.env`, and Docker project state |
+| `./scripts/dev.sh diagnose-env` | Print masked local environment and Compose diagnostics |
+| `./scripts/dev.sh ports` | Show generated local service ports |
 | `./scripts/dev.sh test` | Run tests |
 | `./scripts/dev.sh lint` | Run linter |
 | `./scripts/dev.sh format` | Format code |
+| `./scripts/dev.sh check` | Run lint and format checks without modifying files |
 
 ## Project Structure
 

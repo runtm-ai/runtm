@@ -3,7 +3,10 @@ title: Docker Compose Setup
 description: "Run Runtime locally with Docker Compose"
 ---
 
-Run the complete Runtime stack locally using Docker Compose.
+Run Runtime locally with Docker Compose. The default local development flow uses
+Docker for Postgres and Redis, then runs the API and worker from your `.venv`
+for a faster edit loop. The full Docker stack is still available for container
+parity testing.
 
 ## Quick start
 
@@ -12,17 +15,25 @@ Run the complete Runtime stack locally using Docker Compose.
 git clone https://github.com/runtm-ai/runtm.git
 cd runtm
 
-# Copy environment template
-cp infra/local.env.example .env
+# Create an isolated local development stack for this workspace
+./.runtm/setup.local.sh
 
-# Edit .env and add your FLY_API_TOKEN
-vim .env
-
-# Start services
-./scripts/dev.sh up
+# Start the fast local loop
+./scripts/dev.sh run-local
 ```
 
-Your API is now running at `http://localhost:8000`.
+Your generated API URL is recorded in `.runtm/ports.json`.
+
+```bash
+./scripts/dev.sh ports
+```
+
+Use the full Docker stack when you need to test Dockerfiles or container
+startup behavior:
+
+```bash
+./scripts/dev.sh up
+```
 
 ## Services
 
@@ -33,7 +44,7 @@ flowchart LR
     API --> Redis[(Redis :6379)]
     API --> Worker[Worker]
     Worker --> Fly[Fly.io]
-    
+
     style CLI fill:#f4f4f5,stroke:#18181b,stroke-width:1px,color:#18181b
     style API fill:#f4f4f5,stroke:#18181b,stroke-width:1px,color:#18181b
     style DB fill:#f4f4f5,stroke:#18181b,stroke-width:1px,color:#18181b
@@ -44,10 +55,10 @@ flowchart LR
 
 | Service | Port | Description |
 |---------|------|-------------|
-| `api` | 8000 | FastAPI control plane |
+| `api` | generated | FastAPI control plane |
 | `worker` | - | Background job processor |
-| `postgres` | 5432 | PostgreSQL 15 |
-| `redis` | 6379 | Redis 7 job queue |
+| `postgres` | generated | PostgreSQL 15 |
+| `redis` | generated | Redis 7 job queue |
 
 ## Dev script commands
 
@@ -55,13 +66,20 @@ The `./scripts/dev.sh` helper makes common operations easy:
 
 | Command | Description |
 |---------|-------------|
-| `./scripts/dev.sh up` | Start all services |
+| `./scripts/dev.sh setup-local` | Create isolated local dev environment for this workspace |
+| `./scripts/dev.sh run-local` | Start API + worker from `.venv`; Docker runs Postgres/Redis |
+| `./scripts/dev.sh deps-up` | Start Postgres and Redis only |
+| `./scripts/dev.sh up` | Start full Docker stack |
 | `./scripts/dev.sh down` | Stop all services |
-| `./scripts/dev.sh restart` | Restart all services |
-| `./scripts/dev.sh rebuild` | Rebuild images and restart |
+| `./scripts/dev.sh restart` | Restart full Docker stack |
+| `./scripts/dev.sh rebuild-docker` | Rebuild API/worker images and restart full Docker stack |
 | `./scripts/dev.sh reset-db` | Drop all data and reset database |
-| `./scripts/dev.sh logs [service]` | View logs (all or specific service) |
+| `./scripts/dev.sh logs [service]` | View full Docker stack logs |
+| `./scripts/dev.sh deps-logs` | View Postgres/Redis logs |
 | `./scripts/dev.sh migrate` | Run database migrations manually |
+| `./scripts/dev.sh doctor-local` | Validate generated ports, `.env`, Docker project, and conflicts |
+| `./scripts/dev.sh diagnose-env` | Print masked local environment and Compose diagnostics |
+| `./scripts/dev.sh ports` | Show generated local service ports |
 | `./scripts/dev.sh test` | Run test suite |
 | `./scripts/dev.sh lint` | Run linter |
 | `./scripts/dev.sh format` | Format code |
@@ -71,15 +89,22 @@ The `./scripts/dev.sh` helper makes common operations easy:
 <Tabs>
   <Tab title="Start fresh">
     ```bash
-    ./scripts/dev.sh up
+    ./.runtm/setup.local.sh
+    ./scripts/dev.sh run-local
     ```
-    Starts all services. Migrations run automatically.
+    Starts Postgres/Redis with Docker and runs API/worker from `.venv`.
   </Tab>
   <Tab title="After code changes">
     ```bash
-    ./scripts/dev.sh rebuild
+    ./scripts/dev.sh run-local
     ```
-    Rebuilds Docker images and restarts services.
+    The API process reloads Python code from the local packages.
+  </Tab>
+  <Tab title="Full Docker parity">
+    ```bash
+    ./scripts/dev.sh rebuild-docker
+    ```
+    Rebuilds Docker images and restarts the full container stack.
   </Tab>
   <Tab title="Reset everything">
     ```bash
@@ -92,6 +117,7 @@ The `./scripts/dev.sh` helper makes common operations easy:
     ./scripts/dev.sh logs          # All services
     ./scripts/dev.sh logs api      # Just API
     ./scripts/dev.sh logs worker   # Just worker
+    ./scripts/dev.sh deps-logs     # Postgres and Redis only
     ```
   </Tab>
 </Tabs>
@@ -124,12 +150,12 @@ See [Configuration](/open-source/self-hosting/configuration) for all environment
 Point your CLI to the local instance:
 
 ```bash
-# Set environment variables
-export RUNTM_API_URL=http://localhost:8000
+# Set environment variables from generated local metadata
+export RUNTM_API_URL="$(python -c 'import json; print(json.load(open(".runtm/ports.json"))["services"]["api"]["url"])')"
 export RUNTM_API_KEY=dev-token-change-in-production
 
 # Or use CLI config
-runtm config set api_url=http://localhost:8000
+runtm config set api_url="$RUNTM_API_URL"
 runtm login --token dev-token-change-in-production --no-verify
 ```
 
@@ -153,23 +179,27 @@ See [Admin Commands](/open-source/self-hosting/admin-commands) for more token ma
 ## Verify setup
 
 ```bash
-# Check API health
-curl http://localhost:8000/health
+# Validate generated local state
+./scripts/dev.sh doctor-local
 
-# Check services
-docker compose -f infra/docker-compose.yml ps
+# Check API health
+curl "$(python -c 'import json; print(json.load(open(".runtm/ports.json"))["services"]["api"]["url"])')/health"
+
+# Inspect masked environment and Compose state
+./scripts/dev.sh diagnose-env
 ```
 
 ## Troubleshooting
 
 <AccordionGroup>
   <Accordion title="Port already in use">
-    Check what's using the port:
+    Re-run setup. It keeps ports owned by this workspace and allocates a new
+    free port window when another process took a remembered port:
     ```bash
-    lsof -i :8000
-    lsof -i :5432
+    ./.runtm/setup.local.sh
+    ./scripts/dev.sh doctor-local
     ```
-    Stop the conflicting service or change ports in a `docker-compose.override.yml`.
+    The generated ports are written to `.env` and `.runtm/ports.json`.
   </Accordion>
   <Accordion title="Cannot connect to database">
     ```bash

@@ -54,6 +54,8 @@ coverage.xml
 .env
 .env.local
 .env.*
+!.env.example
+!.env.local.example
 .venv
 env/
 venv/
@@ -75,10 +77,14 @@ venv.bak/
 # Project specific
 /artifacts/
 *.log
+.runtm/ports.json
+.runtm/config.local.json
+.runtm/run.local.pids
+!.runtm/lib/
+!.runtm/lib/common.sh
 
 # Internal planning docs
 .plans/
 
 # Alembic
 packages/api/alembic/versions/*.pyc
-

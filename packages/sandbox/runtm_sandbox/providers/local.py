@@ -175,27 +175,9 @@ class LocalSandboxProvider(SandboxProvider):
         if not shutil.which("srt"):
             return False
 
-        # Check ripgrep exists (srt requires it)
-        # Note: we need the real rg binary, not Claude's alias
-        rg_path = shutil.which("rg")
-        if not rg_path:
-            return False
-
-        # Check it's the real ripgrep (not Claude's --ripgrep alias)
-        try:
-            result = subprocess.run(
-                [rg_path, "--version"],
-                capture_output=True,
-                text=True,
-                timeout=5,
-            )
-            # Real ripgrep outputs "ripgrep X.Y.Z"
-            if "ripgrep" in result.stdout:
-                return True
-        except Exception:
-            pass
-
-        return False
+        # Check ripgrep exists (srt requires it). Shell aliases are not visible
+        # to shutil.which, so a resolved rg path is enough here.
+        return shutil.which("rg") is not None
 
     def stop(self, sandbox_id: str) -> None:
         """Stop a sandbox.

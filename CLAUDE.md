@@ -17,19 +17,25 @@ Open-source sandboxes where coding agents build and deploy. Spin up isolated env
 
 ```bash
 # Setup
-./scripts/dev.sh setup              # Install all packages in dev mode
-cp infra/local.env.example .env     # Configure environment (add FLY_API_TOKEN)
+./.runtm/setup.local.sh             # One-command local setup for this workspace
+./scripts/dev.sh setup-local        # Same setup through the dev helper
+./scripts/dev.sh setup              # Refresh Python packages in dev mode
 
 # Development CLI (use runtm-dev, not runtm)
+source .venv/bin/activate
 runtm-dev start                     # Start sandbox session (autopilot mode)
 runtm-dev start --interactive       # Start sandbox session (interactive mode)
 runtm-dev prompt "Build an API"     # Send prompt to agent in sandbox
 runtm-dev list                      # List sessions
 
 # Run local services
-./scripts/dev.sh up                 # Start API + worker + DB + Redis
+./scripts/dev.sh run-local          # Start API + worker from .venv with reload
+./scripts/dev.sh deps-up            # Start Postgres + Redis only
+./scripts/dev.sh up                 # Start full Docker stack
 ./scripts/dev.sh down               # Stop services
-./scripts/dev.sh rebuild            # Rebuild images and restart
+./scripts/dev.sh up-docker          # Alias for full Docker stack
+./scripts/dev.sh rebuild-docker     # Rebuild Docker API/worker images
+./scripts/dev.sh teardown-local     # Stop this workspace's isolated stack
 
 # Testing & Quality
 ./scripts/dev.sh test               # Run all tests
@@ -40,13 +46,19 @@ pytest packages/api/tests/test_foo.py::test_specific  # Single test
 ./scripts/dev.sh check              # Run all checks (REQUIRED before committing)
 
 # View logs
-./scripts/dev.sh logs               # All services
-./scripts/dev.sh logs worker        # Specific service
+./scripts/dev.sh logs               # Full Docker stack logs
+./scripts/dev.sh deps-logs          # Postgres + Redis logs
+./scripts/dev.sh logs worker        # Specific Docker service log
 
 # Configure CLI for local API
-export RUNTM_API_URL=http://localhost:8000
+./scripts/dev.sh ports              # Show generated API/Postgres/Redis ports
+./scripts/dev.sh doctor-local       # Validate generated ports/env/Docker state
+./scripts/dev.sh diagnose-env       # Print masked local diagnostics
+export RUNTM_API_URL=$(python -c 'import json; print(json.load(open(".runtm/ports.json"))["services"]["api"]["url"])')
 export RUNTM_API_KEY=dev-token-change-in-production
 ```
+
+`.runtm/ports.json` is the source of truth for generated local ports and run commands. If a port conflict appears, rerun `./.runtm/setup.local.sh`; it will keep workspace-owned ports or allocate a new free window. Use `./scripts/dev.sh doctor-local` before a PR when local setup behavior changed.
 
 **Note:** Use `runtm-dev` (not `runtm`) when developing locally. The dev CLI includes sandbox/agents packages that aren't in the PyPI release.
 

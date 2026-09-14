@@ -14,7 +14,7 @@ These must be set for Runtime to function:
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `DATABASE_URL` | PostgreSQL connection | `postgresql://user:pass@host:5432/runtm` |
-| `REDIS_URL` | Redis connection | `redis://localhost:6379/0` |
+| `REDIS_URL` | Redis connection | `redis://127.0.0.1:6379/0` |
 | `FLY_API_TOKEN` | Fly.io deploy token | `FlyV1 xxx...` |
 | `RUNTM_API_SECRET` | API authentication secret | Random 32+ char string |
 
@@ -86,10 +86,10 @@ These must be set for Runtime to function:
 
 ```bash
 # Database
-DATABASE_URL=postgresql://runtm:runtm@localhost:5432/runtm
+DATABASE_URL=postgresql://runtm:runtm@127.0.0.1:5432/runtm
 
 # Redis
-REDIS_URL=redis://localhost:6379/0
+REDIS_URL=redis://127.0.0.1:6379/0
 
 # API
 RUNTM_API_SECRET=dev-secret-change-in-production-123
@@ -213,7 +213,7 @@ After setting up, verify your configuration:
 
 ```bash
 # Check API health
-curl http://localhost:8000/health
+curl "$(python -c 'import json; print(json.load(open(".runtm/ports.json"))["services"]["api"]["url"])')/health"
 
 # Check database connection
 docker compose exec api python -c "from runtm_api.db import engine; print(engine.execute('SELECT 1').scalar())"
@@ -232,4 +232,3 @@ docker compose exec api python -c "from redis import Redis; print(Redis.from_url
     Service orchestration
   </Card>
 </CardGroup>
-

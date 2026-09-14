@@ -202,6 +202,9 @@ def install_bwrap() -> bool:
 def ensure_sandbox_deps(
     auto_install: bool = True,
     _skip_install: bool = False,
+    *,
+    auto_approve: bool | None = None,
+    _skip_prompt: bool = False,
 ) -> bool:
     """Ensure all sandbox dependencies are installed.
 
@@ -211,10 +214,17 @@ def ensure_sandbox_deps(
     Args:
         auto_install: If True (default), install missing deps automatically.
         _skip_install: Internal flag for testing - skip installation.
+        auto_approve: Backward-compatible alias for auto_install.
+        _skip_prompt: Backward-compatible alias for _skip_install.
 
     Returns:
         True if all dependencies are available (installed or already present).
     """
+    if auto_approve is not None:
+        auto_install = auto_approve
+    if _skip_prompt:
+        _skip_install = True
+
     missing = get_missing_deps()
 
     if not missing:

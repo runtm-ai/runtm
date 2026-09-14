@@ -16,7 +16,7 @@ from fastapi import (
     UploadFile,
     status,
 )
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import and_
 from sqlalchemy.orm import Session, joinedload
 
@@ -78,6 +78,8 @@ class AppDiscoveryResponse(BaseModel):
 class DeploymentResponse(BaseModel):
     """Response model for deployment endpoints."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     deployment_id: str
     name: str
     state: str
@@ -95,9 +97,6 @@ class DeploymentResponse(BaseModel):
     ready_at: datetime | None = None  # When deployment became ready (for deploy time calc)
     # Discovery metadata (if available)
     discovery: AppDiscoveryResponse | None = None
-
-    class Config:
-        from_attributes = True
 
     @classmethod
     def from_db(cls, deployment: Deployment) -> DeploymentResponse:
@@ -230,6 +229,8 @@ class RemoveDomainResponse(BaseModel):
 class DeploymentSearchResult(BaseModel):
     """Search result with deployment and discovery metadata."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     deployment_id: str
     name: str
     state: str
@@ -242,9 +243,6 @@ class DeploymentSearchResult(BaseModel):
     updated_at: datetime
     discovery: AppDiscoveryResponse | None = None
     match_score: float = 0.0
-
-    class Config:
-        from_attributes = True
 
     @classmethod
     def from_db(cls, deployment: Deployment, match_score: float = 0.0) -> DeploymentSearchResult:

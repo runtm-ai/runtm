@@ -130,20 +130,22 @@ Runtm can be fully self-hosted. See the [self-hosting guide](https://docs.runtm.
 ```bash
 git clone https://github.com/runtm-ai/runtm.git
 cd runtm
-cp infra/local.env.example .env
 
-# Install packages (includes sandbox and agents)
-./scripts/dev.sh setup
+# Create an isolated local dev stack for this workspace
+./.runtm/setup.local.sh
 
-# Start local services
-docker compose -f infra/docker-compose.yml up -d
+# Fast local loop: API + worker run from .venv; Docker is only Postgres/Redis
+./scripts/dev.sh run-local
 
 # Use the development CLI
+source .venv/bin/activate
 runtm-dev start                    # Start a sandbox session
 runtm-dev prompt "Build an API"    # Send prompt to agent
 ```
 
 **Note:** Use `runtm-dev` (not `runtm`) when self-hosting. The dev CLI includes sandbox/agents packages.
+Use `./scripts/dev.sh run-local` for fast local development: API and worker run from `.venv`, while Docker is only used for Postgres and Redis. The existing `./scripts/dev.sh up` command still starts the full Docker stack for parity testing. Real deployments require a Fly personal access token, but local API, worker, database, Redis, and sandbox development can run without cloud credentials.
+Setup writes the final workspace ports to `.runtm/ports.json` and reallocates them if another process takes a remembered port. Run `./scripts/dev.sh doctor-local` to validate the generated local state, or `./scripts/dev.sh diagnose-env` to print masked environment and Compose diagnostics.
 
 ## Project Structure
 

@@ -2,7 +2,7 @@
 name = "my-web-app-backend"
 version = "0.1.0"
 description = "Runtm web app - Backend API"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.100.0,<1.0",
     "uvicorn[standard]>=0.20.0,<1.0",
@@ -26,9 +26,8 @@ build-backend = "hatchling.build"
 packages = ["app"]
 
 [tool.ruff]
-target-version = "py39"
+target-version = "py310"
 line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I"]
-

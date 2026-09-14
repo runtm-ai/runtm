@@ -31,9 +31,9 @@ flowchart TB
         Worker <--> DB[PostgreSQL]
         Worker --> Redis[Redis]
     end
-    
+
     API --> Provider[Cloud Provider]
-    
+
     style infra fill:#f4f4f5,stroke:#18181b,stroke-width:2px
     style API fill:#ffffff,stroke:#18181b,stroke-width:1px,color:#18181b
     style Worker fill:#ffffff,stroke:#18181b,stroke-width:1px,color:#18181b
@@ -66,17 +66,16 @@ Runtime is designed as a bring-your-own-cloud platform. The provider abstraction
 git clone https://github.com/runtm-ai/runtm.git
 cd runtm
 
-cp infra/local.env.example .env
-# Edit .env with your provider credentials
+./.runtm/setup.local.sh
 
-docker compose -f infra/docker-compose.yml up -d
+./scripts/dev.sh run-local
 ```
 
 Point your CLI to your self-hosted instance:
 
 ```bash
-export RUNTM_API_URL=http://localhost:8000
-export RUNTM_API_KEY=your-api-key
+export RUNTM_API_URL="$(python -c 'import json; print(json.load(open(".runtm/ports.json"))["services"]["api"]["url"])')"
+export RUNTM_API_KEY=dev-token-change-in-production
 ```
 
 ## Requirements

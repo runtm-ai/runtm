@@ -43,7 +43,7 @@ runtm.yaml               # Deployment manifest
 The template follows a clean separation of concerns:
 
 - **API Layer** (`api/v1/`): Thin controllers handling HTTP requests/responses
-- **Services** (`services/`): Business logic and core functionality  
+- **Services** (`services/`): Business logic and core functionality
 - **Core** (`core/`): Configuration, utilities, and shared helpers
 
 ```
@@ -55,7 +55,7 @@ Request → API Endpoint → Service → Response
 ## Development
 
 ### Prerequisites
-- Python 3.9+
+- Python 3.10+
 
 ### Running Locally
 
