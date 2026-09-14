@@ -39,7 +39,7 @@ Interactive UI + backend for real user workflows. Combines a Next.js frontend wi
 2. **DO NOT remove health endpoints** - `/health` must exist
 3. **DO NOT remove runtm.yaml** - Required for deployment
 4. **KEEP types in sync** - Pydantic models ↔ TypeScript types
-5. **MINIMUM tier: standard** - Fullstack apps need 512MB+ RAM (starter tier is rejected)
+5. **Machine tier** - `starter` is valid by default; use `performance` or `pro` for heavier workloads
 6. **ADD dependencies to PRODUCTION deps** - See "Adding Python Dependencies" below
 
 ## Project Structure
@@ -425,7 +425,7 @@ runtm deploy    # Deploy to production
 - ❌ Change frontend port from 3000
 - ❌ Change backend port from 8080
 - ❌ Remove `/health` endpoint
-- ❌ Use `tier: starter` in runtm.yaml (needs 512MB+ for both Node.js and Python)
+- ❌ Use old tier names such as `standard` in runtm.yaml
 - ❌ **Add Python imports without adding to `[project] dependencies`** (NOT dev deps!)
 - ❌ Store files locally at runtime (use `/data` volume with `features.database`)
 - ❌ Use sync blocking calls in async endpoints
@@ -611,7 +611,7 @@ import { headers } from "next/headers";
 export default async function ProfilePage() {
   const session = await getSession({ headers: headers() });
   if (!session?.user) redirect("/login");
-  
+
   return <h1>Hello, {session.user.name}</h1>;
 }
 ```

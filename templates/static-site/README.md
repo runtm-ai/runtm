@@ -47,7 +47,7 @@ You can set the tier in `runtm.yaml`:
 name: my-site
 template: static-site
 runtime: node
-tier: starter  # starter, standard, performance
+tier: starter  # starter, performance, pro
 ```
 
 ## Project Structure

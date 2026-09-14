@@ -10,7 +10,7 @@ Usage:
     from runtm_api.services.policy import get_policy_provider
 
     provider = get_policy_provider()
-    result = provider.check_deploy(tenant_id, db, requested_tier="standard")
+    result = provider.check_deploy(tenant_id, db, requested_tier="performance")
 
     if not result.allowed:
         raise HTTPException(403, detail=result.reason)

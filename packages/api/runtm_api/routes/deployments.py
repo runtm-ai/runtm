@@ -522,7 +522,7 @@ async def create_deployment(
         False, alias="new", description="Force new deployment instead of redeploying"
     ),
     tier: str | None = Query(
-        None, description="Machine tier override: starter, standard, or performance"
+        None, description="Machine tier override: starter, performance, or pro"
     ),
     config_only: bool = Query(
         False, description="Skip Docker build - reuse previous image (for env/tier changes only)"

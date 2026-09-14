@@ -241,9 +241,9 @@ All deployments use **auto-stop** for cost savings (machines stop when idle and 
 
 | Tier | CPUs | Memory | Est. Cost | Use Case |
 |------|------|--------|-----------|----------|
-| **starter** (default) | 1 shared | 256MB | ~$2/month* | Simple tools, APIs |
-| **standard** | 1 shared | 512MB | ~$5/month* | Most workloads |
-| **performance** | 2 shared | 1GB | ~$10/month* | Full-stack apps |
+| **starter** (default) | 2 shared | 2GB | ~$15/month* | Simple tools, APIs |
+| **performance** | 4 shared | 4GB | ~$30/month* | Full-stack apps |
+| **pro** | 4 shared | 8GB | ~$55/month* | Memory-intensive apps |
 
 *Costs are estimates for 24/7 operation. With auto-stop, costs are much lower for low-traffic services.
 
@@ -254,8 +254,8 @@ All deployments use **auto-stop** for cost savings (machines stop when idle and 
 runtm deploy
 
 # Deploy with a specific tier
-runtm deploy --tier standard
 runtm deploy --tier performance
+runtm deploy --tier pro
 
 # Check deployment status
 runtm status dep_abc123

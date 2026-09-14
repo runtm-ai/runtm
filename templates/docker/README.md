@@ -165,14 +165,14 @@ runtm secrets list
 
 | Tier | Memory | CPUs | Best for |
 |------|--------|------|----------|
-| `starter` | 256 MB | 1 shared | Simple APIs |
-| `standard` | 512 MB | 1 shared | Most workloads |
-| `performance` | 1 GB | 2 shared | Heavy processing |
+| `starter` | 2 GB | 2 shared | Simple APIs |
+| `performance` | 4 GB | 4 shared | Most workloads |
+| `pro` | 8 GB | 4 shared | Memory-intensive apps |
 
 Set in `runtm.yaml`:
 
 ```yaml
-tier: standard
+tier: performance
 ```
 
 ## Constraints

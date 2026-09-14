@@ -20,7 +20,7 @@ Creates a new deployment or redeploys an existing one (based on manifest name).
 
 **Query Parameters:**
 - `new=true` - Force creation of new deployment instead of redeploying existing
-- `tier=starter|standard|performance` - Override machine tier from manifest
+- `tier=starter|performance|pro` - Override machine tier from manifest
 
 **Request:**
 - `manifest` (file) - `runtm.yaml` manifest file
@@ -44,9 +44,9 @@ All deployments use **auto-stop** for cost savings (machines stop when idle and 
 
 | Tier | CPUs | Memory | Est. Cost |
 |------|------|--------|-----------|
-| `starter` (default) | 1 shared | 256MB | ~$2/month* |
-| `standard` | 1 shared | 512MB | ~$5/month* |
-| `performance` | 2 shared | 1GB | ~$10/month* |
+| `starter` (default) | 2 shared | 2GB | ~$15/month* |
+| `performance` | 4 shared | 4GB | ~$30/month* |
+| `pro` | 4 shared | 8GB | ~$55/month* |
 
 *Costs are estimates for 24/7 operation. With auto-stop, costs are much lower for low-traffic services.
 
@@ -78,4 +78,3 @@ pytest
 | `BUCKET_NAME` | S3/Tigris bucket name (when backend=s3) | - |
 | `AWS_ENDPOINT_URL_S3` | S3 endpoint URL (e.g. `https://fly.storage.tigris.dev`) | - |
 | `AUTH_MODE` | Auth mode: `single_tenant` or `multi_tenant` | `single_tenant` |
-
