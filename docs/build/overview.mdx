@@ -1,0 +1,74 @@
+---
+title: "Build an agent"
+description: "The six steps that build a Runtime agent in the right order: define the job, measure success, give it tools, define how it works, prove it on seeded cases, then add guardrails. Start here before creating or changing any agent, and read the order before adding a single guardrail."
+---
+
+An agent in Runtime is not a prompt. It is a roster entry with a job, a rubric that grades every run, a template that holds its tools, a set of skills, instructions and triggers that define how it works, guardrails that bound it, and a scorecard that tells you whether it is earning its keep. Build it in the six steps below, in order.
+
+## Capable first, then safe
+
+The order is the point. Steps 1 to 4 give the agent the context and the ability to do something. Step 5 proves it can, on cases you chose, before any rule exists. Step 6 adds guardrails written from what you saw.
+
+Teams often want to start with guardrails. Resist that. A deny rule or an `ask` default written before the first run is a guess about behaviour you have not observed, and on an agent that has never run it turns every unknown into a stall you cannot tell apart from a missing tool or an unclear runbook. If the task is not achievable with the model, the tools and the skills you have given it, you want to find out in step 5, not after a week of tuning rules.
+
+Proving is still safe. Until step 6 the agent is protected by scope rather than by rules: the credentials on its template are read-only (a restricted Stripe key, a read-only database role), the sandbox is isolated and destroyed after the run, and the trigger is a test channel or a manual run rather than the live queue. Guardrails are what let it graduate to the live queue and to credentials that can do more.
+
+| # | Question | Runtime objects | Page |
+|---|----------|-----------------|------|
+| 1 | What is the job? | Roster agent: `name`, `description`, `system_instructions`, `default_template`, `default_agent` | [Define the job](/build/define-the-job) |
+| 2 | How is success measured? | `evaluator_criteria.categories[]`, `economics.budget.monthly_usd_cap`, the scorecard | [Measure success](/build/measure-success) |
+| 3 | What can it reach? | Template: tool providers, MCP servers and connections, secrets, repositories | [Give it tools](/build/give-it-tools) |
+| 4 | How does it work? | Skills, the instruction stack, triggers | [Define how it works](/build/how-it-works/overview) |
+| 5 | Does it work? | Seeded cases, on-demand runs, grades, the scorecard | [Prove it works and iterate](/build/launch-and-iterate) |
+| 6 | Now lock it down | Allowlist rules, hooks, network rules, org limits, approvals | [Add guardrails and approvals](/build/guardrails-and-approvals) |
+
+The dashboard's onboarding asks the first four questions in the same order (what do you do, what should the agent take off your plate, which tools, where should it live). These pages are the long form.
+
+## 1. What is the job?
+
+Write the job as input, output and boundary. "Given a Zendesk ticket about a charge, reconstruct the payment timeline and draft a customer reply. Never send it." That sentence becomes the agent's **Description**, and the **System instructions** expand it into how. The roster agent also names the **Default template** it runs on and the **Coding agent** (harness) that executes it. The boundary goes into the instructions now and into guardrails in step 6.
+
+## 2. How is success measured?
+
+Each agent has evaluation categories. A category says when a run belongs to it, how to grade the run pass or fail, and what the same task costs a person. A grader scores every finished run against the matching category and writes the verdict to telemetry. A monthly budget flags overspend on the scorecard. Without a category nothing is graded, and the scorecard shows zeros.
+
+## 3. What can it reach?
+
+Capabilities attach to the template, not the agent. Tool providers hand the sandbox credentials and a CLI for a service (Zendesk, Datadog, BigQuery, or a custom one for Stripe or a KYB vendor). MCP servers add tool-calling surfaces. Secrets are injected as environment variables. Use read-only credentials here; that is what makes step 5 safe. The agent inherits all of it through its default template, so building the template first and attaching everything before the build is the rule that avoids silent failures.
+
+## 4. How does it work?
+
+Skills are runbooks the agent follows, stored as `SKILL.md` bundles and attached to the template. Instructions come from nine layers, from Runtime's own down to the single session, and the later layers win. Triggers decide where the agent lives: Slack, Linear, GitHub, Email, WhatsApp, SMS, a cron schedule, or the API.
+
+## 5. Does it work?
+
+Prove the wiring with seeded cases whose answers you know, run on demand, before enabling anything automatic and before any guardrail exists. Read the grade for each run, then the scorecard over a window. Edit the rubric when the grader is wrong, edit the runbook when the agent is wrong, add a tool when the data was out of reach, and re-run. Write down the commands and hosts the passing runs used.
+
+## 6. Now lock it down
+
+Turn what you observed into rules: `allow` for the commands the passing runs used, `deny` for anything that moves money or changes state, `ask` for the rest, network rules for the hosts, and an approval gate in the runbook before anything customer-facing. Add one rule at a time and re-run a seeded case after each. Then move the agent to the live queue.
+
+<CardGroup cols={2}>
+  <Card title="1. Define the job" icon="bullseye" href="/build/define-the-job">
+    Objective, description, system instructions, default template and harness.
+  </Card>
+  <Card title="2. Measure success" icon="chart-line" href="/build/measure-success">
+    Evaluation categories, grading, budget and the scorecard.
+  </Card>
+  <Card title="3. Give it tools" icon="plug" href="/build/give-it-tools">
+    Templates, tool providers, MCP servers, secrets, read-only credentials.
+  </Card>
+  <Card title="4. Define how it works" icon="gears" href="/build/how-it-works/overview">
+    Skills, instructions and triggers.
+  </Card>
+  <Card title="5. Prove it works and iterate" icon="rotate" href="/build/launch-and-iterate">
+    Seeded cases, grades, scorecard, tighten one thing at a time.
+  </Card>
+  <Card title="6. Add guardrails and approvals" icon="shield-halved" href="/build/guardrails-and-approvals">
+    Rules written from what the passing runs did, plus approval gates.
+  </Card>
+</CardGroup>
+
+<Card title="Worked examples" icon="book-open" href="/guides/overview">
+  Payment support, fraud review and merchant underwriting agents built end to end in this order.
+</Card>

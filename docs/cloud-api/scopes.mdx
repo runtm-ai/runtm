@@ -1,6 +1,6 @@
 ---
 title: "Scopes & Permissions"
-description: "API key scopes, what they unlock, and role ceilings"
+description: "API key scopes, what each unlocks, the scope every runtm-api command needs, presets, and role ceilings. Read when a call returns 403 or before creating a key for an agent."
 ---
 
 Every API key carries a set of **scopes** that determine which endpoints it can call. Scopes follow the pattern `resource:action` - for example, `sessions:read` allows listing and viewing sessions but not modifying them.
@@ -29,6 +29,72 @@ Every API key carries a set of **scopes** that determine which endpoints it can 
 | `guardrails:read` | View org guardrails |
 | `guardrails:write` | Update org guardrails |
 | `activity:read` | View telemetry and usage |
+
+## Scopes by CLI operation
+
+The same mapping, keyed by `runtm-api` command. Role gates are noted where a scope alone is not enough.
+
+| Operation | Required scope(s) |
+|---|---|
+| `session list\|get\|status\|history\|workspace-state\|collaborators\|previews\|search` | `sessions:read` |
+| `session share list` | `sessions:read` |
+| `session create\|rename\|pause\|resume\|git\|visibility\|heartbeat\|run-server\|prompt-rewind` | `sessions:write` |
+| `session destroy` | `sessions:delete` |
+| `session share create\|revoke` | `sessions:write` |
+| `session launch` | `sessions:write` + `sessions:prompt` |
+| `session connect\|exec` | `sessions:terminal` |
+| `session prompt\|prompt-cancel\|events` | `sessions:prompt` |
+| `session file read\|list\|search\|download`, `session tools` | `sessions:read` |
+| `session file write\|delete\|rename\|mkdir\|upload` | `sessions:write` |
+| `session load-skills\|load-mcps\|load-tools` | `sessions:write` |
+| `session approvals list` | `sessions:read` |
+| `session approvals resolve` | `sessions:write` (plus the role or team gate on the approval) |
+| `session env get\|detected` | `secrets:read` |
+| `session env set\|delete\|detect` | `secrets:write` |
+| `session instructions get` | `context:read` |
+| `session instructions set` | `context:write` |
+| `session deploy info` | `deployments:read` |
+| `session deploy scaffold\|validate\|preflight\|run` | `deployments:write` |
+| `session grade`, `agents scorecard` | `activity:read` |
+| `template list\|get\|repos\|build-logs\|build-logs-history` | `templates:read` |
+| `template create\|update\|fix-session\|save-snapshot` | `templates:write` |
+| `template build` | `templates:build` |
+| `template delete` | `templates:delete` |
+| `template secrets list` | `secrets:read` |
+| `template secrets set\|delete` | `secrets:write` |
+| `template context get\|resolve` | `context:read` |
+| `template context set` | `context:write` |
+| `template guardrails` reads | `guardrails:read` |
+| `template guardrails` writes | `guardrails:write` |
+| `template mcp`, `skills list --template` | `templates:read` |
+| `skills\|mcp list\|get\|attachments`, `skills discover\|facets` | `context:read` |
+| `skills\|mcp create\|update\|delete\|attach\|detach`, `skills import\|resync\|upload-file` | `context:write` |
+| `skills\|mcp lock\|unlock` | `context:write` (admin or owner) |
+| `guardrails rules\|hooks\|network` reads | `context:read` |
+| `guardrails rules\|hooks\|network` writes | `context:write` |
+| `guardrails limits\|allowlist` get | `guardrails:read` |
+| `guardrails limits\|allowlist` set, `guardrails cleanup` | `guardrails:write` (admin or owner) |
+| `guardrails can-deploy\|deploy-limits` | `deployments:read` |
+| `tools list\|get`, `tools providers list\|get` | `integrations:read` |
+| `tools create\|update\|delete`, `tools providers create\|update\|delete` | `integrations:write` |
+| `agents list\|get` (roster) | `activity:read` |
+| `agents create\|update\|delete` (roster and triggers) | `integrations:write` (admin or owner) |
+| `agents list\|get --type ...` | `integrations:read` |
+| `agents trigger-credentials` | `integrations:read` |
+| `scheduled-agents list\|get` | `sessions:read` |
+| `scheduled-agents create\|update\|delete\|run-now` | `sessions:write` (admin or owner) |
+| `activity *` | `activity:read` |
+| `secrets list\|resolved` | `secrets:read` |
+| `secrets set\|delete` | `secrets:write` (team secrets need admin or owner) |
+| `instructions get` | `context:read` |
+| `instructions set` | `context:write` (org instructions need admin or owner) |
+| `providers * get\|resolved` | `integrations:read` |
+| `providers * set\|delete` | `integrations:write` (org keys need admin or owner) |
+| `groups usage` | `templates:read` |
+| `github installations\|repos` | `integrations:read` |
+| `github add-repo` | `integrations:write` |
+| `deployments list\|get\|logs` | `deployments:read` |
+| `deployments destroy` | `deployments:delete` |
 
 ## Scope presets
 

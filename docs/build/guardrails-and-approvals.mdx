@@ -1,0 +1,154 @@
+---
+title: "6. Add guardrails and approvals"
+description: "Once the agent has passed its seeded cases, restrict what it can run, reach, and change with allowlist rules, hooks, network rules and org limits, and gate sensitive actions behind a human approval requested from inside the run. Read before `runtm-api guardrails rules|hooks|network create`, `runtm-api template guardrails create`, or writing a runbook that calls `runtm-approval`."
+---
+
+## Outcome
+
+The agent can investigate freely and cannot move money, change account state, or contact a customer without a person saying yes. Every rule is visible in one place, and the session shows exactly what it is waiting on.
+
+## When to add them
+
+After [step 5](/build/launch-and-iterate), not before. Guardrails are the last step on purpose: a rule written before the agent has run is a guess about behaviour you have not observed, and a broad `ask` or `deny` on an unproven agent turns every unknown into a stall you cannot tell apart from a capability gap. Until now the agent has been safe by scope (read-only credentials, an isolated sandbox, a test trigger). This step makes it safe by rule so it can move to the live queue and to credentials that can do more.
+
+Work from evidence. The passing runs in step 5 gave you the exact commands and hosts the agent used; those become `allow` rules. Anything the runbook could plausibly attempt that moves money, changes state or contacts a customer becomes a `deny` rule or an approval gate. Add rules one at a time and re-run a seeded case after each, so a stall is attributable to the rule you just added.
+
+## Decide
+
+**Which actions are reads and which are writes?** List the commands and API calls the runbook will make and sort them. Reads are allowed, writes are denied or asked, and anything customer-facing goes behind an approval.
+
+- Bad: "Deny `rm -rf`." That protects the sandbox, not the customer. The dangerous commands in a payments agent are `stripe refunds create` and `curl -X POST https://api.stripe.com/...`.
+- Good: "Allow `stripe * list*`, `stripe * retrieve*`, `psql -c 'SELECT*'`. Deny `stripe refunds create*`, `stripe * update*`, `curl -X POST*api.stripe.com*`. Ask on everything else. Approval before posting a reply to the ticket."
+
+**Which hosts does the agent need?** If you add any network rule, egress becomes deny-all plus your allowlist. Include the API hosts of every tool, the package registries your skills install from, and `docs.runtm.com` if the agent reads documentation.
+
+**Who approves?** An approval names a required org role or a required team. Admins and owners can always resolve one. If nobody with that role is watching the Sessions board, the run waits.
+
+## The three guardrail types
+
+Each type exists in two places: as an org-wide directive you attach to templates, repos or the whole org, and as a template-owned row on the template's **Guardrails** tab. Org rules layer over template rules, and `template guardrails resolve` shows the effective set with each item marked `active`, `deduped` or `shadowed`.
+
+| Type | Content | Enforced by |
+|---|---|---|
+| Allowlist rule | `kind` (`allow`, `ask`, `deny`), `pattern` (fnmatch glob against the command), `purpose` | a `PreToolUse` hook that evaluates Bash commands, priority deny then ask then allow then the org default policy, fails closed |
+| Hook | `event`, `type` (`command` or `prompt`), `matcher` (regex, tool events only), `script` or `prompt`, `timeout` (1 to 600 seconds, default 30), `async` | the coding harness's hook system; a `PreToolUse` command hook decides `allow`, `deny` or `ask` |
+| Network rule | `kind` (`host` or `cidr`), `value`, `purpose` | the sandbox provider at creation: `deny_out 0.0.0.0/0` plus your `allow_out` list, no ports |
+
+Hook events: `PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `Notification`, `Stop`, `SubagentStop`, `SessionStart`, `SessionEnd`, `PreCompact`. Prompt hooks are limited to `PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `Stop` and `SubagentStop`. `async` applies to command hooks on `PostToolUse`, `Notification`, `Stop` and `SessionEnd`.
+
+Org limits are separate from guardrail content. Under **Guardrails → Limits** an admin sets the maximum concurrent sessions, a monthly org budget in USD, and the default idle timeout. These are enforced when a session is created.
+
+<Frame caption="Allowlists on the org Guardrails page. Each rule is Allowed, Ask first, or Denied with a pattern and a purpose.">
+  <img src="/images/build/guardrails-allowlists.png" alt="Guardrails page, Allowlists tab, with rule rows and the New allowlist rule button" />
+</Frame>
+
+## Do it
+
+<Steps>
+  <Step title="Write the allowlist rules">
+    Open **Settings → Guardrails → Allowlists** and click **New allowlist rule**. Pick the **Type** (Allowed, Ask first, Denied), enter the pattern ("e.g. git push --force or rm -rf *") and a purpose ("Why this rule exists"). For a payments agent, create the deny rules first.
+
+    {/* cli: runtm-api guardrails rules create --name deny-stripe-refunds --kind deny --pattern "stripe refunds create*" --purpose "Refunds are issued by a human" */}
+    {/* cli: runtm-api guardrails rules create --name deny-stripe-post --kind deny --pattern "curl*-X POST*api.stripe.com*" --purpose "No writes to Stripe from the agent" */}
+    {/* cli: runtm-api guardrails rules create --name allow-stripe-reads --kind allow --pattern "stripe * list*" --purpose "Read-only investigation" */}
+  </Step>
+
+  <Step title="Set the default policy to ask">
+    On the same tab, set the default policy for commands no rule matches. `ask` means the run pauses for a permission decision on anything you did not anticipate. `deny` is stricter and breaks runbooks that install a package on the fly. The org default is `allow`.
+
+    The CLI does not expose the default command policy (`runtm-api guardrails allowlist` manages the repo allowlist, a different setting). Set it with `PUT /api/cloud/organizations/<org_id>/allowlist-policy` and a body of `{"default_policy": "ask"}`, or on the Allowlists tab.
+
+    {/* cli-verify: runtm-api template guardrails resolve <template_id> | jq .allowlist_default_policy */}
+  </Step>
+
+  <Step title="Add a hook if a pattern is not enough">
+    Open **Hooks** and click the add button. Choose the **Event**, the **Type** (`command` runs a script, `prompt` injects text), an optional matcher ("Bash|Edit|Write"), the **Script** or **Prompt**, and a **Timeout (sec)**. A `PreToolUse` command hook that exits with a JSON `permissionDecision` of `deny` blocks the call and gives the agent your `permissionDecisionReason`.
+
+    {/* cli: runtm-api guardrails hooks create --name block-ledger-writes --event PreToolUse --hook-type command --matcher Bash --script "$(cat block-ledger-writes.sh)" --timeout 10 */}
+  </Step>
+
+  <Step title="Pin the network">
+    Open **Network** and add one rule per host or CIDR ("api.anthropic.com or 10.0.0.0/8") with a purpose ("Why agents need this"). As soon as one rule exists, the sandbox can reach only what is listed. Include the tool hosts, `app.runtm.com`, `docs.runtm.com`, and whatever your skills' `mise` tooling downloads from.
+
+    {/* cli: runtm-api guardrails network create --name stripe-api --kind host --value api.stripe.com --purpose "Stripe reads" */}
+    {/* cli: runtm-api guardrails network create --name runtm-docs --kind host --value docs.runtm.com --purpose "Agent reads the docs" */}
+  </Step>
+
+  <Step title="Attach the rules to the template">
+    Org-wide rules apply to nothing until attached. Attach each rule to the agent's template (or to every repo in the org with `--all`). Alternatively create the rule directly on the template's **Guardrails** tab, where inherited org rules show as read-only "Enforced" rows above the template's own list.
+
+    {/* cli: runtm-api guardrails rules attach <rule_id> --template <template_id> */}
+    {/* cli: runtm-api template guardrails create <template_id> --type allowlist --name deny-refunds --content '{"kind":"deny","pattern":"stripe refunds create*","purpose":"Refunds are issued by a human"}' */}
+    {/* cli-verify: runtm-api template guardrails resolve <template_id> */}
+  </Step>
+
+  <Step title="Rebuild the template">
+    Allowlist rules and hooks are materialized into the snapshot. Attaching after the last build leaves the template stale until you build again. Network rules are resolved at session creation and do not need a rebuild.
+
+    {/* cli: runtm-api template build <template_id> */}
+    {/* cli-verify: runtm-api template get <template_id> | jq .attachments_changed_since_build */}
+  </Step>
+
+  <Step title="Put approvals in the runbook">
+    Approvals are not a policy you configure; the agent requests one from inside the run when its instructions or a skill say a step needs sign-off. The `runtm-approval` helper is on the sandbox PATH and authenticates with the session's key. Write the call into the skill at the exact step that must wait.
+
+    ```bash
+    runtm-approval request --kind customer_reply \
+      --message "Draft reply to ticket #4821 ready at drafts/4821.md" \
+      --required-role admin --wait
+    ```
+
+    `--wait` blocks until a human resolves the request. Exit code 0 means approved, 1 means rejected. On rejection the agent must not proceed and should report the resolution note. `--required-role <org-role>` or `--required-team <team-id>` restricts who can approve; admins and owners always can. To request now and wait later:
+
+    ```bash
+    APPROVAL_ID=$(runtm-approval request --kind customer_reply --message "Draft ready")
+    runtm-approval wait "$APPROVAL_ID" --timeout 3600
+    ```
+  </Step>
+
+  <Step title="Resolve approvals from the Sessions board">
+    A pending request flips the session to `awaiting_approval` and shows **Approve** and **Reject** inline on the session card, with the request message in the tooltip. Sessions waiting on a person sit in their own Kanban column. Approvals are not delivered to Slack; the person approving needs the dashboard or the CLI.
+
+    {/* cli: runtm-api session approvals list <session_id> */}
+    {/* cli: runtm-api session approvals resolve <session_id> <approval_id> --approve --note "Checked the ledger entry" */}
+    {/* cli: runtm-api session approvals resolve <session_id> <approval_id> --reject --note "Wrong customer, re-run with the account id" */}
+  </Step>
+</Steps>
+
+<Frame caption="Hooks fire on harness lifecycle events. A PreToolUse command hook can allow, deny, or ask.">
+  <img src="/images/build/guardrails-hooks.png" alt="Guardrails page, Hooks tab, showing event, type, matcher, script and timeout fields" />
+</Frame>
+
+<Frame caption="Network rules turn egress into deny-all plus the listed hosts and CIDRs.">
+  <img src="/images/build/guardrails-network.png" alt="Guardrails page, Network tab, with host and CIDR rows" />
+</Frame>
+
+<Frame caption="The template's Guardrails tab shows inherited org rules as Enforced rows above the template's own rules.">
+  <img src="/images/build/template-guardrails.png" alt="Template editor, Guardrails tab, with Allowlists, Hooks and Network sub-tabs" />
+</Frame>
+
+<Frame caption="Sessions that went through an approval gate carry the outcome on their card; while pending, the same card shows Approve and Reject inline.">
+  <img src="/images/build/session-awaiting-approval.png" alt="Sessions grid with a run that shows Approved by an approver on its card" />
+</Frame>
+
+## Verify
+
+- `runtm-api template guardrails resolve <template_id>` lists every effective rule with `source` (`org` or `template`) and `effective_status`, plus `allowlist_default_policy` and `network_allow_out`.
+- Start a session from the template and run a denied command in the terminal. The permission decision should refuse it with your purpose text as the reason.
+- From the session terminal, run `curl -sI https://example.com`. With network rules in place it must fail, and `curl -sI https://api.stripe.com` must succeed.
+- Trigger the approval step in a test run. The session card shows **Approve** and **Reject**, and `runtm-api session approvals list <session_id>` returns the pending request with its `kind`, `message` and `required_role`.
+
+{/* cli-verify: runtm-api template guardrails resolve <template_id> */}
+{/* cli-verify: runtm-api session approvals list <session_id> */}
+
+## Gotchas
+
+- **Allowlist rules see only Bash.** File edits, web fetches and MCP tool calls are not evaluated by allowlist rules. Use a hook with a matcher such as `Edit|Write` for those.
+- **Attached is not built.** An allowlist or hook attached after the last build is not in the snapshot. `template get` reports `attachments_changed_since_build: true`. Build again.
+- **One network rule flips the default.** With zero rules the sandbox has open egress. With one rule it has deny-all plus that rule. Forgetting `app.runtm.com` breaks the runtm CLI inside the sandbox, and forgetting your package registry breaks skill tooling.
+- **Network rules have no ports.** A host is reachable on every port or not at all.
+- **Approvals are runbook steps, not settings.** The **Approvals** tab under Guardrails describes the concept but does not configure anything. If the skill never calls `runtm-approval`, nothing waits.
+- **An approval with no watcher waits forever.** Scope `--required-role` to a role someone on shift actually holds, or leave it unset so anyone with session access can resolve it. Use `wait --timeout` so the run fails cleanly instead of idling.
+- **Two rules with the same pattern.** Deny beats ask beats allow regardless of order or source, so an org-level `deny` cannot be loosened by a template-level `allow`.
+- **Hooks are harness-specific.** The rules are materialized for the coding harness in the template. Verify on the harness you actually run.
+- **A rule added before the first run.** If a seeded case that passed in step 5 now stalls or fails, the last rule you added is the cause. Remove it, re-run, and write it narrower.

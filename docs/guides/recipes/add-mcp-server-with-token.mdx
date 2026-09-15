@@ -1,0 +1,57 @@
+---
+title: "Add an MCP server with an API-token connection"
+description: "Define a stdio MCP server as a directive, supply its API token through a separate connection so the secret never enters the template snapshot, attach it to a template and rebuild. Read when a vendor ships an MCP server and you want the agent limited to its typed tools."
+---
+
+## Outcome
+
+The agent's harness lists the MCP server's tools at session start, the token is injected from a connection at launch, and the template snapshot contains the server definition but no secret.
+
+## Before you start
+
+- You are an admin with an org-scoped API key.
+- The MCP server runs as a local command. The official Stripe server, `npx -y @stripe/mcp --tools=all`, is used below; it reads `STRIPE_SECRET_KEY` from the environment.
+- The agent's template exists and builds successfully.
+
+## Do it
+
+<Steps>
+  <Step title="Define the server without the secret">
+    In **Settings > Context > Tools & MCP** click **New tool or MCP server** and choose **MCP server**. Give it the command and arguments only. Do not add the key as an environment variable here; anything in the directive is written verbatim into the snapshot.
+
+    {/* cli: runtm-api mcp create --name stripe-mcp --display-name "Stripe MCP" --description "Typed Stripe tools" --transport stdio --command npx --arg -y --arg @stripe/mcp --arg --tools=all */}
+  </Step>
+  <Step title="Add a connection for the token">
+    Open the new server and add a connection of kind `env` with `STRIPE_SECRET_KEY` set to a restricted read-only key. Choose the scope: org-wide for everyone, personal for yourself, or agent for one roster agent. Connections are created in the dashboard or through `POST /api/cloud/agent-directives/{id}/connections`; the CLI does not create them.
+  </Step>
+  <Step title="Attach it to the template">
+    Attach the server to the agent's template. Like a skill, an MCP server applies to nothing until it is attached.
+
+    {/* cli: runtm-api mcp attach <mcp_id> --template <template_id> */}
+    {/* cli-verify: runtm-api mcp attachments <mcp_id> */}
+  </Step>
+  <Step title="Rebuild">
+    The server definition lands in the snapshot at build time. The connection is resolved at each session start, so rotating the token later needs no rebuild.
+
+    {/* cli: runtm-api template build <template_id> */}
+    {/* cli-verify: runtm-api template get <template_id> | jq '{build_status, stale: .attachments_changed_since_build, mcp: [.mcp_servers[].name]}' */}
+  </Step>
+</Steps>
+
+## Verify
+
+Start a session from the template and ask the harness what tools it has. In Claude Code, `/mcp` lists connected servers and their tools; a prompt such as "list the Stripe MCP tools you can call" also works. If the server appears but every call fails with an authentication error, the connection is missing or has the wrong scope for this run.
+
+{/* cli: runtm-api session create --template-id <template_id> --agent claude-code */}
+{/* cli-verify: runtm-api session prompt <session_id> "List the tools exposed by the stripe-mcp server and call the one that lists the most recent charge." */}
+
+## Gotchas
+
+- **Secret in the directive.** An `--env STRIPE_SECRET_KEY=...` on the server definition bakes the key into every snapshot and shows it to anyone who can read the directive. Use a connection.
+- **Attached, not built.** The server is attached but `attachments_changed_since_build` is true. Sessions still boot the old snapshot until you build.
+- **Scope mismatch.** A personal connection is used only for runs whose effective user is you. An agent run by someone else falls to the agent connection or the org-wide one, and if neither exists the server starts unauthenticated.
+- **Provider or MCP server, not both.** If the same template also has a Stripe tool provider, the agent has two ways to reach Stripe. Pick the one the runbook uses.
+
+<Card title="3. Give it tools" icon="plug" href="/build/give-it-tools">
+  When to choose an MCP server over a tool provider, and how connections are scoped.
+</Card>

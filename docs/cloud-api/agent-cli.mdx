@@ -1,6 +1,6 @@
 ---
 title: "Agent CLI (runtm-api)"
-description: "Thin Go wrapper around the Cloud API, designed for AI coding agents"
+description: "The runtm-api CLI that coding agents use to operate Runtime: install, auth and org context, the command table, output and exit-code contract, error recovery, which command carries which capability, the assembly order that avoids silent failures, and trigger preflight. Read before running any runtm-api command, and whenever a command returns 400, 403 or 502."
 ---
 
 `runtm-api` is a small Go CLI that wraps the Runtime Cloud API. It is intentionally separate from the pip [`runtm` CLI](/open-source/cli/overview) (which handles local sandboxes, scaffolding, and deploys):
@@ -21,7 +21,7 @@ Most humans use both: the pip CLI for day-to-day work, the Go CLI when an agent 
 curl -fsSL https://runtm.com/install | bash
 ```
 
-This downloads a pre-built binary for your platform (macOS / Linux × amd64 / arm64), verifies its SHA-256 checksum, and installs `runtm-api` to `/usr/local/bin`. If Claude Code or Cursor is detected, the bundled agent skill files are auto-installed too.
+This downloads a pre-built binary for your platform (macOS / Linux × amd64 / arm64), verifies its SHA-256 checksum, and installs `runtm-api` to `/usr/local/bin`. If Claude Code or Cursor is detected, the bundled agent skill is auto-installed too.
 
 ```bash
 export RUNTM_API_KEY=runtm_sk_live_...   # from app.runtm.com → Settings → API Keys
@@ -89,7 +89,7 @@ The same API key works for both this CLI and the pip CLI.
 | `runtm-api session git <id> <op>` | Run a git operation (commit, push, create_branch_and_pr, ...). |
 | `runtm-api agents list\|create\|update\|delete` | The agent roster (no `--type`); triggers with `--type slack\|github\|linear\|email`. |
 | `runtm-api agents scorecard` | Per-agent performance, spend, and budget. |
-| `runtm-api template list` | List org templates (requires `--org` / `RUNTM_ORG_ID`). |
+| `runtm-api template list` | List org templates (needs an org-scoped API key; the org is read from the key). |
 | `runtm-api template get <id>` | Inspect one template, including its attached skills and build staleness. |
 | `runtm-api template context get\|set\|resolve <id>` | The template's instruction block and the effective stack. |
 | `runtm-api template guardrails list\|create\|update\|delete\|resolve <id>` | Template-scoped guardrails. |
@@ -101,7 +101,7 @@ The same API key works for both this CLI and the pip CLI.
 | `runtm-api groups usage <team_id>` | What an owning group owns. |
 | `runtm-api github installations\|repos\|add-repo` | GitHub App installations and repo access. |
 | `runtm-api deployments list\|get\|logs\|destroy` | The deployments sessions ship (alias: `deploy`). |
-| `runtm-api skills install` | Install the agent skill files into `~/.claude/skills/runtm/` and/or `~/.cursor/skills/runtm/`. |
+| `runtm-api skills install` | Install the agent skill (`SKILL.md`) into `~/.claude/skills/runtm/` and/or `~/.cursor/skills/runtm/`. |
 
 Run `runtm-api --help` or `runtm-api <command> --help` for full flag reference.
 
@@ -118,10 +118,11 @@ The two streams are captured separately and PTY carriage returns are stripped. T
 
 Bash history expansion is disabled for the command in both modes, so a literal `!` in a heredoc, commit message, or regex reaches the sandbox intact. A paused sandbox is resumed automatically by `exec`, `connect`, and the file commands.
 
-## Output and exit codes
+## Output contract and exit codes
 
-- Stdout is always JSON. For `session prompt`, stdout is JSON lines (one per SSE event).
+- Stdout is always JSON. Parse it directly; never scrape the PTY stream (see `--json` above).
 - Stderr carries structured error JSON: `{"error": "...", "status": 401, "hint": "..."}`.
+- Streaming commands (`session prompt`, `session events`, `session deploy run`, `template build-logs`) emit JSON lines, one per server event: `{"event": "<type>", "data": <payload>}`. The stream ends with an `event` of `done`.
 - Exit codes:
 
 | Code | Meaning |
@@ -131,23 +132,169 @@ Bash history expansion is disabled for the command in both modes, so a literal `
 | `2` | Auth error (missing or invalid key) |
 | `3` | Usage error (bad flags) |
 
-## Agent skills
+## Org context
 
-The CLI ships with a set of SKILL.md files **embedded into the binary** ([`packages/agent/skills/`](https://github.com/runtm-ai/runtm/tree/main/packages/agent/skills)):
+Org-scoped operations (templates, agents, scheduled agents, skills, MCP servers, tools, guardrails, team secrets, org instructions, team telemetry) need an **org-scoped API key**. The org is bound to the key when it is created and cannot be changed at call time.
 
-- `SKILL.md`: command cheat sheet, auth, error recovery, trigger words (`runtm`, `runtime`).
-- `runtm-sessions.md`: multi-step workflows (launch from template, iterate, poll, open PR).
-- `runtm-templates.md`: discovering, inspecting, and verifying org templates.
-- `runtm-automation.md`: scheduled agents: cron syntax, `run-now`, debugging a schedule that didn't fire.
-- `runtm-integrations.md`: skills, MCP servers, tools, and how attachments reach a template.
-- `runtm-agents.md`: Slack/GitHub event-driven agents.
-- `runtm-debug.md`: inspecting a session when something is wrong.
+| Key | What you pass | Result |
+|---|---|---|
+| Org-scoped | nothing | Works, the org is read from the key |
+| Org-scoped | `--org` matching the key | Works, redundant |
+| Org-scoped | `--org` for another org | `403` |
+| Personal | anything | `403`, a personal key can never reach an org |
 
-These are workflow recipes that teach the agent how to use the CLI. They are auto-installed by the one-liner installer when `~/.claude` or `~/.cursor` exists, and can be re-installed any time with:
+`--org` and `RUNTM_ORG_ID` can only restate the key's own binding. If a command reports the key is personal, create an org-scoped key under **Settings > API Keys**; setting the env var does nothing.
+
+```bash
+runtm-api auth status | jq .organization_id   # null means a personal key
+```
+
+Writes to agents, triggers, scheduled agents, team secrets, org instructions and guardrails also need an **admin or owner** role behind the key.
+
+## Resolving required inputs
+
+1. Check context first: prior command output, the conversation, environment variables.
+2. If a value is missing, run the matching `list` or `get`: `session list` for a session id, `template list` for a template id, `agents list` for an agent id, `agents list --type slack` for a Slack integration id.
+3. If it is still ambiguous, ask the user.
+4. Never run a command with an unresolved placeholder such as `<id>` or `<org>`.
+
+## Endpoint strategy
+
+Everything goes to the Cloud API at `https://app.runtm.com/api/cloud`. Three deliberate `/api/v0/` fallbacks remain because they were built for fire-and-forget agent use:
+
+| Command | Path | Why |
+|---|---|---|
+| `session launch` | `POST /api/v0/sessions/launch` | One call creates the session and fires the prompt |
+| `session status` | `GET /api/v0/sessions/{id}` | Returns the `last_prompt` polling envelope |
+| `session prompt` | `POST /api/v0/sessions/{id}/prompt` | Synchronous SSE stream; the canonical route splits into a 202 plus an events feed |
+
+`deployments list|get|logs|destroy` also proxies `/api/v0/deployments*`, so a deployment a session shipped can be tracked and torn down without the pip CLI.
+
+## Error recovery
+
+| Status | Cause | Fix |
+|---|---|---|
+| `400` on `agents create --type slack` | The org's Slack app configuration token is not set | Set it once in the dashboard (no CLI equivalent), then retry. See Trigger preflight below |
+| `400` on `agents create --type email` | The platform inbox provider is unavailable | Check `GET /api/v1/email/status` |
+| `401` | API key invalid or missing | Set `RUNTM_API_KEY` or rotate the key in the dashboard |
+| `403` | Missing scope, personal key on an org resource, or `--org` names a different org than the key | `runtm-api auth status` to inspect scopes and `organization_id`; use an org-scoped key with the scope from [Scopes](/cloud-api/scopes) |
+| `404` | Wrong id | Run the matching `list` first |
+| `409` | Conflict, for example a duplicate name or a paused session receiving a prompt | Change the name, or resume first |
+| `422` | Body validation failed | Check the endpoint schema in this reference |
+| `429` | Rate limited | Back off 5 to 10 seconds and retry |
+| `502` on `scheduled-agents run-now` | The launch itself failed (unknown template, deleted Slack integration) | Read `detail`; this is `run-now` doing its job, catching what would otherwise fail at the scheduled hour |
+| `503` on `scheduled-agents create|update` | The scheduler is not configured in this environment | Create with `--disabled` and drive it with `run-now` |
+| `5xx` | Sandbox or upstream | Retry once; check https://status.runtm.com |
+
+## Which command carries which capability
+
+Everything an agent can do hangs off one template. The roster row carries identity; the template carries capability. Plan the list before creating anything, and check what the org already has.
+
+| The agent needs to... | Primitive | Command |
+|---|---|---|
+| Follow a written procedure | Skill | `skills create` or `skills import` |
+| Call a service with typed tools | MCP server | `mcp create` |
+| Authenticate to a service | Tool provider connection | `tools create` (org or personal scope; agent scope in the dashboard) |
+| Be prevented from doing something | Guardrail | `guardrails rules|hooks|network` or `template guardrails` |
+| Always be told something | Template context | `template context set` |
+
+```bash
+runtm-api skills list                 # skills the org already has
+runtm-api mcp list                    # MCP servers already defined
+runtm-api tools providers list        # services already wired for credentials
+runtm-api template list               # a template to extend instead of a new one
+runtm-api skills discover --repo <owner/repo>   # read-only: what a repo offers
+```
+
+## Assembly order and the failures that are silent
+
+Create the template first, attach everything, verify, build once, then the roster agent, then the trigger. The [Build pages](/build/overview) explain why; this is the CLI shape.
+
+```bash
+TMPL=$(runtm-api template create --name support-agent --display-name "Support Agent" --github-repo <owner/repo> --tier standard | jq -r .id)
+runtm-api skills import --source github_repo --uri <owner/repo> --attach-template "$TMPL"   # import attaches in the same call
+SKILL=$(runtm-api skills create --name support-triage --md ./SKILL.md | jq -r .directive.id)
+runtm-api skills attach "$SKILL" --template "$TMPL"        # create has no attach flag; attach merges, --replace discards the rest
+runtm-api template get "$TMPL" | jq '{skills:[.skills[].name], mcp:[.mcp_servers[].name], stale:.attachments_changed_since_build}'
+runtm-api template build "$TMPL" --skip-agent
+runtm-api template get "$TMPL" | jq -r .build_status        # poll to ready
+AGENT=$(runtm-api agents create --name Support --instructions "$(cat instructions.md)" --template support-agent --agent claude-code | jq -r .id)
+runtm-api agents update "$AGENT" --evaluator-criteria "$(cat rubric.json)"
+runtm-api agents create --type email --name support-inbox --agent-id "$AGENT"
+```
+
+`template create --skip-agent` implies `--build`: the clone-only fast path builds immediately, so anything attached afterwards needs a rebuild. Batch attachments and build once; rebuilding after every attach churns the snapshot.
+
+These fail with no error, only an agent that cannot do its job:
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Agent runs but ignores its skills | Skills created, never attached | `skills attach <id> --template <t>`, then rebuild |
+| `template get` lists the skills, sessions do not have them | Attached after the last build | `attachments_changed_since_build: true`, run `template build` |
+| Built template has an empty `skills` list | Built before attaching (often via `--skip-agent`) | Attach, then rebuild |
+| Agent has no special behaviour at all | Roster agent has no template | `agents update <id> --template <name>` |
+| Scorecard is all zeros | No evaluation categories on the agent | `agents update <id> --evaluator-criteria '{...}'` |
+| Trigger fires with none of the agent's identity | Trigger not bound to the roster agent | Bind through `config.agent_id`: `--agent-id` on email at create, `--config '{"agent_id":"<roster_id>"}'` on the others |
+
+Prove a capability landed before wiring the trigger:
+
+```bash
+SID=$(runtm-api session create --template-id "$TMPL" | jq -r .id)
+runtm-api session exec "$SID" --json -- 'ls ~/.claude/skills'
+runtm-api session destroy "$SID"
+```
+
+## Roster versus triggers
+
+`agents` with no `--type` is the roster (identity, instructions, rubric, budget). `--type slack|github|linear|email` is a trigger integration. Same verbs, different resource.
+
+- `update` is a partial patch: only the flags you pass change. `--config '<json>'` merges into the trigger's config server-side, so a one-key patch never clobbers `triggers` or `channel_template_map`. `--model` is shorthand for `config.default_model`.
+- `--clear-template` sends an explicit null and clears the roster's default template, fanning out to every linked trigger. Omitting `--template` leaves it unchanged.
+- The rubric's version bumps on every edit, and every grade records the `criteria_version` that produced it.
+- Email has no get-by-id route; `agents get <id> --type email` is resolved from the list.
+- Deleting a roster row while a trigger still references it is not durable: the trigger's lazy sync recreates the row. Delete or reassign triggers first.
+
+## Trigger preflight
+
+Check these before `agents create --type ...` so you fail with an explanation instead of a bare `400`:
+
+- **Slack** needs the org's Slack app configuration token, set once in the dashboard. There is no CLI command for it. Create returns an `authorize_url` to open; the trigger is created on approval.
+- **GitHub** cannot be a clickable link. The App-manifest flow requires a form POST, so the CLI writes an auto-submitting HTML page (`open` in the response) for you to open in a browser. `--github-org` picks the owner, `--return-url` where GitHub sends you back.
+- **Linear** is headless only with `--linear-api-key` plus `--service-user` (the Runtime user id the bot's sessions run as). Managed OAuth returns an install URL to open.
+- **Email** is fully headless and provisions an inbox. `--agent-id` binds it to a roster agent so runs inherit defaults and rubric. If it returns `400`, check `GET /api/v1/email/status`.
+
+Slack, GitHub and managed Linear finish in a browser. When running unattended, prefer Email or a scheduled agent and hand the browser step back to a person; do not loop on the manifest endpoint.
+
+## Scheduled agents from the CLI
+
+Aliases: `scheduled-agents` also answers to `schedules` and `cron`; `run-now` also answers to `run` and `trigger`.
+
+- The order that works is create `--disabled`, `run-now`, read the session, then `update --enabled`. `run-now` works on disabled agents and stamps `last_run_at` and `last_session_id` like any tick.
+- Cron is five fields in UTC with no per-agent time zone. Daily 11:00 Pacific is `0 19 * * *` in winter and `0 18 * * *` in summer; re-derive it when daylight saving shifts.
+- `next_run_at` is null while the agent is disabled, because a disabled agent has no scheduler job.
+- `--slack-integration` and `--slack-channel` travel as a pair; one without the other is rejected. Find integration ids with `agents list --type slack`. Runtime posts the result after the run; the sandbox does not need Slack egress.
+- The prompt decides the output shape. A prompt that ends "post the Block Kit JSON" pastes raw JSON into the channel; ask for a short plain-text summary when a person reads it.
+- Pause with `--disabled` rather than delete: the scheduler job goes away, the prompt, template and post target stay.
+- "It was supposed to run and nothing happened", in order: `get <id>` and check `enabled` and `next_run_at`; compare `last_run_at` with the expected time (unchanged means the tick never fired, updated means the failure is inside the run); `run-now` to reproduce, a `502` carries the reason; `session history <last_session_id>`.
+
+## Subcommand discovery
+
+```bash
+runtm-api --help
+runtm-api <area> --help    # auth, session, template, agents, scheduled-agents, guardrails, skills, mcp, tools, groups, deployments, github, activity, secrets, instructions, providers
+runtm-api session deploy --help
+runtm-api template fix-session --help
+```
+
+## The agent skill
+
+The CLI embeds one `SKILL.md` ([`packages/agent/skills/`](https://github.com/runtm-ai/runtm/tree/main/packages/agent/skills)) and installs it into `~/.claude/skills/runtm/` and `~/.cursor/skills/runtm/` when those directories exist. The installer does this automatically; re-run it any time with:
 
 ```bash
 runtm-api skills install
 ```
+
+The skill is deliberately short. It teaches the golden paths, the rules that fail silently, and the output contract on this page, and it points at https://docs.runtm.com/llms.txt for everything else: an agent reads the index, picks a page by its description, fetches `https://docs.runtm.com/<page>.md`, and lifts the `cli:` comments that every Build and Guides step carries. Inside a sandbox the same content is reachable through the sandbox's fetch tool or `curl`.
 
 ## Source
 

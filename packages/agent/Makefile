@@ -28,6 +28,7 @@ sync-skills:
 	@# Mirror skills/ -> internal/skills/files/ so the //go:embed copy in the
 	@# binary matches what we ship in the release tarball under skills/.
 	@mkdir -p internal/skills/files
+	@rm -f internal/skills/files/*.md
 	@cp skills/*.md internal/skills/files/
 
 .PHONY: build

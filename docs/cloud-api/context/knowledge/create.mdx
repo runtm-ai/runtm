@@ -24,7 +24,11 @@ For OAuth-based providers, use the [OAuth Install](/cloud-api/context/knowledge/
 </ParamField>
 
 <ParamField body="scope" type="string" default="org">
-  `"org"` for a shared integration or `"personal"` for a user-scoped one.
+  `"org"` for a shared integration, `"personal"` for a user-scoped one, or `"agent"` for a connection that resolves only in sessions running as one roster agent. Sessions resolve one connection per provider in the order agent, then personal, then org; see [the credential hierarchy](/build/give-it-tools#who-the-agent-acts-as-the-credential-hierarchy).
+</ParamField>
+
+<ParamField body="agent_id" type="string">
+  Required when `scope` is `"agent"`: the roster agent id (`agents.id`) whose sessions receive this connection.
 </ParamField>
 
 <ParamField body="display_name" type="string">

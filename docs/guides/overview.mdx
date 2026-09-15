@@ -1,50 +1,67 @@
 ---
-title: Guides
-description: "Practical patterns for using the Runtime API"
+title: "Guides"
+description: "Worked agents for payments operations (support, fraud and risk review, merchant underwriting) built end to end in the six Build steps, plus short recipes for one task each. Read when you want a working agent to copy rather than the method."
 ---
 
-These guides cover the patterns and workflows you will use most often with the Runtime API - whether you are calling it from your terminal, letting a coding agent orchestrate cloud sessions, or integrating it into a CI pipeline or backend service. Each guide includes code samples in cURL, Python, and JavaScript.
+The Documentation tab teaches the method: six steps, capable first, then safe. This tab is where you copy a working agent. Each example below is one agent for a payments operations team, built in the same six steps, with the concrete values filled in: the job, the evaluation categories, the tools and their credential scopes, the runbook skill, the trigger, the seeded cases, and the guardrails added last.
 
-If you are new to Runtime, start with the [Quick Start](/quickstart) and the [API Overview](/cloud-api/overview), then come back here for deeper patterns.
+Every page reads at its `.md` URL as a runbook for the `runtm-api` CLI, because each dashboard step carries its CLI equivalent as a hidden comment.
 
-## Get started
+## Payments operations
 
-<CardGroup cols={2}>
-  <Card title="Authenticate and manage API keys" icon="key" href="/guides/authentication-walkthrough">
-    Create, verify, scope, rotate, and revoke API keys. Understand personal vs organization keys.
+<CardGroup cols={3}>
+  <Card title="Payment support agent" icon="headset" href="/guides/payments/support-agent">
+    Reconstructs a charge, decline or refund from Zendesk, Stripe and the ledger and drafts a cited reply. Slack mention and email inbox. Approval before anything reaches the customer.
+  </Card>
+  <Card title="Fraud and risk review agent" icon="shield" href="/guides/payments/fraud-risk-agent">
+    Every 30 minutes, turns new Radar reviews and velocity alerts into a review packet posted to Slack. Enforcement stays human.
+  </Card>
+  <Card title="Merchant underwriting agent" icon="building-columns" href="/guides/payments/underwriting-agent">
+    Compares KYB results, registry data and the application, and writes a decision memo with open items. Linear tickets and a weekly periodic review.
+  </Card>
+  <Card title="Multi-agent: underwriting re-review" icon="sitemap" href="/guides/payments/multi-agent-underwriting">
+    An Underwriting Agent triggered from Slack delegates research to a Risk Agent and a block to an Engineering Agent, each behind a human approval. How subagents are triggered, attributed and graded.
   </Card>
 </CardGroup>
 
-## Core API patterns
+The three single-agent examples follow the same order as [Build an agent](/build/overview); the multi-agent example builds each agent that way and then wires them together. If you are building something else, pick the closest one and change the values.
+
+| | Support | Fraud and risk | Underwriting |
+|---|---|---|---|
+| Reached by | Slack mention, email | cron every 30 minutes, Slack post | Linear assignment, weekly cron |
+| Tools | Zendesk, Stripe, Postgres | Stripe, BigQuery, Postgres | Middesk (custom), Postgres, Notion |
+| Agent-scoped credential | Zendesk bot token | Stripe key with Radar read | Middesk key |
+| Success categories | decline-explanation, duplicate-charge, refund-status | card-testing, velocity-spike, merchant-linkage | new-application, periodic-review, discrepancy |
+| Approval gate | before posting a reply | before recommending a block | before attaching the memo, before a document request |
+
+## Recipes
+
+One task each, five minutes each.
 
 <CardGroup cols={2}>
-  <Card title="Manage sessions at scale" icon="cube" href="/guides/managing-sessions-at-scale">
-    Session lifecycle, polling, heartbeats, retries, and error recovery.
+  <Card title="Connect Stripe with a restricted read-only key" icon="key" href="/guides/recipes/connect-stripe-read-only">
+    Stripe as a custom provider, the restricted key, and the skill that requires it.
   </Card>
-  <Card title="Stream prompts over WebSockets" icon="bolt" href="/guides/streaming-prompts-over-websockets">
-    Token exchange, the Prompt WebSocket protocol, event types, and reconnection handling.
+  <Card title="Add a KYB provider as a custom tool provider" icon="id-card" href="/guides/recipes/add-kyb-provider">
+    Middesk, Persona or Alloy as a static-key provider scoped to one agent.
   </Card>
-  <Card title="Work with session files" icon="file" href="/guides/working-with-files">
-    Read, write, upload, download, and search files inside a running sandbox.
+  <Card title="Add an MCP server with an API-token connection" icon="plug" href="/guides/recipes/add-mcp-server-with-token">
+    A stdio MCP server whose secret lives on a connection, never in the snapshot.
   </Card>
-  <Card title="Handle long-running prompts" icon="hourglass" href="/guides/long-running-prompts">
-    Cancel, rewind, replay history, and choose between REST and WebSocket for prompt control.
+  <Card title="Route one Linear team to a different template" icon="route" href="/guides/recipes/route-linear-team-to-template">
+    Team overrides on the agent's Linear trigger.
   </Card>
-  <Card title="Pull activity and telemetry" icon="chart-line" href="/guides/pulling-activity-and-telemetry">
-    Read personal and team activity, usage summaries, traces, and per-session cost data.
+  <Card title="Test a scheduled agent before enabling it" icon="clock" href="/guides/recipes/test-scheduled-agent-before-enabling">
+    Create disabled, run now, read the session, then enable.
   </Card>
-  <Card title="Webhooks and triggers" icon="webhook" href="/guides/webhooks-and-triggers">
-    Outbound webhook events Runtime emits and how to consume them from external systems.
+  <Card title="Request an approval from inside a run" icon="hand" href="/guides/recipes/request-approval-from-a-run">
+    The runtm-approval helper and who can resolve it.
+  </Card>
+  <Card title="Delegate work to another agent" icon="share-nodes" href="/guides/recipes/delegate-to-another-agent">
+    The delegate script, the gate hook and the two-line command the dashboard recognises.
   </Card>
 </CardGroup>
 
-## Best practices
+## Looking for API patterns?
 
-<CardGroup cols={2}>
-  <Card title="Best practices" icon="shield" href="/guides/best-practices">
-    Key hygiene, scope selection, lifecycle management, prompt design, and cost controls.
-  </Card>
-  <Card title="Teach the agent your codebase" icon="brain" href="/guides/teach-the-agent-your-codebase">
-    AGENTS.md, skills, and org instructions - how the three context layers compose.
-  </Card>
-</CardGroup>
+Authentication, sessions at scale, streaming prompts over WebSockets, session files, long-running prompts, activity and telemetry, and outbound webhooks moved to the API Reference tab under [Patterns](/cloud-api/patterns/authentication).

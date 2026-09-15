@@ -1,0 +1,127 @@
+---
+title: "1. Define the job"
+description: "Create a roster agent with a name, description, system instructions, default template and coding agent, and write an objective that states input, output and boundary. Read before `runtm-api agents create` or the Agents > New Agent dialog."
+---
+
+## Outcome
+
+A roster agent exists with a one-line description that states its job and system instructions that say how to do it and what never to do. Every trigger you connect later inherits this profile.
+
+## Decide
+
+**What is the input, the output, and the boundary?** An objective that names all three grades well and stays out of trouble.
+
+| | Bad | Good |
+|---|---|---|
+| Objective | "Help with payments." | "Given a Zendesk ticket about a charge, reconstruct the payment timeline from Stripe and the ledger and draft a customer reply. Never send it." |
+| Why | Nothing to grade, nothing to stop. | Input (a ticket), output (a draft with evidence), boundary (never send). The success criteria in step 2 write themselves. |
+
+**What does the agent never do?** Money movement, status changes, customer-facing sends, account blocks. Write these as flat prohibitions in the system instructions now. Enforce them with guardrails in step 6, after the agent has proven in step 5 that it can do the job with read-only access. Instructions alone are advice; guardrails are enforcement; the order matters because a rule written before the first run is a guess.
+
+**Which coding agent runs it?** The coding agent (harness) is the program that executes the run inside the sandbox. Templates and sessions accept five: `claude-code`, `codex`, `opencode`, `cline` and `github-copilot`. Cursor, Devin and Gemini exist as interactive terminal harnesses for hands-on sessions and need your own provider key; they have no prompt API, so triggers cannot drive them.
+
+| Harness | Driven by triggers (prompt API) | Streaming, plan mode, todos | Attachments | Platform credits | Notes |
+|---|---|---|---|---|---|
+| `claude-code` | yes | yes | yes | yes | Default. Only harness with message editing (rewind and branch). Models: `sonnet`, `opus`, `haiku`, `fable`; free tier is sonnet and haiku. |
+| `codex` | yes | yes | yes | no | GPT models (`gpt-5.4`, `gpt-5.5`, `gpt-5.6-sol`, `gpt-6-astra`). |
+| `opencode` | yes | yes | yes | no | Provider-qualified model ids such as `anthropic/claude-sonnet-5` or `moonshot/kimi-k3`. |
+| `cline` | yes | no | no | no | Anthropic models only. |
+| `github-copilot` | no | no | no | no | Terminal only; `gh auth login` with `GH_TOKEN`. |
+
+Pick `claude-code` unless you have a reason not to; every worked example in Guides uses it.
+
+**Which template does it run on?** The template is where tools, MCP servers, secrets and skills live. If you have not built one yet, create a blank one now and fill it in during [Give it tools](/build/give-it-tools). An agent without a default template launches on a bare sandbox and has no tools.
+
+## Do it
+
+<Steps>
+  <Step title="Open Agents > New Agent">
+    The dialog walks through **Profile**, **Instructions**, **Triggers**. Its own description says it: "Define the agent once, then connect it to Slack, Linear, and GitHub."
+
+    <Frame caption="Profile: the name is shared by every trigger; the avatar syncs to the Slack app icon.">
+      <img src="/images/build/new-agent-profile.png" alt="New Agent dialog, Profile step with name and avatar picker" />
+    </Frame>
+
+    **Agent name** is at most 34 characters and is what people will type after `@` in Slack. Pick the avatar; when a Slack app is connected later, its icon is set from this.
+  </Step>
+
+  <Step title="Write the description and system instructions">
+    <Frame caption="Instructions: one line of job, then the how and the never.">
+      <img src="/images/build/new-agent-instructions.png" alt="New Agent dialog, Instructions step with Description and System instructions fields" />
+    </Frame>
+
+    **Description** (up to 2,000 characters) is the objective sentence from Decide. It appears on the agent card and is what the onboarding flow calls the mirror line.
+
+    **System instructions** (up to 20,000 characters) is the agent's persona and method. A shape that works for operations agents:
+
+    ```markdown
+    You are the payment support investigator for Acme.
+
+    Input: a Zendesk ticket ID or a Slack question about a specific charge.
+    Output: a draft reply in the ticket's tone, followed by an evidence
+    section listing every Stripe object and ledger row you relied on.
+
+    Method:
+    1. Identify the customer from the ticket, never from free text in the message.
+    2. Pull the charge, its payment intent, refunds and disputes from Stripe.
+    3. Pull the matching ledger rows from the read-only database.
+    4. Separate what the processor said from what our own policy did.
+
+    Never:
+    - Send, post or close anything in Zendesk. Draft only.
+    - Issue refunds or touch any Stripe object that is not a read.
+    - Look up more than the one customer the ticket names.
+    When the ticket needs a refund, request an approval and stop.
+    ```
+
+    Click **Create agent**. Skip **Triggers** for now; the [Triggers](/build/how-it-works/triggers) page covers them.
+
+    {/* cli: runtm-api agents create --name "Payment Support" --description "Given a Zendesk ticket about a charge, reconstruct the payment timeline from Stripe and the ledger and draft a customer reply. Never send it." --instructions "$(cat instructions.md)" */}
+  </Step>
+
+  <Step title="Set the default template and coding agent">
+    Click the new agent's card to open its sheet. On the **Profile** tab, set **Default template** and **Coding agent**. The helper text explains the scope: "Used by every connected trigger. A trigger's own settings tab can still override these for that trigger only."
+
+    <Frame caption="The agent sheet: default template and coding agent are shared by every trigger.">
+      <img src="/images/build/agent-edit-profile.png" alt="Agent edit sheet, Profile tab with Default template and Coding agent selectors" />
+    </Frame>
+
+    Click **Save profile**. Saving fans the profile out to every trigger already bound to the agent.
+
+    {/* cli: runtm-api agents update <agent_id> --template <template_name> --agent claude-code */}
+    {/* cli-verify: runtm-api agents get <agent_id> | jq '{name, default_template, default_agent}' */}
+  </Step>
+</Steps>
+
+## Verify
+
+<Frame caption="The roster: one card per agent with its description, trigger icons and creator.">
+  <img src="/images/build/agents-roster.png" alt="Agents page listing roster agents as cards" />
+</Frame>
+
+Open **Agents**; the card shows the name and description. `runtm-api agents get <agent_id>` returns `name`, `description`, `system_instructions`, `default_template` and `default_agent`. If `default_template` is null, the agent will run on a bare sandbox.
+
+{/* cli-verify: runtm-api agents get <agent_id> */}
+
+## Where instructions sit
+
+System instructions are layer 5 of 9 in the instruction stack that Runtime writes into every session. Runtime's own session instructions, the template's environment notes and the agent's communication channels come first; the organization's custom instructions, the template's context, the user's defaults and any per-session override come after and win on conflict. So an org-wide instruction such as "never paste card numbers" beats anything an agent's persona says, and a template's "use the `acme` Postgres role" beats the agent's generic database advice. Details in [Instructions](/build/how-it-works/instructions).
+
+## Gotchas
+
+- **`--template` is the template's name, not its ID.** The roster agent stores `default_template` by name. `runtm-api template list` shows both.
+- **An agent with no default template still launches.** It just launches on a bare sandbox with no tools, no skills and no secrets, and the run fails for reasons that look like the agent's fault.
+- **Agents require an organization.** In personal mode the Agents page says "Agents require an organization". Switch to an org, and use an org-scoped API key for the CLI; a personal key cannot see org agents no matter which `--org` you pass.
+- **Instructions are not enforcement.** "Never issue refunds" in the persona is advice the model usually follows. A deny rule on the refund command in [Guardrails](/build/guardrails-and-approvals) is what makes it impossible.
+- **Description is for people; instructions are for the model.** Do not repeat the whole method in the description; the card truncates it to two lines.
+- **Roster versus trigger in the CLI.** `runtm-api agents` with no `--type` is the roster; `--type slack|github|linear|email` is a trigger integration. Same verb, different resource.
+- **`--clear-template` clears; omitting `--template` leaves it alone.** `agents update` is a partial patch, and clearing fans out to every linked trigger.
+
+<CardGroup cols={2}>
+  <Card title="2. Measure success" icon="chart-line" href="/build/measure-success">
+    Turn the objective into evaluation categories the grader can score.
+  </Card>
+  <Card title="Agents API" icon="code" href="/cloud-api/agents/overview">
+    The agent object and every field.
+  </Card>
+</CardGroup>

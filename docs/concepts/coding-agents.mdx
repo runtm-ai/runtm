@@ -1,9 +1,9 @@
 ---
 title: Coding Agents
-description: "The AI coding agents that power Runtime sessions and background runs"
+description: "The coding agents (harnesses) that execute a run: Claude Code, Codex, OpenCode, Cline, GitHub Copilot, plus the interactive-only Cursor, Devin and Gemini, with models and capabilities. Read when choosing or changing the coding agent on a template or roster agent."
 ---
 
-Runtime supports seven coding agents. Every [session](/concepts/sessions) and [background agent run](/concepts/agents) is powered by one of these. Pick the agent that fits your workflow, or run different agents in parallel across sessions.
+Runtime supports seven coding agents. Every [session](/concepts/sessions) and [background agent run](/build/how-it-works/triggers) is powered by one of these. Pick the agent that fits your workflow, or run different agents in parallel across sessions.
 
 ## Prompt API agents
 
@@ -106,6 +106,6 @@ Valid values: `claude-code`, `codex`, `opencode`, `github-copilot`, `cursor-cli`
 Coding agents power two Runtime workflows:
 
 - **[Sessions](/concepts/sessions)** - interactive environments where you work alongside the agent in real time, sending prompts and watching output
-- **[Background agents](/concepts/agents)** - autonomous runs triggered from Linear, Slack, GitHub, or the API that produce a pull request without human intervention
+- **[Background agents](/build/how-it-works/triggers)** - autonomous runs triggered from Linear, Slack, GitHub, or the API that produce a pull request without human intervention
 
 The same agent, same sandbox, same [context and guardrails](/concepts/context) apply in both cases. The difference is whether you're watching or not.

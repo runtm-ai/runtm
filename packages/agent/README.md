@@ -4,7 +4,7 @@ A small Go CLI plus AI agent skills that let coding agents (Claude Code, Cursor,
 
 > _"Use runtm to launch a session against our Internal API template, fix the auth middleware, and open a PR."_
 
-The agent reads the bundled `SKILL.md`, knows which `runtm` commands to run, and executes them autonomously.
+The agent reads the bundled `SKILL.md`, which points it at the documentation index (https://docs.runtm.com/llms.txt) for the method and every recipe, and executes the `runtm-api` commands it finds there.
 
 This package is intentionally separate from the pip `runtm` CLI under [`packages/cli/`](../cli/). The pip CLI is a developer-facing tool with interactive prompts, local sandboxes, and deploy workflows. The Go CLI in this directory is a **thin HTTP wrapper** designed for AI agents: stdlib JSON in, stdlib JSON out, predictable exit codes, no interactive UI.
 
@@ -21,7 +21,7 @@ export RUNTM_API_KEY=runtm_sk_live_...   # from https://app.runtm.com → Settin
 runtm-api auth status
 ```
 
-Skills are embedded in the binary — you can re-install them at any time via `runtm-api skills install`. No network fetch required.
+The skill is embedded in the binary; re-install it at any time via `runtm-api skills install`. The skill itself is small and defers to the docs, which `runtm-api docs [path]` can fetch for agents without a web tool.
 
 ### Install a specific version
 
@@ -103,15 +103,11 @@ export RUNTM_API_URL=http://localhost:8081/api
 - Stderr carries structured error JSON: `{"error": "...", "status": 401, "hint": "..."}`.
 - Exit codes: `0` ok, `1` API error, `2` auth error, `3` usage error.
 
-## Skills
+## Skill
 
-Three files in [`skills/`](./skills) teach AI agents how to use this CLI:
+One file, [`skills/SKILL.md`](./skills/SKILL.md), teaches AI agents how to use this CLI. It is deliberately short: how to read the docs (`https://docs.runtm.com/llms.txt`, then `<page>.md`, then lift the `{/* cli: ... */}` comments), the six-step method for building an agent, two golden paths, the rules that fail silently, auth and org context, and the output contract.
 
-- [`SKILL.md`](./skills/SKILL.md) - command cheat sheet, auth, error recovery, trigger words (`runtm`, `runtime`).
-- [`runtm-sessions.md`](./skills/runtm-sessions.md) - multi-step workflows (launch from template, iterate, poll, open PR).
-- [`runtm-templates.md`](./skills/runtm-templates.md) - discovering and inspecting org templates.
-
-These are workflow recipes, not API documentation. Full endpoint details live at https://docs.runtm.com/cloud-api.
+Everything else lives in the docs, which are the single source of truth: the Build pages (method), Guides (worked agents and recipes), and API Reference > Patterns (session, template and debugging recipes for the CLI). Change the docs, not the skill, when behaviour changes.
 
 ## Layout
 
@@ -122,7 +118,7 @@ packages/agent/
   internal/client/            # HTTP wrapper, JSON + SSE
   internal/cmd/               # cobra subcommands
   internal/skills/            # //go:embed wrapper for skills/
-  skills/                     # SKILL.md files (embedded into binary)
+  skills/                     # SKILL.md (embedded into binary)
   .goreleaser.yml             # cross-compile + GitHub Releases config
   Makefile                    # local build / dev targets
 ```
@@ -131,7 +127,6 @@ The hosted installer script lives in `runtm-landing/public/install` and is serve
 
 ## Roadmap
 
-- `runtm skills install` - auto-install skills for the detected AI tool.
 - Agent-mode auto-detection via env vars (`CLAUDE_CODE`, `CURSOR_AGENT`, etc.) for smarter defaults.
 - An MCP server (`runtm mcp serve`) for tools that prefer MCP over CLI invocation.
 - Replace the pip CLI entirely with this Go implementation.

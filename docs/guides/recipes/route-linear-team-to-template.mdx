@@ -1,0 +1,53 @@
+---
+title: "Route one Linear team to a different template"
+description: "Send issues from one Linear team to a different template than the agent's default so that team's runs get their own repo, tools and skills. Read when one agent serves several teams and one of them needs a different environment."
+---
+
+## Outcome
+
+Issues assigned to the agent from one Linear team launch on a dedicated template. Every other team keeps using the agent's `Default template`.
+
+## Before you start
+
+- The agent has a Linear trigger connected, visible as a **Linear** tab in the agent's sheet.
+- The second template exists and has built successfully.
+- You know the Linear team's key or id, shown in Linear under the team's settings.
+
+## Do it
+
+<Steps>
+  <Step title="Confirm the fallback">
+    Open the agent from **Agents** and check **Default template** on the **Profile** tab. This is what every trigger uses unless a trigger or a team override says otherwise.
+
+    {/* cli-verify: runtm-api agents get <agent_id> | jq '{name, default_template}' */}
+  </Step>
+  <Step title="Add the team override">
+    Open the **Linear** tab. Under **Team overrides** ("Route specific Linear teams to a different template.") add a row: pick the Linear team and the template it should launch on. Save.
+
+    The override is stored on the Linear integration as `team_template_map`, keyed by the Linear team id. From the CLI, merge it into the integration's config.
+
+    {/* cli: runtm-api agents update <linear_integration_id> --type linear --config '{"team_template_map":{"<linear_team_id>":"<template_name>"}}' */}
+    {/* cli-verify: runtm-api agents get <linear_integration_id> --type linear | jq '.config.team_template_map' */}
+  </Step>
+  <Step title="Check the template carries what that team needs">
+    A different template means different skills, tools and secrets. Confirm the routed template has the runbook and connections that team's issues need, and that it is built.
+
+    {/* cli-verify: runtm-api template get <template_id> | jq '{build_status, skills: [.skills[].name], stale: .attachments_changed_since_build}' */}
+  </Step>
+</Steps>
+
+## Verify
+
+Create a test issue in the routed team and assign it to the agent. Open **Sessions** or **Agents > Runs**; the new run's card shows the template it launched on. Then assign an issue from any other team and confirm it launched on the default template.
+
+{/* cli-verify: runtm-api session list | jq '.[0] | {id, template_id, source}' */}
+
+## Gotchas
+
+- **Team id, not team key.** The map is keyed by Linear's team id. The dashboard picker handles this for you; the CLI does not.
+- **Deleted template.** If the routed template is deleted, runs for that team fall back to the agent's default template without warning. Remove the override when you retire a template.
+- **Profile save fans out.** Saving the agent's **Profile** pushes the default template to every trigger, but does not touch team overrides. They stay in place until you edit them on the Linear tab.
+
+<Card title="Triggers" icon="bolt" href="/build/how-it-works/triggers">
+  What each trigger sends the agent, how it replies, and what each one can override.
+</Card>

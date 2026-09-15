@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/runtm-ai/runtm/packages/agent/internal/skills"
 	"github.com/spf13/cobra"
@@ -99,9 +100,15 @@ Pass --target to override the destination directory.`,
 						return fmt.Errorf("write %s: %w", dest, err)
 					}
 				}
+				// Earlier releases shipped sibling recipe files (runtm-sessions.md,
+				// runtm-templates.md, ...) that now live in the docs. Remove any
+				// runtm-*.md the binary no longer embeds so the installed skill is
+				// exactly what this version ships, and nothing stale is loaded.
+				removed := pruneLegacySkillFiles(dir, files)
 				installed = append(installed, map[string]any{
 					"directory": dir,
 					"files":     files,
+					"removed":   removed,
 				})
 			}
 
@@ -223,4 +230,32 @@ func listEmbeddedSkills() ([]string, error) {
 		}
 	}
 	return names, nil
+}
+
+// pruneLegacySkillFiles deletes runtm-*.md files in dir that are not part of
+// the embedded set. Only the legacy sibling-skill naming pattern is touched so
+// a user's own files in the directory are never removed.
+func pruneLegacySkillFiles(dir string, embedded []string) []string {
+	keep := make(map[string]struct{}, len(embedded))
+	for _, f := range embedded {
+		keep[f] = struct{}{}
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	removed := []string{}
+	for _, e := range entries {
+		name := e.Name()
+		if e.IsDir() || !strings.HasPrefix(name, "runtm-") || !strings.HasSuffix(name, ".md") {
+			continue
+		}
+		if _, ok := keep[name]; ok {
+			continue
+		}
+		if err := os.Remove(filepath.Join(dir, name)); err == nil {
+			removed = append(removed, name)
+		}
+	}
+	return removed
 }

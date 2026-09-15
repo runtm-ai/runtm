@@ -1,0 +1,147 @@
+---
+title: "Debug a session"
+description: "Identify a session, capture its state in one pass, read files and live events, interpret the common failure modes, and take corrective action or escalate. Read when a run stalled, errored, or produced nothing."
+---
+
+When someone says something is wrong with a session ("the agent is stuck", "the build keeps failing", "what did Claude do?"), this playbook gathers enough state to either fix it or hand it back to the human with full context. Every command is `runtm-api`; the dashboard shows the same panels.
+
+## Step 1: identify the session
+
+If you have a session id, use it. Otherwise discover it:
+
+```bash
+runtm-api session list --limit 5             # all recent sessions
+runtm-api activity recent-prompts --limit 5  # most recent prompts across the org
+
+# When you know something about the session, search beats paging
+runtm-api session search -q "outbound lists"
+runtm-api session search --source schedule --created-after 2026-07-28
+```
+
+## Step 2: capture full session state in one pass
+
+Run these together for a complete snapshot:
+
+```bash
+SID=<session_id>
+
+# Canonical detail (state, agent, template, sandbox URL, timestamps)
+runtm-api session get "$SID"
+
+# Polling envelope (last_prompt status, cost, summary)
+runtm-api session status "$SID"
+
+# Workspace state (dirty files, open tabs, env, auth, instructions)
+runtm-api session workspace-state "$SID"
+
+# Per-session instructions (the CLAUDE.md the agent was reading)
+runtm-api session instructions get "$SID"
+
+# Prompt history (every prompt run in this session)
+runtm-api session history "$SID"
+
+# Effective env vars (names and sources, values masked)
+runtm-api session env get "$SID"
+runtm-api session env detected "$SID"
+
+# Pending approval gates (the reason an autopilot run is "stuck" surprisingly often)
+runtm-api session approvals list "$SID"
+
+# The run's evaluation verdict, once completed and graded
+runtm-api session grade "$SID"
+```
+
+This is the equivalent of opening the session in the dashboard and inspecting every panel.
+
+## Step 3: look at filesystem state
+
+```bash
+runtm-api session file list "$SID" --path /home/user/project
+runtm-api session file search "$SID" --query "TODO" --path /home/user/project
+runtm-api session file read "$SID" /home/user/project/package.json
+```
+
+## Step 4: follow live events (if a prompt is mid-run)
+
+```bash
+# Live SSE stream of the agent's tool use, output and result events.
+# Stops automatically when the prompt finishes.
+runtm-api session events "$SID"
+```
+
+Each stdout line is a JSON envelope:
+
+```
+{"event":"text_delta","data":{...}}
+{"event":"tool_use","data":{"name":"Edit","input":{...}}}
+{"event":"tool_result","data":{...}}
+{"event":"result","data":{"cost_usd":0.03,"summary":"..."}}
+{"event":"done","data":{...}}
+```
+
+## Step 5: interpret common failure modes
+
+| Symptom | Likely cause | Next move |
+|---------|--------------|-----------|
+| `state: error` with `error_message` set | Sandbox failed to provision (provider, template or secrets) | `runtm-api template get <tmpl_id>` and check `has_all_required: false`; verify team secrets with `runtm-api secrets list --team`. |
+| `state: paused` with no recent activity | Auto-paused after 20 minutes idle | `runtm-api session resume <id>` then re-prompt (`exec`, file and prompt commands also auto-resume). |
+| `agent_status: awaiting_approval` | The run hit an approval gate and is waiting for a decision, not broken | `runtm-api session approvals list <id>`, then `approvals resolve <id> <approval_id> --approve` or `--reject`. |
+| `last_prompt.status: timed_out` | Prompt hit the `prompt_timeout_minutes` cap | Re-run with `runtm-api session prompt <id> "..."`, or split into smaller steps. |
+| `last_prompt.status: error` | Agent or model error | Read `last_prompt.error`; check `runtm-api guardrails can-deploy` for org policy issues. |
+| Prompt running forever, no tool output | Stuck or hung | `runtm-api session prompt-cancel <id>`, then `runtm-api session status` to confirm. |
+| Files modified but no PR | Agent did not push | `runtm-api session git <id> status`, then `runtm-api session git <id> create_branch_and_pr --pr-title "..."`. |
+| Build failing repeatedly | Template environment broken | `runtm-api template fix-session <tmpl_id>` opens a session on the template to repair it; save a snapshot only once verified. |
+| Command blocked unexpectedly | A guardrail denied it | `runtm-api template guardrails resolve <tmpl_id>` shows the effective allowlist, hook and network set and which rule applies ([Guardrails and approvals](/build/guardrails-and-approvals)). |
+| Deployed but the app is down | Deployment failed after the session finished | `runtm-api deployments get <dep_id>` and `deployments logs <dep_id> --type runtime --lines 100`; find `dep_id` with `session get <id> \| jq .last_deployment_id`. |
+| Run finished but was it any good? | Nothing wrong; you want the verdict | `runtm-api session grade <id>`; requires evaluation categories on the agent ([Measure success](/build/measure-success)). |
+| `grade` says `grader_unavailable` | No Anthropic key on the org, or a grader API error | Add a provider key, then re-run a seeded case; old runs are not regraded retroactively. |
+
+## Step 6: take corrective action
+
+```bash
+# Cancel a runaway prompt
+runtm-api session prompt-cancel "$SID"
+
+# Unblock a run stalled on an approval gate
+runtm-api session approvals resolve "$SID" <approval_id> --approve --note "verified safe"
+
+# Rewind to a prior prompt (drop the failed one from history)
+runtm-api session prompt-rewind "$SID" --to-index 3
+
+# Update per-session instructions before re-prompting
+runtm-api session instructions set "$SID" --text "Always run npm test before committing."
+
+# Pause to stop spending compute while you investigate
+runtm-api session pause "$SID"
+
+# Force-destroy if it is truly hung
+runtm-api session destroy "$SID"
+```
+
+## Step 7: when to escalate to the human
+
+Stop and ask before:
+
+- Deleting a session that has uncommitted work (check `workspace-state` for dirty files first).
+- Running `runtm-api guardrails cleanup --yes`, which destroys every stuck session in the org.
+- Rewinding history past the user's last manual prompt.
+- Saving a snapshot of a fix-session that is not fully verified.
+
+## Multi-session sweep
+
+When the question is "what is going on across all our sessions?", chain:
+
+```bash
+runtm-api session list --limit 50 | jq '.sessions[] | select(.state == "error" or .state == "running") | {id, state, agent, name}'
+runtm-api activity team-summary | jq '{total_sessions, total_cost_usd, total_prompts}'
+runtm-api guardrails can-deploy
+```
+
+That is a one-screen overview equivalent to the dashboard's Activity tab.
+
+## Gotchas
+
+- **Awaiting approval looks like a hang.** Check `approvals list` before cancelling anything.
+- **Paused is not broken.** Any `exec`, file or prompt command resumes it; do not destroy a paused session to "fix" it.
+- **A denied command is silent to the agent's caller.** The transcript shows the permission decision and its reason; `template guardrails resolve` shows the rule.
+- **`session list` pages, it does not filter.** Use `session search` with `--source`, `--template`, `--created-after` to find the run you mean.

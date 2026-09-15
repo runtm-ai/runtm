@@ -1,6 +1,6 @@
 ---
 title: Context
-description: "System instructions, skills, MCP servers, reference docs, and knowledge sources that shape how every agent behaves"
+description: "The context layers every session receives: instructions (org, user, template), skills, MCP servers, docs and knowledge sources, and the boot order they are applied in. Read when an agent ignores an instruction or cannot see a tool."
 ---
 
 Context is everything an agent brings into a session beyond the prompt itself. It determines the rules the agent follows, the tools it has access to, and the reference material it can search.
@@ -59,11 +59,11 @@ Good instructions tend to fall into these categories:
 - `GET/PUT /api/instructions` - personal user instructions
 - `GET/PUT /api/organizations/{id}/instructions` - org-wide instructions
 
-See [User Instructions](/cloud-api/context/user-instructions) and [Org Instructions](/cloud-api/context/org-instructions).
+See [User Instructions](/cloud-api/context/user-instructions-get) and [Org Instructions](/cloud-api/context/org-instructions-get).
 
 ## Skills
 
-Skills are versioned, reusable bundles that teach an agent how to do something. Each skill can include:
+Skills are reusable bundles that teach an agent how to do something. Each skill can include:
 
 - **Entry markdown** (`SKILL.md`) - the main instruction document the agent reads
 - **Reference files** - code samples, schemas, examples, or configuration templates
@@ -83,7 +83,7 @@ Skills are created from the dashboard's Context > Skills tab, imported from a Gi
 
 ### Versioning
 
-Skills are versioned. When you update a skill, you publish a new version. Templates and sessions can pin to a specific version or float to the latest.
+Each skill has exactly one live version. Editing it changes every template it is attached to on the next rebuild; lock a skill to prevent edits.
 
 ### Importing from Git
 
@@ -167,10 +167,10 @@ Each provider defines the tools it exposes to agents (`search_pages`, `read_doc`
 
 Two distinct things, on two different endpoints:
 
-- A **provider** is the *definition* — the service, the auth method(s) it supports, and the tools/package it brings. Providers are either **managed** (runtm-seeded) or **custom** (org-created or forked). They carry **no user credentials**. Managed via [`/api/knowledge/providers`](/cloud-api/context/knowledge/list) and listed read-only in the [catalog](/cloud-api/context/knowledge/catalog).
-- A **connection** (a *knowledge integration*) is a user's *stored credentials* against a provider — an API key, OAuth token, or service-account JSON, kept **encrypted** with a `status` and an org/personal scope. Managed via [`/api/knowledge/integrations`](/cloud-api/context/knowledge/create).
+- A **provider** is the *definition*, the service, the auth method(s) it supports, and the tools/package it brings. Providers are either **managed** (runtm-seeded) or **custom** (org-created or forked). They carry **no user credentials**. Managed via [`/api/knowledge/providers`](/cloud-api/context/knowledge/list) and listed read-only in the [catalog](/cloud-api/context/knowledge/catalog).
+- A **connection** (a *knowledge integration*) is a user's *stored credentials* against a provider, an API key, OAuth token, or service-account JSON, kept **encrypted** with a `status` and an org/personal scope. Managed via [`/api/knowledge/integrations`](/cloud-api/context/knowledge/create).
 
-One provider can have **many** connections (e.g. "Production" and "Dev", or one per teammate). The API never returns the secret itself — connections expose only `has_credentials` and `status`. MCP servers follow the same split: the server is the definition, and credentials are a separate *directive connection*.
+One provider can have **many** connections (e.g. "Production" and "Dev", or one per teammate). The API never returns the secret itself, connections expose only `has_credentials` and `status`. MCP servers follow the same split: the server is the definition, and credentials are a separate *directive connection*.
 
 ### How knowledge sources work
 
@@ -210,10 +210,10 @@ The agent sees all of this as a single coherent system prompt and tool catalog b
 ## Related guides
 
 <CardGroup cols={2}>
-  <Card title="Teach the agent your codebase" icon="brain" href="/guides/teach-the-agent-your-codebase">
+  <Card title="Teach the agent your codebase" icon="brain" href="/build/how-it-works/instructions">
     AGENTS.md, skills, and org instructions - how the three layers compose.
   </Card>
-  <Card title="Best practices" icon="shield" href="/guides/best-practices">
+  <Card title="Best practices" icon="shield" href="/build/define-the-job">
     Key hygiene, prompt design, and cost controls.
   </Card>
 </CardGroup>

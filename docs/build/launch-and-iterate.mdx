@@ -1,0 +1,143 @@
+---
+title: "5. Prove it works and iterate"
+description: "Prove the agent can do the job before you constrain it: check the template carries its skills and tools, run seeded cases with read-only credentials, read the grade and the scorecard, then tighten the rubric and runbook. Read before the first run, before adding any guardrail, and whenever `runtm-api agents scorecard` shows zeros."
+---
+
+## Outcome
+
+The agent has run against real cases you chose, every run has a pass or fail grade with a reason, and the scorecard tells you whether it is worth its cost. You know which of the rubric, the tools, or the runbook to change next, and you have a list of the commands and hosts the agent actually used, which is what [step 6](/build/guardrails-and-approvals) turns into rules.
+
+## Capability before constraints
+
+Do this step before adding guardrails. A deny rule written before the first run guesses at what the agent will do; a deny rule written after five graded runs encodes what you saw. Until then the agent is kept safe by scope, not by rules: the credentials on the template are read-only (a restricted Stripe key, a read-only database role, see [Give it tools](/build/give-it-tools)), the sandbox is isolated and destroyed after the run, and the trigger is a test channel or a manual run, not the live queue. If the agent cannot pass its seeded cases with the model, the tools and the runbook it has, no guardrail will fix that, and you want to learn it now.
+
+## Decide
+
+**What are the first five cases?** Pick cases with known answers so the grade means something. Include at least one that should fail (a wrong customer id, a ticket with no transaction reference) so you see what a failure looks like before a real one.
+
+- Bad: "Point it at the live queue and watch." You will not know whether a wrong answer came from the rubric, a missing tool, or an unclear runbook.
+- Good: "Three resolved declines from last week, one duplicate charge, one ticket with no order id. Expected outcome written down for each before the run."
+
+**What does a zero on the scorecard mean today?** Before reading numbers, know the three reasons a scorecard shows zero graded runs: the agent has no evaluation categories, no run has finished since the categories were added, or the grader was unavailable (no Anthropic key on the org, or an API error). Each has a different fix.
+
+## The loop
+
+```
+attach → verify → build once → run once → read the run → read the grade → read the scorecard → tighten one thing → repeat
+```
+
+Every capability the agent has hangs off its template. Skills, MCP servers, tools and guardrails you attach are not in the snapshot until the template builds. Three mistakes fail silently: a roster agent with no template, a skill created but never attached, and an attachment made after the last build.
+
+## Do it
+
+<Steps>
+  <Step title="Verify the template actually carries the skills">
+    On **Templates**, open the agent's template and check the **Context** tab lists the skills and MCP servers you expect, and the **Guardrails** tab lists the rules. A violet dot on the tab means the template has its own entries.
+
+    From the CLI, read `skills[].name` and `attachments_changed_since_build`. An empty `skills` array means attach. `true` means rebuild.
+
+    {/* cli-verify: runtm-api template get <template_id> | jq '{skills: [.skills[].name], stale: .attachments_changed_since_build, build: .build_status}' */}
+    {/* cli: runtm-api skills attach <skill_id> --template <template_id> */}
+    {/* cli: runtm-api mcp attach <mcp_id> --template <template_id> */}
+  </Step>
+
+  <Step title="Build once, after everything is attached">
+    Click **Build** on the template's **Build** tab. The pane says "Build in progress - this may take 5-15 minutes. You can navigate away safely." Attaching more after this point makes the template stale again.
+
+    {/* cli: runtm-api template build <template_id> */}
+    {/* cli-verify: runtm-api template get <template_id> | jq -r .build_status */}
+  </Step>
+
+  <Step title="Run the agent once, on purpose">
+    Use the trigger the agent will live on. For Slack, mention it in a test channel with the first case. For a scheduled agent, use **Run now** on the **Scheduled** tab; it executes the identical code path a cron tick takes, so a failure here is the failure you would otherwise get at 03:00 UTC. For an agent with no trigger yet, create a session from the template and send the case as the prompt.
+
+    {/* cli: runtm-api scheduled-agents run-now <scheduled_agent_id> */}
+    {/* cli: runtm-api session create --template-id <template_id> --agent claude-code */}
+    {/* cli: runtm-api session prompt <session_id> "<first test case>" */}
+  </Step>
+
+  <Step title="Read the run">
+    Open **Agents → Runs** or **Sessions**. The card shows the harness, the first prompt, status, elapsed time and cost. Open it to read the transcript: which tools it called, what it read, where it stopped. If it is sitting in `awaiting_approval`, resolve the request so the run can finish and be graded.
+
+    {/* cli: runtm-api session status <session_id> */}
+    {/* cli: runtm-api session history <session_id> */}
+    {/* cli: runtm-api session approvals list <session_id> */}
+  </Step>
+
+  <Step title="Read the grade">
+    Grading runs in the background after a run finishes. The verdict is one routed category, `success` true or false, a `reason`, and the category's tags. It is a judgment against your `Success criteria` text, not a score.
+
+    ```json
+    {"graded": true, "success": false, "task": "duplicate-charge",
+     "reason": "The draft cites the two authorizations but never states which one settled."}
+    ```
+
+    `{"graded": false}` means no verdict yet. Wait for the run to finish, then check that the agent has categories and the org has an Anthropic key.
+
+    {/* cli-verify: runtm-api session grade <session_id> */}
+  </Step>
+
+  <Step title="Read the scorecard">
+    Open **Activity → Agents**. Per agent over the window you pick: sessions, turns, tokens, spend, `graded_runs`, `successful_runs`, `objective_hit_rate` (successful divided by graded), per-category runs and successes, `value_usd` (successful runs times the category's human cost), `minutes_returned` (human minutes minus agent minutes, floored at zero), and the monthly budget with `exceeded` when spend has passed the cap. Nothing is stored; editing a category's human cost re-values history on the next read.
+
+    {/* cli-verify: runtm-api agents scorecard --days 7 */}
+    {/* cli: runtm-api agents scorecard --start 2026-09-01 --end 2026-09-15 */}
+  </Step>
+
+  <Step title="Tighten one thing">
+    Change one input per iteration so you can attribute the effect.
+
+    - **Rubric.** Rewrite the `Success criteria` that let a bad run pass, or split a category that is catching two kinds of work. Saving bumps the rubric version. New runs are graded against it; an already finished run is regraded the next time its transcript is uploaded (for example after a follow-up prompt), and the new verdict supersedes the old one. Old runs are not regraded retroactively, so re-run your seeded cases after a rubric change.
+    - **Guardrails.** Not yet. Note what the run did that you did not want; it becomes a `deny` rule in step 6 once the cases pass.
+    - **Runbook.** A run that skipped a check gets an explicit step in the skill. A run that guessed a value gets a tool that returns it.
+    - **Tools.** A run that could not answer because the data was out of reach gets a provider or an MCP server, attached and rebuilt.
+
+    {/* cli: runtm-api agents update <agent_id> --evaluator-criteria "$(cat rubric.json)" */}
+    {/* cli: runtm-api skills update <skill_id> --content "$(cat skill.json)" */}
+    {/* cli: runtm-api template build <template_id> */}
+  </Step>
+</Steps>
+
+<Frame caption="Activity → Agents is the scorecard: graded runs, hit rate, value returned and budget per agent.">
+  <img src="/images/build/activity-agents-scorecard.png" alt="Activity page, Agents tab, showing per-agent scorecard rows" />
+</Frame>
+
+<Frame caption="Run now on a scheduled agent executes the same path as a cron tick, so validate before you enable.">
+  <img src="/images/build/scheduled-agents-new.png" alt="Scheduled agents tab with a new schedule dialog open" />
+</Frame>
+
+## Verify
+
+Before calling the agent launched, all of these are true:
+
+- `template get` shows the skills you expect and `attachments_changed_since_build: false`.
+- Every seeded case has a session under **Runs** with status `finished`.
+- `session grade` on each returns `graded: true` with a `reason` you agree with, including the case you expected to fail.
+- `agents scorecard --days 7` shows `graded_runs` equal to the number of finished cases and a per-category breakdown under `tasks`.
+- You have written down every command pattern and host the passing runs used. That list is the input to [Add guardrails and approvals](/build/guardrails-and-approvals).
+
+{/* cli-verify: runtm-api template get <template_id> | jq '{skills: [.skills[].name], stale: .attachments_changed_since_build}' */}
+{/* cli-verify: runtm-api agents scorecard --days 7 */}
+
+## Gotchas
+
+- **Scorecard shows zeros.** No categories on the agent, no finished runs since categories were added, or the grader had no key. Check the agent's **Performance evaluation** section first, then `session grade` on a finished run for `grader_unavailable` in the reason.
+- **Runs are not attributed to the agent.** Only sessions launched through the agent's triggers, its scheduled agents, or with the agent's id carry `agent_id`. A session you created by hand from the same template is graded against nothing and appears on no scorecard.
+- **The grade reads the first prompt and the last message.** A runbook that ends with "Done." gives the grader nothing to judge. End runs with the finding: what was checked, what was found, what is recommended.
+- **Rubric edits do not rewrite history.** Grades already recorded keep their category key and verdict until that session is graded again. After changing a key or a criterion, re-run the seeded cases so the scorecard reflects the current rubric.
+- **Budget exceeded does not stop anything.** `exceeded: true` is a flag on the scorecard and an audit event. Launches continue. Use org limits under **Guardrails → Limits** for a hard cap.
+- **Schedule enabled, never run.** An enabled schedule with `last_run_at` null and a `next_run_at` in the past was never validated. Disable it, `run-now`, read the session, then enable.
+- **Iteration without rebuild.** Editing a skill's content triggers a rebuild of the templates it is attached to. Attaching a new skill or MCP server does not; run `template build` yourself.
+- **Guardrails added too early.** An `ask` default or a broad deny rule on an agent that has never run turns every unknown into a stall, and you cannot tell a capability gap from a rule. Prove the cases first, then constrain.
+- **Prove one capability in a bare session before wiring a trigger.** `session create --template-id <t>`, then `session exec <id> --json -- ls ~/.claude/skills`, then destroy. Cheaper than re-reading config.
+- **"It was supposed to run and nothing happened", in order:** `enabled` false or `next_run_at` null means no scheduler job (null is normal while disabled); `last_run_at` unchanged means the tick never fired (enabled or UTC conversion); `last_run_at` updated means the failure is inside the run, so `run-now` and read `session history <last_session_id>`.
+- **Pause a schedule with `--disabled`, not delete.** It removes the scheduler job and keeps prompt, template and post target; re-enabling is one call. Iterate with `run-now`, not by waiting for ticks.
+
+<CardGroup cols={2}>
+  <Card title="6. Add guardrails and approvals" icon="shield-halved" href="/build/guardrails-and-approvals">
+    Turn what the passing runs did into allow, ask and deny rules, network rules and approval gates.
+  </Card>
+  <Card title="Scorecard API" icon="code" href="/cloud-api/activity/agent-scorecard">
+    Every field the Activity page aggregates.
+  </Card>
+</CardGroup>

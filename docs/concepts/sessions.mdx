@@ -1,6 +1,6 @@
 ---
 title: Sessions
-description: "Sandboxed cloud environments where agents build, test, and ship code"
+description: "What a session is (the sandbox an agent run happens in), its states, auto-pause and heartbeats, and how sessions relate to roster agents. Read when a run is paused, missing, or you need the session object itself."
 ---
 
 A session is a sandboxed cloud environment. Each session runs in its own VM with a full filesystem, terminal, and an AI agent that can write code, install packages, run tests, and deploy. Sessions are the core unit of work in Runtime.
@@ -70,7 +70,7 @@ You can also specify:
 - **`agent`** - which [coding agent](/concepts/coding-agents) to use (`claude-code`, `codex`, `opencode`, `github-copilot`, `cursor-cli`, `devin-cli`, `gemini-cli`)
 - **`git_url`** - clone a repository into the session on creation
 - **`env_vars`** - inject environment variables the agent can use
-- **`max_duration_minutes`** - hard limit before the session is automatically destroyed
+- **`ttl_minutes`** - hard limit before the session is automatically destroyed
 - **`visibility`** - `private` (creator only) or `team` (all org members)
 
 See the full parameter list in [Create Session](/cloud-api/sessions/manage#create-session).
@@ -125,7 +125,7 @@ Sessions can be shared with teammates. Multiple users can view the same session 
 
 ## Sessions vs Agents
 
-Sessions are interactive environments you work in. [Agents](/concepts/agents) are background autonomous coding tasks that fire-and-forget. Both run inside the same kind of VM, but agents are designed for handoff workflows (Linear ticket in, PR out) while sessions are designed for hands-on iteration.
+Sessions are the sandboxes where work happens. An agent is a named roster entry (a job, instructions, an evaluation rubric, a budget) that launches sessions on its default template whenever one of its [triggers](/build/how-it-works/triggers) fires. Every agent run is a session; a session opened from the dashboard is not an agent run unless it was launched for one. See [Define the job](/build/define-the-job).
 
 ## Scoping
 
@@ -138,16 +138,16 @@ See [Organizations](/concepts/organizations) for how team access works.
 ## Related guides
 
 <CardGroup cols={2}>
-  <Card title="Manage sessions at scale" icon="cube" href="/guides/managing-sessions-at-scale">
+  <Card title="Manage sessions at scale" icon="cube" href="/cloud-api/patterns/sessions-at-scale">
     Polling, heartbeats, retries, and error recovery patterns.
   </Card>
-  <Card title="Stream prompts over WebSockets" icon="bolt" href="/guides/streaming-prompts-over-websockets">
+  <Card title="Stream prompts over WebSockets" icon="bolt" href="/cloud-api/patterns/streaming-prompts">
     Real-time agent output with event streaming.
   </Card>
-  <Card title="Work with session files" icon="file" href="/guides/working-with-files">
+  <Card title="Work with session files" icon="file" href="/cloud-api/patterns/session-files">
     Read, write, upload, and download files in the sandbox.
   </Card>
-  <Card title="Handle long-running prompts" icon="hourglass" href="/guides/long-running-prompts">
+  <Card title="Handle long-running prompts" icon="hourglass" href="/cloud-api/patterns/long-running-prompts">
     Cancel, rewind, and replay prompt history.
   </Card>
 </CardGroup>

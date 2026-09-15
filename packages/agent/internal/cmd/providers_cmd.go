@@ -10,8 +10,8 @@ import (
 
 // NewProvidersCommand returns `runtm providers` covering LLM provider API keys
 // (Anthropic, OpenAI). This is deliberately separate from "integrations", which
-// means external integrations (MCP servers, skills, tools, CLIs, APIs) — see the
-// `runtm-integrations` skill. External integration OAuth flows (GitHub App,
+// means external integrations (MCP servers, skills, tools, CLIs, APIs); see
+// https://docs.runtm.com/build/give-it-tools. External integration OAuth flows (GitHub App,
 // Slack, Linear) require browser redirects the CLI cannot drive, so they live in
 // the dashboard.
 //
@@ -43,7 +43,7 @@ override is set. Use --org-scope with an org-scoped API key to manage org-wide
 keys (admin/owner role required).
 
 This is separate from external integrations (MCP servers, skills, tools, CLIs,
-APIs) — for those, see the 'runtm-integrations' skill. GitHub/Slack/Linear OAuth
+APIs); for those, see https://docs.runtm.com/build/give-it-tools. GitHub/Slack/Linear OAuth
 installations also live in the dashboard, not here.
 
 See https://docs.runtm.com/cloud-api/provider-keys for the schema.`,

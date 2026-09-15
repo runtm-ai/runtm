@@ -66,6 +66,7 @@ Docs: https://docs.runtm.com`,
 		NewGroupsCommand(rt),
 		NewDeploymentsCommand(rt),
 		NewGithubCommand(rt),
+		NewDocsCommand(),
 	)
 	return rootBuild{cmd: root, rt: rt}
 }

@@ -19,8 +19,8 @@ import (
 //
 // Under the hood: skills and MCP servers are agent-directives (one endpoint
 // family, distinguished by type); tools are knowledge integrations (a separate
-// endpoint). That mapping is documented in the `runtm-integrations` skill, not
-// surfaced in the command UX.
+// endpoint). That mapping is documented at
+// https://docs.runtm.com/build/give-it-tools, not surfaced in the command UX.
 
 // NewMcpCommand returns `runtm-api mcp` — CRUD for MCP servers.
 func NewMcpCommand(rt *Runtime) *cobra.Command {

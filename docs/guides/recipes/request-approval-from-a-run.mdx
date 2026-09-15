@@ -1,0 +1,68 @@
+---
+title: "Request an approval from inside a run"
+description: "Make an agent stop at one step of its runbook and wait for a human to approve or reject before it continues, using the runtm-approval helper inside the sandbox. Read when a runbook reaches a customer-facing send, a refund, or a status change."
+---
+
+## Outcome
+
+At the step you chose, the run pauses in `awaiting_approval`, a person approves or rejects it from the session card or the CLI, and the agent continues or stops according to the decision.
+
+## Before you start
+
+- The agent has a runbook skill; approvals are requested by the agent from inside the run, not configured as a policy. If the skill never calls `runtm-approval`, nothing waits.
+- Someone with the role you will require is watching **Sessions**, or the run will wait until `--timeout` expires.
+- The **Approvals** tab under **Settings > Guardrails** describes the concept but configures nothing.
+
+## Do it
+
+<Steps>
+  <Step title="Find the exact step">
+    In the runbook, mark the line after which a consequence happens: posting a draft back to the ticket, issuing a refund, changing an application status. The approval goes immediately before that line, with the evidence already written to a file the approver can open.
+  </Step>
+  <Step title="Add the request to the skill">
+    Write the call into `SKILL.md` at that step. `--wait` blocks until a person resolves it. Exit code 0 means approved, 1 means rejected, 4 means the wait timed out (2 is a usage error, 3 means the helper is not inside a Runtime session); on rejection the runbook must stop and report the note.
+
+    ```bash
+    runtm-approval request --kind customer_reply \
+      --message "Draft reply to ticket #4821 is at drafts/4821.md. Approve to post it." \
+      --required-role admin --wait
+    ```
+
+    To request now and wait later, capture the id:
+
+    ```bash
+    APPROVAL_ID=$(runtm-approval request --kind customer_reply --message "Draft ready at drafts/4821.md")
+    runtm-approval wait "$APPROVAL_ID" --timeout 3600
+    ```
+
+    `--required-role <org-role>` or `--required-team <team-id>` restricts who may resolve it. Admins and owners always can. With neither flag, anyone with access to the session can.
+
+    {/* cli: runtm-api skills update <skill_id> --md ./SKILL.md */}
+  </Step>
+  <Step title="Rebuild and run a seeded case">
+    Editing the skill rebuilds the templates it is attached to. Run one seeded case that reaches the step. The session flips to `awaiting_approval` and its card shows **Approve** and **Reject** inline with the message in the tooltip.
+
+    {/* cli-verify: runtm-api session approvals list <session_id> */}
+  </Step>
+  <Step title="Resolve it">
+    Click **Approve** or **Reject** on the card, or resolve from the CLI with a note the agent will see.
+
+    {/* cli: runtm-api session approvals resolve <session_id> <approval_id> --approve --note "Checked the ledger entry, post it" */}
+    {/* cli: runtm-api session approvals resolve <session_id> <approval_id> --reject --note "Wrong customer, re-run with the account id" */}
+  </Step>
+</Steps>
+
+## Verify
+
+`session approvals list` shows the request with its `kind`, `message`, `required_role` and `status`. After approval the session returns to `working` and the transcript continues past the step. After rejection the transcript shows the agent reporting the note and stopping.
+
+## Gotchas
+
+- **Approvals are not delivered to Slack.** The person approving needs the dashboard or the CLI. Tell the on-shift approver where to look.
+- **No watcher, no progress.** A `--required-role` nobody on shift holds waits forever. Use `wait --timeout` so the run fails cleanly instead of idling.
+- **Instructions alone are not a gate.** "Ask before refunding" in the system prompt is advice. The `runtm-approval` call in the runbook is what blocks, and a deny rule on the refund command in step 6 of Build is what makes bypassing it impossible.
+- **Approval is not permission.** An `ask` allowlist rule produces a harness permission prompt, not an approval record. Use approvals for decisions a person should own and see in the audit trail.
+
+<Card title="6. Add guardrails and approvals" icon="shield-halved" href="/build/guardrails-and-approvals">
+  Allowlist rules, hooks, network rules and the approval gate, added once the agent has proven it can do the job.
+</Card>

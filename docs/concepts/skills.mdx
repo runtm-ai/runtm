@@ -1,9 +1,9 @@
 ---
 title: Skills
-description: "Reusable instruction bundles with files, MCP servers, and tooling that extend agent capabilities"
+description: "Reference for skills as stored objects: the SKILL.md bundle, reference files, MCP and tooling declarations, directive types, the single-live-version and lock model, import, discover and resync. Read when authoring or importing a skill; the Build page covers the workflow."
 ---
 
-A skill is a versioned, reusable bundle that teaches an agent how to do something. It can include a markdown instruction document, reference files (code samples, schemas, examples), MCP servers the agent can call, and tooling that gets installed into the sandbox at build time.
+A skill is a reusable bundle that teaches an agent how to do something. It can include a markdown instruction document, reference files (code samples, schemas, examples), MCP servers the agent can call, and tooling that gets installed into the sandbox at build time.
 
 Skills are the unit of agent extension in Runtime. You define a workflow once as a skill, then attach it to [templates](/concepts/templates) or individual sessions. Every agent that runs in those environments inherits the skill automatically.
 
@@ -163,5 +163,5 @@ When the session boots, Runtime resolves the skill, mounts its files into the wo
 
 - **One skill, one workflow.** Don't bundle unrelated guidance into a single skill; create separate skills and attach the ones that apply.
 - **Keep instructions actionable.** Skills should describe how to do something concretely, with examples. Vague philosophy belongs in [org instructions](/concepts/context).
-- **Pin versions in production.** When stability matters, attach skills by version rather than floating to latest.
+- **Lock skills in production.** A locked skill stays attached and rebuildable but cannot be edited until an admin unlocks it, so a runbook does not change under a live agent.
 - **Iterate from a repo.** Authoring in markdown files in a Git repo and resyncing is faster than editing through the API.
