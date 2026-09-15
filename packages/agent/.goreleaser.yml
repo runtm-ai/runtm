@@ -27,7 +27,7 @@ before:
   hooks:
     # Mirror skills/ -> internal/skills/files/ so the //go:embed copy in the
     # binary matches what we ship in the release tarball under skills/.
-    - sh -c "mkdir -p internal/skills/files && cp skills/*.md internal/skills/files/"
+    - sh -c "mkdir -p internal/skills/files && rm -f internal/skills/files/*.md && cp skills/*.md internal/skills/files/"
 
 builds:
   - id: runtm-api
