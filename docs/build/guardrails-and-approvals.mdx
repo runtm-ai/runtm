@@ -39,7 +39,7 @@ Hook events: `PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `Notification`, `S
 Org limits are separate from guardrail content. Under **Guardrails → Limits** an admin sets the maximum concurrent sessions, a monthly org budget in USD, and the default idle timeout. These are enforced when a session is created.
 
 <Frame caption="Allowlists on the org Guardrails page. Each rule is Allowed, Ask first, or Denied with a pattern and a purpose.">
-  <img src="/images/build/guardrails-allowlists.png" alt="Guardrails page, Allowlists tab, with rule rows and the New allowlist rule button" />
+  <img src="/images/dashboard/guardrails-allowlists.png" alt="Guardrails page, Allowlists tab, with rule rows and the New allowlist rule button" />
 </Frame>
 
 ## Do it
@@ -116,19 +116,19 @@ Org limits are separate from guardrail content. Under **Guardrails → Limits** 
 </Steps>
 
 <Frame caption="Hooks fire on harness lifecycle events. A PreToolUse command hook can allow, deny, or ask.">
-  <img src="/images/build/guardrails-hooks.png" alt="Guardrails page, Hooks tab, showing event, type, matcher, script and timeout fields" />
+  <img src="/images/dashboard/guardrails-hooks.png" alt="Guardrails page, Hooks tab, showing event, type, matcher, script and timeout fields" />
 </Frame>
 
 <Frame caption="Network rules turn egress into deny-all plus the listed hosts and CIDRs.">
-  <img src="/images/build/guardrails-network.png" alt="Guardrails page, Network tab, with host and CIDR rows" />
+  <img src="/images/dashboard/guardrails-network.png" alt="Guardrails page, Network tab, with host and CIDR rows" />
 </Frame>
 
 <Frame caption="The template's Guardrails tab shows inherited org rules as Enforced rows above the template's own rules.">
-  <img src="/images/build/template-guardrails.png" alt="Template editor, Guardrails tab, with Allowlists, Hooks and Network sub-tabs" />
+  <img src="/images/dashboard/template-guardrails.png" alt="Template editor, Guardrails tab, with Allowlists, Hooks and Network sub-tabs" />
 </Frame>
 
 <Frame caption="Sessions that went through an approval gate carry the outcome on their card; while pending, the same card shows Approve and Reject inline.">
-  <img src="/images/build/session-awaiting-approval.png" alt="Sessions grid with a run that shows Approved by an approver on its card" />
+  <img src="/images/dashboard/session-awaiting-approval.png" alt="Sessions grid with a run that shows Approved by an approver on its card" />
 </Frame>
 
 ## Verify

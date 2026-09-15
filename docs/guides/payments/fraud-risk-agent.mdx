@@ -76,7 +76,7 @@ Read [Define the job](/build/define-the-job) first. The job here has a clear inp
 Read [Measure success](/build/measure-success). The grader routes each run to one category and returns pass or fail with a reason. Because the historical alerts already have analyst decisions, the success criteria can name the decision.
 
 <Frame caption="Performance evaluation on the agent's Profile tab. One category per alert type, each with success criteria the grader reads verbatim.">
-  <img src="/images/build/agent-evaluation.png" alt="Performance evaluation section with a category, grading tag, human cost and human time" />
+  <img src="/images/dashboard/agent-evaluation.png" alt="Performance evaluation section with a category, grading tag, human cost and human time" />
 </Frame>
 
 <Steps>
@@ -220,7 +220,7 @@ Read [Define how it works](/build/how-it-works/overview). The runbook is a skill
     Set run-as to **Agent** and pick **Risk Agent**, so the run carries the agent's identity: the agent-scoped Stripe key applies and the run is graded against the agent's categories. Set the schedule to **Interval**, **Every 30 minutes**. Under **Post**, pick the Slack integration and the `#risk-review` channel. Choose **Team** visibility. Create it, then flip the toggle off so it is disabled until step 5 proves it.
 
     <Frame caption="The scheduled agent dialog: prompt first, then coding agent, template, schedule and post target along the bottom.">
-      <img src="/images/build/scheduled-agents-new.png" alt="New scheduled agent dialog with the prompt field and the harness, template, schedule and post controls" />
+      <img src="/images/dashboard/scheduled-agents-new.png" alt="New scheduled agent dialog with the prompt field and the harness, template, schedule and post controls" />
     </Frame>
 
     The cron expression Runtime stores is five fields in UTC. Every 30 minutes is written as minute zero and minute thirty of every hour, not with a slash-step, because the slash form cannot appear inside this page's hidden CLI comments. The CLI can create the schedule with a harness and template but cannot set run-as **Agent**; set that in the dialog.
@@ -280,7 +280,7 @@ Read [Prove it works and iterate](/build/launch-and-iterate). No guardrail exist
     Open **Activity > Agents** and filter to Risk Agent over the last 7 days. You want five graded runs, a per-category breakdown under tasks, and a hit rate you can explain case by case.
 
     <Frame caption="Activity > Agents: graded runs, objective hit rate, value returned and the monthly budget per agent.">
-      <img src="/images/build/activity-agents-scorecard.png" alt="Activity page, Agents tab, showing per-agent performance and budget" />
+      <img src="/images/dashboard/activity-agents-scorecard.png" alt="Activity page, Agents tab, showing per-agent performance and budget" />
     </Frame>
 
     {/* cli-verify: runtm-api agents scorecard --days 7 */}
@@ -329,7 +329,7 @@ Read [Add guardrails and approvals](/build/guardrails-and-approvals). This agent
     Under **Network**, add one rule per host. As soon as one rule exists, egress is deny-all plus this list. Slack posting is done by Runtime after the run, not by the sandbox, so `hooks.slack.com` is not needed.
 
     <Frame caption="Network rules turn egress into deny-all plus the listed hosts.">
-      <img src="/images/build/guardrails-network.png" alt="Guardrails page, Network tab, with host rows" />
+      <img src="/images/dashboard/guardrails-network.png" alt="Guardrails page, Network tab, with host rows" />
     </Frame>
 
     | Host | Purpose |

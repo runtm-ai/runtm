@@ -27,7 +27,7 @@ Instructions are composed from nine layers at every session start. Deciding whic
 ## The nine layers
 
 <Frame caption="Settings > Context > Instructions. Personal and Team tabs edit the user and organization layers.">
-  <img src="/images/build/context-instructions.png" alt="The Instructions tab of the Context page with Personal and Team scopes" />
+  <img src="/images/dashboard/context-instructions.png" alt="The Instructions tab of the Context page with Personal and Team scopes" />
 </Frame>
 
 At every session start the platform composes one block and writes it to both `/home/user/.claude/CLAUDE.md` and `/home/user/.agents/AGENTS.md`, wrapped in `RUNTM:BEGIN` and `RUNTM:END` markers. Content outside the markers is preserved; the block inside is replaced each time. Layers are written top to bottom, so later layers can refine earlier ones.
