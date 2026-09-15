@@ -32,7 +32,7 @@ The agent never holds tools directly. It points at a template through `Default t
 ## How tools reach a session
 
 <Frame caption="Settings > Context > Tools & MCP lists tool providers and MCP servers side by side.">
-  <img src="/images/build/context-tools.png" alt="The Tools and MCP tab of the Context page listing connected tools and MCP servers" />
+  <img src="/images/dashboard/context-tools.png" alt="The Tools and MCP tab of the Context page listing connected tools and MCP servers" />
 </Frame>
 
 Two mechanisms feed capabilities into a session, and they are attached differently.
@@ -149,7 +149,7 @@ Agent connections are the one scope exempt from the skill filter: they reach the
     Go to **Settings > Context > Tools & MCP** and click **New tool or MCP server**. The chooser asks **What do you want to add?** Pick **Tool** for a provider or **MCP server** for MCP.
 
     <Frame caption="Tools and MCP servers are configured differently, so the chooser separates them.">
-      <img src="/images/build/tools-add-chooser.png" alt="Dialog asking what to add, with Tool and MCP server options" />
+      <img src="/images/dashboard/tools-add-chooser.png" alt="Dialog asking what to add, with Tool and MCP server options" />
     </Frame>
     {/* cli: runtm-api tools providers list */}
   </Step>
@@ -157,7 +157,7 @@ Agent connections are the one scope exempt from the skill filter: they reach the
     **Add a provider** lists the built-in providers your org has not added yet: BigQuery, Datadog, Google Cloud, Notion, Phone, PostHog, Slack, Trigify and Zendesk. Pick one and click through to the credentials form.
 
     <Frame caption="The catalog. You fill in credentials after picking.">
-      <img src="/images/build/tools-catalog.png" alt="Add a provider dialog showing the built-in provider catalog" />
+      <img src="/images/dashboard/tools-catalog.png" alt="Add a provider dialog showing the built-in provider catalog" />
     </Frame>
 
     If the vendor is not in the catalog, create a custom provider instead (next section) and it appears here for everyone in the org.
@@ -238,7 +238,7 @@ Anything outside the catalog becomes a custom provider. Stripe, Postgres, Snowfl
 ### Add template secrets
 
 <Frame caption="The template Secrets tab. Values are encrypted at rest and injected into every session.">
-  <img src="/images/build/template-secrets.png" alt="Template editor Secrets tab with environment variables" />
+  <img src="/images/dashboard/template-secrets.png" alt="Template editor Secrets tab with environment variables" />
 </Frame>
 
 <Steps>
@@ -255,11 +255,11 @@ Anything outside the catalog becomes a custom provider. Stripe, Postgres, Snowfl
 ### Attach repositories
 
 <Frame caption="A template's Overview: repository and branch, working directory, owning group, services, coding agents and sandbox tier.">
-  <img src="/images/build/templates-overview.png" alt="Template editor Overview tab for the Support template" />
+  <img src="/images/dashboard/templates-overview.png" alt="Template editor Overview tab for the Support template" />
 </Frame>
 
 <Frame caption="The template Context tab. Skills, MCP, Docs and Knowledge are inherited from the org and marked Enforced by org.">
-  <img src="/images/build/template-context.png" alt="Template editor Context tab showing inherited org skills" />
+  <img src="/images/dashboard/template-context.png" alt="Template editor Context tab showing inherited org skills" />
 </Frame>
 
 A template is created **From a repository** or as a **Blank environment**. Repository access comes from the org's GitHub App installation, so install the app on the repos first under **Settings > Integrations > GitHub**. Linked repos are cloned alongside the primary repo. Repo-scoped skill and MCP attachments follow the repo into any template that includes it.

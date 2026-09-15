@@ -39,7 +39,7 @@ Pick `claude-code` unless you have a reason not to; every worked example in Guid
     The dialog walks through **Profile**, **Instructions**, **Triggers**. Its own description says it: "Define the agent once, then connect it to Slack, Linear, and GitHub."
 
     <Frame caption="Profile: the name is shared by every trigger; the avatar syncs to the Slack app icon.">
-      <img src="/images/build/new-agent-profile.png" alt="New Agent dialog, Profile step with name and avatar picker" />
+      <img src="/images/dashboard/new-agent-profile.png" alt="New Agent dialog, Profile step with name and avatar picker" />
     </Frame>
 
     **Agent name** is at most 34 characters and is what people will type after `@` in Slack. Pick the avatar; when a Slack app is connected later, its icon is set from this.
@@ -47,7 +47,7 @@ Pick `claude-code` unless you have a reason not to; every worked example in Guid
 
   <Step title="Write the description and system instructions">
     <Frame caption="Instructions: one line of job, then the how and the never.">
-      <img src="/images/build/new-agent-instructions.png" alt="New Agent dialog, Instructions step with Description and System instructions fields" />
+      <img src="/images/dashboard/new-agent-instructions.png" alt="New Agent dialog, Instructions step with Description and System instructions fields" />
     </Frame>
 
     **Description** (up to 2,000 characters) is the objective sentence from Decide. It appears on the agent card and is what the onboarding flow calls the mirror line.
@@ -83,7 +83,7 @@ Pick `claude-code` unless you have a reason not to; every worked example in Guid
     Click the new agent's card to open its sheet. On the **Profile** tab, set **Default template** and **Coding agent**. The helper text explains the scope: "Used by every connected trigger. A trigger's own settings tab can still override these for that trigger only."
 
     <Frame caption="The agent sheet: default template and coding agent are shared by every trigger.">
-      <img src="/images/build/agent-edit-profile.png" alt="Agent edit sheet, Profile tab with Default template and Coding agent selectors" />
+      <img src="/images/dashboard/agent-edit-profile.png" alt="Agent edit sheet, Profile tab with Default template and Coding agent selectors" />
     </Frame>
 
     Click **Save profile**. Saving fans the profile out to every trigger already bound to the agent.
@@ -96,7 +96,7 @@ Pick `claude-code` unless you have a reason not to; every worked example in Guid
 ## Verify
 
 <Frame caption="The roster: one card per agent with its description, trigger icons and creator.">
-  <img src="/images/build/agents-roster.png" alt="Agents page listing roster agents as cards" />
+  <img src="/images/dashboard/agents-roster.png" alt="Agents page listing roster agents as cards" />
 </Frame>
 
 Open **Agents**; the card shows the name and description. `runtm-api agents get <agent_id>` returns `name`, `description`, `system_instructions`, `default_template` and `default_agent`. If `default_template` is null, the agent will run on a bare sandbox.

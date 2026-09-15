@@ -29,7 +29,7 @@ A skill is the runbook. The harness reads the skill's description to decide when
 ## What a skill is
 
 <Frame caption="Settings > Context > Skills. One live row per skill, attached to templates, repos or the whole org.">
-  <img src="/images/build/context-skills.png" alt="The Skills tab of the Context page listing org skills" />
+  <img src="/images/dashboard/context-skills.png" alt="The Skills tab of the Context page listing org skills" />
 </Frame>
 
 A skill is a directory with an entry file, `SKILL.md`, plus any sibling files: a `references/` folder for tables and templates, a `scripts/` folder for helpers, subfolders with their own `SKILL.md` for sub-skills. It is stored as a `skill_v0` item with the entry name, the file list and an optional `requires` block. Files up to 64 KiB are stored inline; larger ones go to object storage and are fetched by the sandbox.

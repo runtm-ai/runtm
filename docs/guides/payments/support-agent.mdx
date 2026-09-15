@@ -61,7 +61,7 @@ Follow [Define the job](/build/define-the-job) with these values.
 Follow [Measure success](/build/measure-success). Open the agent's card, scroll to **Performance evaluation**, and click **Add evaluation category** three times.
 
 <Frame caption="One category filled in. The grader routes each run to the category whose When to use text matches, then judges it against Success criteria.">
-  <img src="/images/build/agent-evaluation.png" alt="Performance evaluation section with a decline-explanation category" />
+  <img src="/images/dashboard/agent-evaluation.png" alt="Performance evaluation section with a decline-explanation category" />
 </Frame>
 
 <Steps>
@@ -101,7 +101,7 @@ Follow [Measure success](/build/measure-success). Open the agent's card, scroll 
 Follow [Give it tools](/build/give-it-tools). Three systems, each with the least access that still answers a ticket.
 
 <Frame caption="Settings > Context > Tools & MCP after the three providers are connected.">
-  <img src="/images/build/context-tools.png" alt="Tools and MCP tab listing connected providers" />
+  <img src="/images/dashboard/context-tools.png" alt="Tools and MCP tab listing connected providers" />
 </Frame>
 
 <Steps>
@@ -193,7 +193,7 @@ Follow [Define how it works](/build/how-it-works/overview): skill first, then in
     Open the agent, and under **Triggers** click **Add Slack trigger**. Install the app into the workspace, then invite it to `#support-agent-test` only. Leave the channel-message toggles off so it runs only when mentioned or DMed.
 
     <Frame caption="The Triggers step: Slack first, Email second. Zendesk is not a trigger.">
-      <img src="/images/build/new-agent-triggers.png" alt="Agent triggers list with Slack, Linear, GitHub, Email and WhatsApp rows" />
+      <img src="/images/dashboard/new-agent-triggers.png" alt="Agent triggers list with Slack, Linear, GitHub, Email and WhatsApp rows" />
     </Frame>
 
     Zendesk has no inbound trigger in Runtime. Tickets reach the agent when someone mentions it with the ticket URL, when a ticket is forwarded to its inbox, or later through a scheduled sweep of the queue.
@@ -268,7 +268,7 @@ Follow [Add guardrails and approvals](/build/guardrails-and-approvals). Now that
     Step 6 of the skill already calls `runtm-approval request --kind customer_reply --required-role admin --wait`. Posting to Zendesk is a write the bot token allows, so this gate is what keeps the customer-facing action human. A pending request flips the run to `awaiting_approval`; an admin approves or rejects it on the session card or from the CLI. Approvals are not delivered to Slack.
 
     <Frame caption="A run that went through the approval gate carries the outcome on its session card.">
-      <img src="/images/build/session-awaiting-approval.png" alt="Sessions grid showing a run approved by an approver" />
+      <img src="/images/dashboard/session-awaiting-approval.png" alt="Sessions grid showing a run approved by an approver" />
     </Frame>
     {/* cli: runtm-api session approvals list <session_id> */}
     {/* cli: runtm-api session approvals resolve <session_id> <approval_id> --approve --note "Evidence checked against the ledger" */}

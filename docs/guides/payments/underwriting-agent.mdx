@@ -78,7 +78,7 @@ Read [Define the job](/build/define-the-job) first. The objective needs an input
 Read [Measure success](/build/measure-success). Underwriting has three kinds of run and a grader can only judge one category at a time, so give it three.
 
 <Frame caption="Three categories, each with a when-to-use, a success criterion and the human cost that prices the scorecard.">
-  <img src="/images/build/agent-evaluation.png" alt="Performance evaluation section of the agent sheet with a category expanded" />
+  <img src="/images/dashboard/agent-evaluation.png" alt="Performance evaluation section of the agent sheet with a category expanded" />
 </Frame>
 
 <Steps>
@@ -133,7 +133,7 @@ Read [Measure success](/build/measure-success). Underwriting has three kinds of 
 Read [Give it tools](/build/give-it-tools). None of the KYB vendors is a built-in provider, so Middesk is a custom provider here; Persona or Alloy would be set up the same way with their own fields. Postgres is also custom. Notion is built in.
 
 <Frame caption="Tools and MCP servers are added from the same chooser. Middesk and Postgres are custom tool providers; Notion comes from the catalog.">
-  <img src="/images/build/tools-add-chooser.png" alt="Dialog asking what to add, with Tool and MCP server options" />
+  <img src="/images/dashboard/tools-add-chooser.png" alt="Dialog asking what to add, with Tool and MCP server options" />
 </Frame>
 
 <Steps>
@@ -270,7 +270,7 @@ Read [Define how it works](/build/how-it-works/overview). The runbook is a skill
     In the agent sheet, under **Triggers**, click **Connect** on the Linear row. The OAuth flow finishes in the browser. In the **Linear** tab, keep **Default template** on `Underwriting`, and under **Team overrides** route the `Underwriting` Linear team to this template so that other teams' assignments do not launch it. Assigning a ticket to the agent, or mentioning it, launches a run; the memo comes back as agent activities and a comment on the issue.
 
     <Frame caption="Triggers connect from the agent sheet. Linear finishes in the browser; Email is one click.">
-      <img src="/images/build/new-agent-triggers.png" alt="New Agent dialog, Triggers step listing Slack, Linear, GitHub, Email, WhatsApp and SMS" />
+      <img src="/images/dashboard/new-agent-triggers.png" alt="New Agent dialog, Triggers step listing Slack, Linear, GitHub, Email, WhatsApp and SMS" />
     </Frame>
 
     If your team does not use Linear, click **Create inbox** on the Email row instead and have the application system forward new applications to the agent's address. The reply comes back in the same email thread.
@@ -312,7 +312,7 @@ Read [Prove it works and iterate](/build/launch-and-iterate). No guardrail exist
     Assign the first three tickets to the agent in the test Linear team. Each launches a session. Watch it under **Sessions** or **Agents > Runs**. When a run reaches the `memo_attach` approval, the session card shows **Approve** and **Reject**; approve to let it finish so it can be graded.
 
     <Frame caption="A run waiting on an approval shows it on the session card; approve to let the run finish and be graded.">
-      <img src="/images/build/session-awaiting-approval.png" alt="Sessions grid with a run showing its approval outcome" />
+      <img src="/images/dashboard/session-awaiting-approval.png" alt="Sessions grid with a run showing its approval outcome" />
     </Frame>
 
     {/* cli: runtm-api session list */}
