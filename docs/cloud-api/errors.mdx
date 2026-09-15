@@ -1,6 +1,6 @@
 ---
 title: "Errors"
-description: "Standard error responses and status codes"
+description: "Error response shape, every status code the API returns and what to do about each, including the scheduled-agent 502 and 503 cases, plus rate-limit headers. Read when a call fails."
 ---
 
 The API uses conventional HTTP status codes and a consistent JSON error shape so your code can handle failures programmatically.
@@ -37,8 +37,11 @@ Some endpoints return a structured detail object with additional context:
 | `404` | **Not Found** | The requested resource does not exist, or is not visible to the key's scope. |
 | `409` | **Conflict** | The resource is in an invalid state for the requested operation (e.g. pausing an already-paused session). |
 | `413` | **Payload Too Large** | The request body exceeds the maximum allowed size. |
+| `422` | **Unprocessable Entity** | The body parsed but failed schema validation, for example a wrong field type or an unknown enum value. Check the endpoint's parameters. |
 | `429` | **Too Many Requests** | Rate limit exceeded. See [Rate Limits](/cloud-api/rate-limits). |
 | `500` | **Internal Server Error** | An unexpected error occurred. If persistent, contact support. |
+| `502` | **Bad Gateway** | On `POST /scheduled-agents/{id}:run`, the launch itself failed (unknown template, deleted Slack integration). `detail` carries the reason; this is the on-demand run surfacing what a cron tick would fail on silently. |
+| `503` | **Service Unavailable** | On scheduled-agent create or update, the scheduler is not configured in this environment. Create the agent disabled and drive it with `:run`. Elsewhere, an upstream dependency is down; retry once. |
 
 ## Rate limit headers
 

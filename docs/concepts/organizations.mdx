@@ -1,6 +1,6 @@
 ---
 title: Organizations
-description: "Team workspaces, roles, and how resources are scoped to personal or org context"
+description: "Personal versus organization mode, the three roles and how they cap API-key scopes, org-scoped keys, and which resources are org-scoped. Read when a call returns 403 or a resource is missing from a list."
 ---
 
 Runtime supports two operating modes: **personal** (just you) and **organization** (a team). Most features work in both modes, but some resources like templates, team secrets, guardrails, and integrations only exist within an organization.
@@ -68,10 +68,10 @@ See [Secrets](/cloud-api/secrets/team-list).
 
 System-level instructions that apply to every session in the org. Useful for coding standards, naming conventions, or security rules the agent should always follow. Org instructions combine with user instructions at prompt time.
 
-See [Org Instructions](/cloud-api/context/org-instructions).
+See [Org Instructions](/cloud-api/context/org-instructions-get).
 
 ### Guardrails
 
 Org-wide limits and allowlist policies. Admins can restrict which models agents use, cap session durations, and define allowlists for deployments.
 
-See [Org Limits](/cloud-api/guardrails/org-limits) and [Allowlist Policy](/cloud-api/guardrails/allowlist-policy).
+See [Org Limits](/cloud-api/guardrails/org-limits-get) and [Allowlist Policy](/cloud-api/guardrails/allowlist-policy-get).

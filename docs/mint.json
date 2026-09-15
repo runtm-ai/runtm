@@ -74,11 +74,30 @@
       ]
     },
     {
-      "group": "Concepts",
+      "group": "Build an agent",
+      "pages": [
+        "build/overview",
+        "build/define-the-job",
+        "build/measure-success",
+        "build/give-it-tools",
+        {
+          "group": "4. Define how it works",
+          "pages": [
+            "build/how-it-works/overview",
+            "build/how-it-works/skills",
+            "build/how-it-works/instructions",
+            "build/how-it-works/triggers"
+          ]
+        },
+        "build/launch-and-iterate",
+        "build/guardrails-and-approvals"
+      ]
+    },
+    {
+      "group": "Platform reference",
       "pages": [
         "concepts/sessions",
         "concepts/coding-agents",
-        "concepts/agents",
         "concepts/templates",
         "concepts/context",
         "concepts/skills",
@@ -101,6 +120,21 @@
         "cloud-api/errors",
         "cloud-api/rate-limits",
         "cloud-api/conventions"
+      ]
+    },
+    {
+      "group": "Patterns",
+      "pages": [
+        "cloud-api/patterns/authentication",
+        "cloud-api/patterns/sessions-at-scale",
+        "cloud-api/patterns/streaming-prompts",
+        "cloud-api/patterns/session-files",
+        "cloud-api/patterns/long-running-prompts",
+        "cloud-api/patterns/activity-and-telemetry",
+        "cloud-api/patterns/outbound-webhooks",
+        "cloud-api/patterns/session-cli-recipes",
+        "cloud-api/patterns/debug-a-session",
+        "cloud-api/patterns/template-lifecycle"
       ]
     },
     {
@@ -500,27 +534,24 @@
       ]
     },
     {
-      "group": "Get Started",
+      "group": "Payments operations",
       "pages": [
-        "guides/authentication-walkthrough"
+        "guides/payments/support-agent",
+        "guides/payments/fraud-risk-agent",
+        "guides/payments/underwriting-agent",
+        "guides/payments/multi-agent-underwriting"
       ]
     },
     {
-      "group": "Core API Patterns",
+      "group": "Recipes",
       "pages": [
-        "guides/managing-sessions-at-scale",
-        "guides/streaming-prompts-over-websockets",
-        "guides/working-with-files",
-        "guides/long-running-prompts",
-        "guides/pulling-activity-and-telemetry",
-        "guides/webhooks-and-triggers"
-      ]
-    },
-    {
-      "group": "Best Practices",
-      "pages": [
-        "guides/best-practices",
-        "guides/teach-the-agent-your-codebase"
+        "guides/recipes/connect-stripe-read-only",
+        "guides/recipes/add-kyb-provider",
+        "guides/recipes/add-mcp-server-with-token",
+        "guides/recipes/route-linear-team-to-template",
+        "guides/recipes/test-scheduled-agent-before-enabling",
+        "guides/recipes/request-approval-from-a-run",
+        "guides/recipes/delegate-to-another-agent"
       ]
     },
     {
@@ -638,5 +669,47 @@
     "auth": {
       "method": "bearer"
     }
-  }
+  },
+  "redirects": [
+    {
+      "source": "/guides/authentication-walkthrough",
+      "destination": "/cloud-api/patterns/authentication"
+    },
+    {
+      "source": "/guides/managing-sessions-at-scale",
+      "destination": "/cloud-api/patterns/sessions-at-scale"
+    },
+    {
+      "source": "/guides/streaming-prompts-over-websockets",
+      "destination": "/cloud-api/patterns/streaming-prompts"
+    },
+    {
+      "source": "/guides/working-with-files",
+      "destination": "/cloud-api/patterns/session-files"
+    },
+    {
+      "source": "/guides/long-running-prompts",
+      "destination": "/cloud-api/patterns/long-running-prompts"
+    },
+    {
+      "source": "/guides/pulling-activity-and-telemetry",
+      "destination": "/cloud-api/patterns/activity-and-telemetry"
+    },
+    {
+      "source": "/guides/webhooks-and-triggers",
+      "destination": "/cloud-api/patterns/outbound-webhooks"
+    },
+    {
+      "source": "/guides/best-practices",
+      "destination": "/build/define-the-job"
+    },
+    {
+      "source": "/guides/teach-the-agent-your-codebase",
+      "destination": "/build/how-it-works/instructions"
+    },
+    {
+      "source": "/concepts/agents",
+      "destination": "/build/define-the-job"
+    }
+  ]
 }

@@ -1,0 +1,56 @@
+---
+title: "Test a scheduled agent before enabling it"
+description: "Create a scheduled agent disabled, run it once on demand, read the session, then enable the schedule, so a misconfiguration fails in front of you rather than at 03:00 UTC. Read before enabling any cron-driven agent."
+---
+
+## Outcome
+
+The schedule is enabled only after one manual run produced the session and the output you expected, and `next_run_at` shows the tick you intended in UTC.
+
+## Before you start
+
+- The roster agent exists with a default template, or you have a template id and a coding agent to run as.
+- The prompt the schedule sends is written down. It is sent verbatim on every tick.
+- If the run should post somewhere, the Slack integration and channel id are known. Email and WhatsApp targets are set in the dashboard.
+
+## Do it
+
+<Steps>
+  <Step title="Create it disabled">
+    On **Agents**, open the **Scheduled** tab and click **New scheduled agent**. Fill in **Name this scheduled agent** and the prompt ("Describe what the agent should do on each run..."). Choose **Agent** to run as a roster agent, or **Harness** to pick the coding agent and template yourself. Set the schedule, pick **Personal** or **Team**, and leave it off.
+
+    {/* cli: runtm-api scheduled-agents create --name "Nightly decline sweep" --cron "0 9 * * 1-5" --prompt "Review yesterday's declined payments and post a summary." --template <template_id> --agent claude-code --disabled */}
+  </Step>
+  <Step title="Run it once">
+    Use the row's menu and choose **Run now**. This executes the identical code path a cron tick takes: same template resolution, same post target, same launch. A failure here is the failure you would otherwise get at the scheduled hour.
+
+    {/* cli: runtm-api scheduled-agents run-now <scheduled_agent_id> */}
+  </Step>
+  <Step title="Read the session">
+    The run appears under **Sessions**. Open it and read the transcript to the end: did it reach the tools, did it finish, did the post land where you meant? If the schedule runs as a roster agent, check the run's grade too.
+
+    {/* cli-verify: runtm-api session status <session_id> */}
+    {/* cli-verify: runtm-api session grade <session_id> */}
+  </Step>
+  <Step title="Enable">
+    Toggle the schedule on. Then read `next_run_at`; it is the fastest liveness check and should be the UTC instant you intended.
+
+    {/* cli: runtm-api scheduled-agents update <scheduled_agent_id> --enabled */}
+    {/* cli-verify: runtm-api scheduled-agents get <scheduled_agent_id> | jq '{enabled, cron, next_run_at, last_run_at}' */}
+  </Step>
+</Steps>
+
+## Verify
+
+`last_run_at` is set from the manual run, `enabled` is true, and `next_run_at` is in the future at the hour you expect. After the first tick, `last_session_id` changes and a new session appears.
+
+## Gotchas
+
+- **Cron is five fields in UTC, with no per-agent time zone.** "9am Pacific on weekdays" is `0 16 * * 1-5` in winter and `0 17 * * 1-5` in summer. Pick one and note the DST shift, or express the schedule in UTC to your team.
+- **A 503 on create or enable** means the scheduler is not configured for this deployment. Create the agent disabled and drive it with **Run now** until it is.
+- **Enabled but never run.** `enabled` true, `last_run_at` null, `next_run_at` in the past: the schedule was never validated. Disable, run now, read, enable.
+- **One post target.** A schedule posts to one Slack channel, one email address or one WhatsApp number, never several. With no target the run is visible only in the dashboard.
+
+<Card title="5. Prove it works and iterate" icon="rotate" href="/build/launch-and-iterate">
+  Seeded cases, grades and the scorecard, and why the first run is always on demand.
+</Card>

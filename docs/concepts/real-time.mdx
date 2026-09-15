@@ -1,6 +1,6 @@
 ---
 title: Real-time
-description: "WebSockets for terminals, prompt streaming, and multi-user collaboration"
+description: "The three WebSocket channels (terminal, prompt streaming, collaboration), the token exchange, frame formats, and when to use REST instead. Read when building a live UI or streaming a run."
 ---
 
 Runtime exposes three WebSocket channels for real-time interaction with sessions. They power the same live experience you see in the dashboard: streaming terminal output, watching an agent think and code, and seeing who else is working in the same session.
@@ -123,10 +123,10 @@ The REST prompt endpoint is simpler but blocks until the agent is done. The WebS
 ## Related guides
 
 <CardGroup cols={2}>
-  <Card title="Stream prompts over WebSockets" icon="bolt" href="/guides/streaming-prompts-over-websockets">
+  <Card title="Stream prompts over WebSockets" icon="bolt" href="/cloud-api/patterns/streaming-prompts">
     Token exchange, event types, and reconnection patterns.
   </Card>
-  <Card title="Handle long-running prompts" icon="hourglass" href="/guides/long-running-prompts">
+  <Card title="Handle long-running prompts" icon="hourglass" href="/cloud-api/patterns/long-running-prompts">
     REST vs WebSocket, cancel, rewind, and history replay.
   </Card>
 </CardGroup>

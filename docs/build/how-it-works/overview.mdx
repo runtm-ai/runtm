@@ -1,0 +1,69 @@
+---
+title: "4. Define how it works"
+description: "The three things that decide how an agent behaves once it has a job and tools: the runbook it follows (skills), the instructions it reads, and the triggers that start it. Read before attaching skills or connecting a trigger; guardrails come later, in step 6, after the agent has proven it can do the job."
+---
+
+## Outcome
+
+The agent has a written method it follows every run, knows which instructions win when they disagree, and starts from the places your team already works in. It is ready for its first seeded case in [step 5](/build/launch-and-iterate).
+
+## Decide
+
+**What is the method?** Write it down as a runbook before the agent runs once. If a human would follow five steps and consult one lookup table, the agent gets those five steps and that table as a skill. The alternative, a long system prompt, is harder to test and impossible to attach to a second agent.
+
+| | Bad | Good |
+|---|---|---|
+| Method | "Investigate the ticket and reply." | A `payment-investigation` skill: identify the customer from the case, pull the charge and its events, pull the ledger rows, separate processor reason from policy, draft with citations, request approval. Plus `references/decline-codes.md`. |
+| Why | Every run improvises a different procedure, and there is nothing to fix when it goes wrong. | The procedure is a file. When a run misses a step, you edit the file, rebuild, and every agent that shares the skill improves. |
+
+**Where does the agent live?** Pick the trigger from where the work already arrives: Slack for questions, Email for forwarded cases, Linear or GitHub for tickets and pull requests, a cron schedule for queue sweeps and periodic reviews. Runtime has no inbound trigger from Zendesk, Intercom or Datadog today, so a support agent is reached through Slack, Email, or a scheduled sweep of the queue. For step 5, point the trigger at a test channel or use a manual run, not the live queue.
+
+**What must it never do?** List the actions (refunds, status changes, customer-facing sends, account blocks). Put them in the system instructions and the runbook now as flat prohibitions. Do not write rules for them yet; that is [step 6](/build/guardrails-and-approvals), after the agent has shown in step 5 that it can do the job with read-only credentials. A rule written now is a guess about behaviour you have not observed.
+
+## The three pages
+
+<CardGroup cols={3}>
+  <Card title="Skills and runbooks" icon="book" href="/build/how-it-works/skills">
+    Write the procedure as a `SKILL.md` bundle, require the tools it needs, attach it to the template, rebuild.
+  </Card>
+  <Card title="Instructions" icon="layer-group" href="/build/how-it-works/instructions">
+    The nine layers written into every session, which one wins, and what belongs in each.
+  </Card>
+  <Card title="Triggers" icon="bolt" href="/build/how-it-works/triggers">
+    Slack, Linear, GitHub, Email, WhatsApp, SMS, cron and the API: what each sends the agent and how it replies.
+  </Card>
+</CardGroup>
+
+## Order of work
+
+<Steps>
+  <Step title="Write the skill first">
+    The runbook is the thing you will edit most. Get it into a skill and attached to the template before any trigger exists. Include the prohibitions and the approval step as runbook text.
+    {/* cli: runtm-api skills create --name payment-investigation --display-name "Payment investigation" --description "How to reconstruct a charge, decline or refund and draft a cited reply" --md ./SKILL.md */}
+    {/* cli: runtm-api skills upload-file <skill_id> --path references/decline-codes.md --file ./references/decline-codes.md */}
+    {/* cli: runtm-api skills attach <skill_id> --template <template_id> */}
+  </Step>
+  <Step title="Check the instruction layers">
+    Read the agent's system instructions next to the org and template instructions. The later layers win, so an org policy like "never paste card numbers" already applies and does not need repeating.
+    {/* cli-verify: runtm-api template context resolve <template_id> */}
+  </Step>
+  <Step title="Rebuild the template once">
+    Attachments made after the last build are not in the snapshot until you rebuild.
+    {/* cli: runtm-api template build <template_id> */}
+    {/* cli-verify: runtm-api template get <template_id> | jq '{skills: [.skills[].name], stale: .attachments_changed_since_build}' */}
+  </Step>
+  <Step title="Connect a test trigger">
+    Once the template proves it carries the skill, connect Slack, Email or a schedule, pointed at a test channel or created disabled so you can `run-now`. A trigger connected before the template is ready runs a bare agent.
+    {/* cli: runtm-api scheduled-agents create --name "<name>" --cron "0 * * * *" --prompt "<prompt>" --template <template_id> --disabled */}
+  </Step>
+  <Step title="Go prove it">
+    Continue to [Prove it works and iterate](/build/launch-and-iterate). Come back to guardrails only after the seeded cases pass.
+  </Step>
+</Steps>
+
+## Gotchas
+
+- **A skill attached after the last build is not in the sandbox.** `template get` shows `attachments_changed_since_build: true`; rebuild.
+- **Instructions do not enforce.** The system prompt says "never refund"; only a deny rule makes it impossible. That rule belongs in step 6, once you know what the agent actually runs.
+- **Guardrails before the first run.** An `ask` default on an unproven agent stalls on every unknown command, and you cannot tell a capability gap from a rule. Prove first.
+- **A trigger on the live queue during step 5.** Use a test channel, an allowlisted sender on the email inbox, or a disabled schedule with `run-now`.

@@ -1,0 +1,350 @@
+---
+title: "Template lifecycle from the CLI"
+description: "Discover, create, build, verify, fix, snapshot and rebuild org templates with runtm-api, including session arguments, owning groups, auto-rebuild, template secrets, context and guardrails resolution, and the attach-then-build rule for skills and MCP servers. Read when a coding agent must set up or repair the environment an agent runs on."
+---
+
+An org template is the snapshot every session boots from, and it is also the capability carrier for a roster agent: the agent's `default_template` decides which skills, MCP servers, credentials and guardrails its sessions load. This page is the operational counterpart to [Give it tools](/build/give-it-tools): the exact `runtm-api template` commands, what to read in their output, and the order that avoids silent failures.
+
+Every command here needs an **org-scoped API key**. The org is read from the key itself. `--org` and `RUNTM_ORG_ID` cannot stand in for one, and a personal key that names an org is rejected with `403`.
+
+```bash
+export RUNTM_API_KEY=runtm_...                 # org-scoped key from Settings > API Keys
+runtm-api auth status | jq .organization_id    # null means personal key, templates unavailable
+```
+
+## Recipe: discover what exists
+
+```bash
+runtm-api template list                 # every template in the org
+runtm-api template get <template_id>    # full config for one
+runtm-api template repos                # GitHub repos eligible for new templates
+```
+
+Fields worth reading on `template get`:
+
+| Field | Meaning |
+|---|---|
+| `build_status` | `pending`, `building`, `ready` or `failed`. Only `ready` templates boot sessions. |
+| `has_all_required` | `false` means a required secret is unset and sessions will fail to boot. |
+| `services` | Detected services (web, api, db), each with a port and start command. |
+| `agents` | Coding agents the snapshot was built for. |
+| `skills`, `mcp_servers` | What a session from this template actually loads. |
+| `attachments_changed_since_build` | `true` means skills or MCP servers were attached or detached after the last build, so the snapshot is behind. |
+
+## Recipe: verify a template loads the skills you think it does
+
+The two ways to get this wrong are both silent: a skill created but never attached, and a skill attached after the last build. One command reports both.
+
+```bash
+runtm-api template get <template_id> | jq '{
+  skills: [.skills[] | {name, attached_via}],
+  mcp: [.mcp_servers[].name],
+  stale: .attachments_changed_since_build
+}'
+```
+
+```json
+{
+  "skills": [
+    { "name": "payment-investigation", "attached_via": "template" },
+    { "name": "company-context", "attached_via": "all" }
+  ],
+  "mcp": ["stripe"],
+  "stale": true
+}
+```
+
+| What you see | What it means | Fix |
+|---|---|---|
+| `skills: []` | Nothing is attached, however many skills exist in the org | `runtm-api skills attach <skill_id> --template <template_id>` |
+| `stale: true` | Attachments changed after the snapshot was built; sessions still boot the old set | `runtm-api template build <template_id>` |
+| `attached_via: "template"` | Attached directly to this template | `runtm-api skills detach <skill_id> --template <template_id>` |
+| `attached_via: "repo"` | Reaches the template through one of its repos | `runtm-api skills detach <skill_id> --repo <owner/name>` |
+| `attached_via: "all"` | Org-wide, loads into every session | `runtm-api skills detach <skill_id> --all` |
+
+Three commands answer the same question. Use whichever you reached for first; `template get` is the only one that also reports staleness.
+
+```bash
+runtm-api template get <template_id> | jq .skills   # inline, plus staleness
+runtm-api template skills <template_id>             # template-first
+runtm-api skills list --template <template_id>      # skills-first
+```
+
+The same three exist for MCP servers: `template get | jq .mcp_servers`, `template mcp <template_id>`, `mcp list --template <template_id>`. Scoped listings include org-wide items attached with `--all`, because those load too.
+
+## Recipe: attach skills and MCP servers, then build once
+
+Creating a skill or MCP server attaches it nowhere. Attach it to a template and every session from that template loads it. `skills` and `mcp` share the same verbs.
+
+```bash
+runtm-api skills attach <skill_id> --template <template_id>
+runtm-api mcp attach <mcp_id> --template <t1> --template <t2>     # several templates at once
+runtm-api skills attach <skill_id> --repo acme/api --repo acme/web  # specific repos
+runtm-api skills attach <skill_id> --all                           # every repo in the org
+
+runtm-api skills attachments <skill_id>                            # where it is attached now
+runtm-api skills detach <skill_id> --template <template_id>        # one template, others untouched
+runtm-api skills detach <skill_id> --clear                         # remove every attachment
+```
+
+Scope semantics:
+
+- `--template` and `--repo` are repeatable and can be mixed in one call. `--all` is mutually exclusive with both and supersedes them.
+- `attach` merges with the current scope; repeated calls add. Pass `--replace` to set the exact scope wholesale.
+- `detach` removes the named `--template` or `--repo`, `--all` removes the all-repos attachment, `--clear` removes everything.
+- Only org-owned skills and MCP servers can be attached. Personal directives cannot.
+
+The full flow, with the two follow-ups that fail silently when skipped:
+
+```bash
+SKILL_ID=$(runtm-api skills create --name deploy-checks --md ./SKILL.md | jq -r .directive.id)
+runtm-api skills attach "$SKILL_ID" --template <template_id>
+runtm-api template get <template_id> | jq '{skills: [.skills[].name], stale: .attachments_changed_since_build}'
+runtm-api template build <template_id>
+```
+
+**Attach everything, then build once.** Every rebuild costs minutes and churns the snapshot for anyone booting sessions meanwhile. Attach all skills and MCP servers, check `template get` once, then issue one `template build`. Attaching or detaching needs `context:write` on the key.
+
+## Recipe: create a new template
+
+```bash
+runtm-api template repos | jq '.repos[] | select(.full_name == "acme/my-app")'   # 1. repo is reachable
+
+runtm-api template create \
+  --display-name "Internal API" \
+  --name internal-api \
+  --github-repo acme/my-app \
+  --github-branch main \
+  --tier basic                                     # 2. record, build_status starts pending
+
+runtm-api template build <template_id>              # 3. build runs as a background job (202)
+runtm-api template build-logs <template_id>         # 4. JSON lines until event "done"
+runtm-api template get <template_id> | jq '{build_status, has_all_required}'   # 5. confirm
+```
+
+`--display-name` and `--github-repo` are required. `--name` sets the slug (derived from the repo if omitted). `--tier` is `basic`, `standard` or `max`. Pass `--build` to trigger the build in the same call.
+
+### Faster: clone-only build with `--skip-agent`
+
+`--skip-agent` runs a clone-only build with no AI step and **implies `--build`**, so steps 2 and 3 collapse into one command. Use it when the repo only needs cloning and setup finishes inside a session.
+
+```bash
+runtm-api template create \
+  --display-name "Payment Support" \
+  --github-repo acme/support-tools \
+  --github-branch main \
+  --tier standard \
+  --skip-agent
+
+runtm-api template get <template_id> | jq -r .build_status    # wait for "ready"
+runtm-api session create --template-id <template_id>
+```
+
+Because `--skip-agent` builds immediately, anything you attach afterwards leaves the template stale. When you know the skills in advance, create without `--skip-agent`, attach, then build once. `--skip-agent` on the standalone `template build` skips the AI step on a rebuild the same way.
+
+## Recipe: declare session arguments
+
+Session arguments are values a member supplies when launching a session from the template. Each is injected into the sandbox as an environment variable. Declare them on `template create` or `template update` with the repeatable `--session-arg` flag.
+
+| Form | Meaning |
+|---|---|
+| `KEY=DEFAULT` | Optional text argument with a default |
+| `KEY` | Required text argument, no default |
+| `'{"key": ...}'` | Full control: `type` (`text`, `select`, `boolean`), `options`, `default`, `required`, `label`, `help_text` |
+
+A `select` argument needs a non-empty `options` array. `label` defaults to the key.
+
+```bash
+runtm-api template create --display-name "Rich Args Demo" \
+  --github-repo acme/my-app --tier standard \
+  --session-arg BRANCH=main \
+  --session-arg '{"key":"ENV","type":"select","options":["dev","staging","prod"],"default":"dev","required":true,"label":"Environment","help_text":"Target deploy env"}' \
+  --session-arg '{"key":"VERBOSE","type":"boolean","default":"false","label":"Verbose logging"}' \
+  --skip-agent
+```
+
+On `create`, session arguments are applied through a follow-up `PATCH`, so they work with or without `--build`. On `update`, `--session-arg` **replaces the whole set**; pass every argument you want to keep.
+
+```bash
+runtm-api template update <template_id> --session-arg BRANCH=main
+```
+
+Supply values at launch with `--template-args KEY=VALUE` (repeatable or comma-separated, only valid with `--template-id`). Omitted optional arguments use their default; a missing required argument is rejected.
+
+```bash
+runtm-api session create --template-id <template_id> --template-args BRANCH=dev --agent claude-code --mode interactive
+```
+
+## Recipe: template context and what a session actually receives
+
+Template context is the instruction block injected into every session from the template, layered after the org instructions. It applies to new sessions immediately, no rebuild.
+
+```bash
+runtm-api template context get <template_id>
+runtm-api template context set <template_id> --text 'Always run the test suite before opening a PR.'
+runtm-api template context set <template_id> --clear
+runtm-api template context resolve <template_id>    # blocks: [{source: "org"}, {source: "template"}] plus effective_context
+```
+
+`resolve` is the debugging question: it shows the org block, the template block, and the merged text a session receives. The full layering is on [Instructions](/build/how-it-works/instructions).
+
+## Recipe: template-scoped guardrails
+
+Guardrails that apply only to sessions from this template, layered on top of the org set. Three types: `allowlist`, `hook`, `network`.
+
+```bash
+runtm-api template guardrails create <template_id> --type allowlist \
+  --name block-force-push --content '{"kind":"deny","pattern":"git push --force*"}'
+
+runtm-api template guardrails create <template_id> --type hook \
+  --name lint-on-stop --content '{"event":"Stop","type":"command","script":"./scripts/lint.sh","timeout":120}'
+
+runtm-api template guardrails list <template_id> --type allowlist
+runtm-api template guardrails update <template_id> <guardrail_id> --disabled    # pause, keep the definition
+runtm-api template guardrails delete <template_id> <guardrail_id> --yes
+runtm-api template guardrails resolve <template_id>    # merged org + template set with active, deduped and shadowed marks
+```
+
+Org-wide rules live under `runtm-api guardrails rules|hooks|network` and attach per template or repo like skills. `resolve` shows the combined outcome either way. When to add guardrails, and why last, is on [Add guardrails and approvals](/build/guardrails-and-approvals).
+
+## Recipe: owning groups and auto-rebuild
+
+```bash
+runtm-api template update <template_id> --owner-team <team_id>     # visible to one group, admins and the creator only
+runtm-api template update <template_id> --owner-team ""            # back to org-wide
+runtm-api groups usage <team_id>                                    # what a group owns
+
+runtm-api template update <template_id> --rebuild-schedule '0 6 * * *'   # nightly rebuild, 5-field cron in UTC
+runtm-api template update <template_id> --rebuild-schedule ''            # turn it off
+```
+
+A rebuild schedule keeps baked skills fresh without anyone remembering to rebuild. Skills and MCP servers take `--owner-team` on `update` as well.
+
+## Recipe: fix a broken template
+
+When a build fails, or sessions from the template can no longer run because dependencies drifted, `fix-session` boots the template's sandbox so an agent can repair it, and `save-snapshot` promotes the repaired sandbox to the template.
+
+```bash
+runtm-api template fix-session <template_id>          # {"session_id": "...", "template_id": "..."}
+
+runtm-api session prompt <session_id> "The build fails on a missing dependency. Run npm install, fix package.json, and verify the dev server starts on port 3000."
+
+runtm-api session file list <session_id> --path /home/user/project
+runtm-api session workspace-state <session_id> | jq '.session.dirty_files'
+
+runtm-api template save-snapshot <template_id> --session <session_id>     # existing sessions keep the old snapshot; new ones get this one
+runtm-api session destroy <session_id>                                     # optional, it auto-pauses anyway
+```
+
+`save-snapshot` waits up to `--timeout` seconds (default 180) for the snapshot to complete. This is the same recovery an admin performs from the dashboard.
+
+## Recipe: monitor builds and rebuild after changes
+
+```bash
+runtm-api template build-logs <template_id>                              # live stream while building
+runtm-api template build-logs-history <template_id> | jq '.logs[0].content'   # persisted log after completion
+
+runtm-api template build <template_id>                                   # re-trigger after the repo or attachments changed
+```
+
+Editing a skill's content triggers a rebuild of the templates it is attached to. Attaching a new skill or MCP server does not; run `template build` yourself. A fast rebuild without a full reinstall runs automatically when only instructions or skill files changed.
+
+## Recipe: template secrets
+
+Templates declare the environment variable names they need. Values are encrypted at rest and injected into every session from the template.
+
+```bash
+runtm-api template secrets list <template_id>    # {"required_secrets": ["DATABASE_URL"], "secrets": [...], "has_all_required": true}
+runtm-api template secrets set <template_id> DATABASE_URL "postgres://..." STRIPE_KEY "sk_..."
+runtm-api template secrets delete <template_id> STRIPE_KEY
+```
+
+Prefer a tool provider connection for anything that identifies a vendor account, and keep template secrets for build-time and environment configuration. The distinction is on [Give it tools](/build/give-it-tools).
+
+## Recipe: clean up
+
+```bash
+runtm-api template delete <template_id>          # refuses and prints a hint
+runtm-api template delete <template_id> --yes    # deletes
+```
+
+Running sessions created from the template keep their own snapshot until destroyed.
+
+## Permissions
+
+| Action | Required role | Required scope |
+|---|---|---|
+| List, get, build-logs | Member | `templates:read` |
+| Create, update, fix-session, save-snapshot | Admin or Owner | `templates:write` |
+| Build | Admin or Owner | `templates:build` |
+| Delete | Admin or Owner | `templates:delete` |
+| Manage template secrets | Admin or Owner | `secrets:write` |
+| List attached skills and MCP servers | Member | `context:read` |
+| Attach or detach skills and MCP servers | Admin or Owner | `context:write` |
+
+On a `403`, run `runtm-api auth status` and check both the key's scopes and the user's org role.
+
+## Definition, connection, attachment
+
+An integration is three separate objects. They live in different places and only one of them ever holds a secret.
+
+| Object | What it is | Where it lives | Command |
+|---|---|---|---|
+| **Definition** | The wiring, no secrets. A tool provider (service, auth methods, package to install) or an MCP server (transport, command or URL). | `/api/knowledge/providers`, `/api/agent-directives` | `tools providers create`, `mcp create` |
+| **Connection** | Credentials supplied against a definition, encrypted, with a status and a scope (org, agent or personal). One definition, many connections. | `/api/knowledge/integrations`, `/api/agent-directives/{id}/connections` | `tools create` for providers; MCP connections are dashboard or API only |
+| **Attachment** | Where a skill or MCP server loads: templates, repos, or all repos. Creating a definition attaches it nowhere. | `/api/agent-directives/{id}/attachments` | `skills attach`, `mcp attach` |
+
+Rule of thumb for a coding agent: build definitions and attachments; send the person to the dashboard to create connections, so secrets never pass through the agent. `tools create --credentials` and MCP `--env` or `--header` can carry a secret for non-interactive automation, but they are not the path for a secret a person is handing you.
+
+Adding a new integration follows the same five steps every time: research every way to reach the service (MCP server, ready-made skill, CLI, SDK, REST API), weigh the auth methods (OAuth, API key, service account file), let the person pick the combination, build the definition, then hand off to the dashboard to connect. Prefer an existing MCP server or skill when a good one exists, then a CLI wrapped in a skill, then SDK or API recipes in a skill. Check `runtm-api tools providers list` before defining a provider that already exists.
+
+## CLI details the Build pages omit
+
+The Build pages show the common path. These flags exist for the rest.
+
+**Skills and MCP servers** (`runtm-api skills`, `runtm-api mcp`, same verbs):
+
+```bash
+runtm-api skills list --include-content                 # include each content payload
+runtm-api skills update <id> --owner-team <team_id>     # restrict visibility to one group; "" for org-wide
+runtm-api skills facets --template <template_id>        # label counts before filtering a list
+runtm-api skills import --source github_url --uri https://github.com/acme/skills/blob/main/deploy/SKILL.md
+runtm-api skills import --source github_repo --uri acme/skills --ref main --attach-repo acme/api --attach-all
+runtm-api skills upload-file <id> --file ./data/lookup.csv --path data/lookup.csv --binary   # binary or oversized file, max 5 MiB
+```
+
+`resync`, `lock`, `unlock` and `facets` exist on `mcp` as well. Common flags on every list: `--page-size`, `--page-token`. Every delete needs `--yes`.
+
+**Tool connections** (`runtm-api tools`, static credentials only; OAuth connects in the dashboard):
+
+```bash
+runtm-api tools create --provider bigquery --auth-method service_account_json --scope org \
+  --display-name "Production warehouse" \
+  --credentials '{"service_account_json": "{...}"}' \
+  --provider-metadata '{"project_id": "my-gcp-project"}'
+runtm-api tools update <id> --default-mode ask              # also --display-name, --provider-metadata, --tool-permissions '<json>'
+runtm-api tools list --scope org --provider bigquery
+```
+
+**Custom tool providers** (`runtm-api tools providers`, org-admin key with `integrations:write`):
+
+```bash
+runtm-api tools providers create --slug pylon --name "Pylon" --category support \
+  --logo https://app.pylon.com/favicon.png \
+  --package pylon-cli=npm:pylon-cli \
+  --auth-methods '[{"id":"api_key","display_name":"API Key","kind":"static","fields":[{"id":"api_key","label":"API Key","kind":"secret","required":true}],"materialization":{"env":{"PYLON_API_KEY":"{fields.api_key}"}}}]'
+
+runtm-api tools providers update <id> --logo https://example.com/new.png   # fetches the current schema, applies the change
+runtm-api tools providers fork <built-in-id> --slug my-notion               # editable copy, for example to bring your own OAuth app
+```
+
+Flags build a `ProviderSchema`: `--name` (required), `--logo`, `--icon`, `--tagline`, `--description`, `--category`, repeatable `--package NAME=SPEC` (mise specs: `latest`, `npm:pkg`, `github:owner/repo`, `cargo:crate`, `ubi:owner/repo`), and `--auth-methods '<json>'` (at least one). For full control pass `--schema '<json>'` or `--schema-file <path>`; flags apply on top. `--oauth-secrets '{"<method_id>":{"client_id":"...","client_secret":"..."}}'` attaches OAuth app credentials per method. Always pass `--logo`; without it the dashboard card shows a generic glyph. To find a package spec, call `GET /api/cloud/knowledge/package-search?backend=mise|npm|cargo|homebrew|github&q=<name>`; each hit returns the `mise_spec` to use in `--package`.
+
+## Gotchas
+
+- **Created is not attached, attached is not built.** Two silent failures; `template get` exposes both as `skills: []` and `attachments_changed_since_build: true`.
+- **`--skip-agent` builds immediately.** Attach first when you can, or expect one more `template build`.
+- **`--session-arg` on `update` replaces the set.** Pass every argument you want to keep.
+- **Personal key.** Every `template`, `skills`, `mcp` and `tools` command needs an org-scoped key; `--org` does not substitute.
+- **Template context needs no rebuild; attachments do.** Instructions apply to the next session. Skills and MCP servers apply after the next build.
+- **`--all` supersedes scoped attachments.** Switching a skill to `--all` replaces its template and repo attachments.

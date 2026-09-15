@@ -1,0 +1,148 @@
+---
+title: "Triggers"
+description: "Connect an agent to Slack, Linear, GitHub, Email, WhatsApp, SMS, a cron schedule, or the API, and understand what each trigger sends and how it replies. Read before `runtm-api agents create --type` or `runtm-api scheduled-agents create`."
+---
+
+## Outcome
+
+Your agent is reachable where the work already happens: a Slack mention, an assigned Linear issue, a pull request, an email to its own inbox, a phone number, or a clock. Every trigger launches a session from the agent's template, sends the event as the first prompt, and replies in the same place.
+
+## Decide
+
+**Where does the work arrive today?** Pick the trigger that matches the queue, not the one that looks most impressive.
+
+- Bad: "Slack, Email, Linear and a schedule, so it is always available." Four entry points means four sets of rate limits, allowlists and reply formats to maintain before the agent has proven itself on one.
+- Good: "Support asks about charges in `#payments-support`, so a Slack mention. Add a nightly sweep later if the queue backs up."
+
+**Does the event carry enough context?** A trigger sends the message text plus the event context fields you enable. If the agent needs a ticket ID, a customer ID or a transaction reference, it has to be in the message or reachable through a tool.
+
+**Who is allowed to talk to it?** Email, WhatsApp and SMS have sender allowlists. Slack and Linear are bounded by workspace membership. GitHub is bounded by the repos the App is installed on. Decide this before the first external message arrives.
+
+**Is there an event source at all?** There is no inbound webhook trigger and no Zendesk, Intercom or Datadog trigger. The cards for those on the Integrations page are "Talk to the Team" placeholders. A support agent is reached through a Slack mention with the ticket link, an email forward, or a scheduled sweep that reads the queue through a tool.
+
+## How triggers relate to the agent
+
+A trigger is an integration row (a Slack app, a Linear bot, a GitHub App, an email inbox, a phone number) bound to the agent through `config.agent_id`. The agent is the source of truth: its name, description, avatar, system instructions, default template and coding agent fan out to every linked trigger when you save the profile. Each trigger can still override the template or model for itself, which is how one agent answers in Slack from one template and in Linear from another.
+
+<Frame caption="The New Agent dialog ends on the Triggers step. Connect one now or add more later from the agent's settings.">
+  <img src="/images/build/new-agent-triggers.png" alt="New Agent dialog, Triggers step, listing Slack, Linear, GitHub, Email, WhatsApp, SMS and Voice rows" />
+</Frame>
+
+## What exists
+
+| Trigger | Fires on | Agent receives | Replies | Per-trigger overrides |
+|---|---|---|---|---|
+| Slack | `@mention`, direct message, thread follow-up; optional new channel messages and bot messages | message text plus enabled context fields (`channel_id`, `channel_name`, `user_id`, `user_name`, `user_real_name`, `user_tz`, `thread_ts`, `team_id`) | in the thread, with a "thinking" status while it works | template per channel, model, four launch toggles, hide footer, hide launch message |
+| Linear | issue assigned to the agent or mention | issue text plus context fields (`issue_identifier`, `issue_title`, `issue_url`, `team_key`, `team_name`, `project_name`) | as agent activities on the issue, streamed while it works | template per Linear team, model |
+| GitHub | review on assignment, ready for review, re-review requested, `@<app_slug>` comment mentions; optional filter label | issue or PR text plus context fields (`repo_full_name`, `issue_number`, `issue_title`, `issue_url`, `sender_login`, `head_branch`, `base_branch`) | as issue or PR comments from `<app_slug>[bot]` | template, model, mention prefix, filter label |
+| Email | a message to the agent's inbox at `<org>-<agent>@agents.runtm.com` | the email body | one reply in the same thread, no acknowledgment first, optional signature | sender allowlist, signature, rate limit (default 15 per hour) |
+| WhatsApp | a message to the agent's Vonage number | message text | a WhatsApp reply, conversation per sender | sender allowlist, ack, signature, rate limit |
+| SMS | a text to the agent's Vonage number | message text | a text reply, conversation per sender | sender allowlist, ack, signature, rate limit |
+| Scheduled | a 5-field cron expression, UTC | the prompt you wrote, verbatim, every tick | nothing unless you set a post target: one Slack channel, one email address, or one WhatsApp number | template, coding agent, model, visibility |
+| API | your code creates a session and sends a prompt with an API key | whatever you send | whatever you read back | everything on the request |
+
+Voice provisions a number that is shared with the agent's SMS and WhatsApp triggers, but inbound calls are not answered yet. Do not plan a workflow around it.
+
+<Frame caption="The Integrations page groups live triggers. Cards with a Talk to the Team button are not implemented.">
+  <img src="/images/build/integrations-triggers.png" alt="Integrations page, Agent Triggers section, showing Slack, Linear, GitHub Apps, Email, WhatsApp and SMS" />
+</Frame>
+
+## Do it
+
+Create the agent first, then attach triggers. Triggers created from the New Agent dialog or the agent's settings sheet are bound to the agent automatically.
+
+<Steps>
+  <Step title="Open the agent's Triggers list">
+    On **Agents**, open your agent. The edit sheet's **Profile** tab ends with a **Triggers** list and dashed `Add Slack trigger`, `Add Linear trigger`, `Add GitHub trigger`, `Add Email trigger` rows. The sheet says "The profile is shared across this agent's triggers."
+
+    {/* cli: runtm-api agents get <agent_id> */}
+    {/* cli: runtm-api agents list --type slack */}
+  </Step>
+
+  <Step title="Slack: create the app for this agent">
+    Click **Connect** on the Slack row. The dialog builds a Slack app from a manifest under your workspace, or you paste an App ID, an `xoxb-` bot token and the signing secret. Once connected, open the trigger's **Slack** tab and set the four launch toggles ("Auto-launch on new channel messages", "Auto-launch on bot channel messages", "Auto-reply to thread follow-ups", "Auto-launch on direct messages"), the default template, the **Event context** fields, and any **Channel → template overrides**.
+
+    {/* cli: runtm-api agents create --type slack --name "<agent name>" --template <template_id> */}
+    {/* cli: runtm-api agents update <slack_integration_id> --type slack --config '{"agent_id":"<agent_id>","triggers":{"new_dm_message":true,"new_thread_message":true,"new_channel_message":false},"event_context_fields":["channel_name","user_name"]}' */}
+  </Step>
+
+  <Step title="Linear: authorize the workspace">
+    Click **Connect** on the Linear row. Linear OAuth runs with the managed client or your own `client_id` and `client_secret`. Afterwards the **Linear** tab has `Agent name`, the default template, `Default agent`, `Rate limit (per hour)`, and **Team overrides** ("Route specific Linear teams to a different template.").
+
+    {/* cli: runtm-api agents create --type linear --name "<agent name>" --linear-api-key <linear_personal_api_key> --service-user <runtm_user_id> --template <template_id> */}
+    {/* cli: runtm-api agents update <linear_integration_id> --type linear --config '{"agent_id":"<agent_id>","team_template_map":{"<linear_team_id>":"<template_name>"}}' */}
+  </Step>
+
+  <Step title="GitHub: create a customer-owned App">
+    Click **Create app** on the GitHub row. GitHub's manifest flow creates an App under your account or org and returns you to **Agents**. In the **GitHub** tab, enable `Code review on assignment`, `Review when ready for review`, `Re-review when review is re-requested`, `Comment mentions` with its `Mention prefix` (default `@<app_slug>`), and optionally a `Filter label` so the bot only acts on labeled pull requests.
+
+    {/* cli: runtm-api agents create --type github --name "<agent name>" --github-org <github_org> --template <template_id> */}
+    {/* cli: runtm-api agents update <github_integration_id> --type github --config '{"agent_id":"<agent_id>","enable_code_review_on_assignment":true,"enable_comment_handling":true}' */}
+  </Step>
+
+  <Step title="Email: mint the inbox">
+    Click **Create inbox** on the Email row. One click provisions `<org-slug>-<agent-slug>@agents.runtm.com`. In the **Email** tab, add a sender allowlist (one address or `@domain` per line) and a signature. The default rate limit is 15 emails per hour.
+
+    {/* cli: runtm-api agents create --type email --name "<agent name>" --agent-id <agent_id> --template <template_id> */}
+    {/* cli-verify: runtm-api agents list --type email */}
+  </Step>
+
+  <Step title="WhatsApp or SMS: claim a number">
+    Click **Add number** (WhatsApp) or **Get number** (SMS). Both share one Vonage number per agent. Set the sender allowlist in international format (`+1 415 738 6102`, or a prefix such as `+1415*`). WhatsApp additionally requires business account onboarding with Meta before messages flow.
+
+    The CLI has no WhatsApp or SMS surface. Use the dashboard or `POST /api/cloud/v1/whatsapp` and `POST /api/cloud/v1/sms`.
+  </Step>
+
+  <Step title="Scheduled: write the prompt, validate, then enable">
+    On **Agents**, open the **Scheduled** tab and click the new-schedule button. The dialog is prompt-first: `Name this scheduled agent`, the prompt ("Describe what the agent should do on each run…"), a run-as choice between `Harness` ("Pick the coding agent, model and template yourself") and `Agent` ("Run as a named agent, using its own harness and template"), the schedule popover (`Time of day` with frequency and timezone, or `Interval` presets), `Personal` or `Team` visibility, and an optional **Post** target: one Slack channel, one email address, or one WhatsApp number.
+
+    Create it disabled, run it once, read the session, then enable. `run-now` executes the identical code path a cron tick takes, so a misconfigured schedule fails in front of you instead of silently at 03:00 UTC.
+
+    {/* cli: runtm-api scheduled-agents create --name "<name>" --cron "0 * * * *" --prompt "<prompt>" --template <template_id> --agent claude-code --disabled --slack-integration <slack_integration_id> --slack-channel <channel_id> */}
+    {/* cli-verify: runtm-api scheduled-agents run-now <scheduled_agent_id> */}
+    {/* cli: runtm-api scheduled-agents update <scheduled_agent_id> --enabled */}
+  </Step>
+
+  <Step title="API: launch from your own code">
+    Create a session from the agent's template and send a prompt. Every launch records `metadata.trigger` and `metadata.source`, so API runs show up in Runs next to the others.
+
+    {/* cli: runtm-api session create --template-id <template_id> --agent claude-code */}
+    {/* cli: runtm-api session prompt <session_id> "<prompt>" */}
+  </Step>
+</Steps>
+
+<Frame caption="A scheduled agent is a prompt, a cron expression in UTC, a template, and at most one post target.">
+  <img src="/images/build/scheduled-agents-new.png" alt="New scheduled agent dialog with prompt, run-as mode, schedule popover and post target" />
+</Frame>
+
+## Verify
+
+- The agent card on **Agents** shows a trigger count (`4 triggers`) and one icon per source.
+- `runtm-api agents get <agent_id>` lists linked triggers with `config.agent_id` equal to the agent's id.
+- For Slack, mention the bot in a test channel and confirm a session appears under **Runs** with the thread reply.
+- For schedules, `runtm-api scheduled-agents run-now <id>` returns a session id, and `runtm-api scheduled-agents get <id>` shows `last_run_at` and `next_run_at` once enabled.
+
+{/* cli-verify: runtm-api agents get <agent_id> */}
+{/* cli-verify: runtm-api scheduled-agents get <scheduled_agent_id> */}
+
+## Agent-to-agent
+
+One agent can start another. There is no dedicated trigger for it: the parent runs a script from its sandbox that creates a session on the child's template with the child's `agent_id`, forwards the prompt, and returns the reply, with a `PreToolUse` hook turning every handoff into a human approval. The dashboard draws a "Delegated work to subagent" card from the command text. See [Delegate work to another agent](/guides/recipes/delegate-to-another-agent) and the [multi-agent example](/guides/payments/multi-agent-underwriting).
+
+## Gotchas
+
+- **Trigger with no template.** A trigger whose agent has no `default_template` launches from the base image with none of your tools or skills. Set the template on the agent profile first.
+- **Schedule enabled without a run.** An enabled schedule that was never validated with `run-now` fails at its first tick where nobody is watching. Create disabled, run once, then enable.
+- **Cron is UTC.** There is no per-agent time zone. `0 18 * * 1` is Mondays 11:00 Pacific in winter and 10:00 in summer.
+- **Context fields are launch-only.** Slack event context is appended when a new session launches, not on thread follow-ups.
+- **Email has no acknowledgment.** By design the agent sends one reply when it finishes. Set expectations with senders, or use Slack where a thinking status is shown.
+- **Rate limits are per trigger.** Each integration row has `rate_limit_per_hour`. A busy channel hitting the cap drops launches until the window resets.
+- **Reply backstop covers Slack and schedules only.** If the delivery task dies mid-run, the reaper reposts the result for Slack and scheduled triggers. Linear, GitHub, Email, WhatsApp and SMS replies are not retried.
+- **Delete triggers before the agent.** Deleting a roster agent with linked triggers fails; remove or reassign the triggers first.
+- **Slack needs the org's Slack app configuration token first.** It is set once in the dashboard and has no CLI equivalent; a bare 400 on creating a Slack trigger is almost always this.
+- **Slack, GitHub and managed Linear finish in a browser.** Only Email and manual Linear (a personal API key plus a service user) are fully headless. Unattended setups should prefer Email or a schedule and hand the browser step to a person.
+- **A trigger not bound to the roster agent carries none of its identity.** The binding is `config.agent_id`. Email takes `--agent-id` at create; other triggers are bound by editing their config.
+- **Trigger updates are partial patches.** Only the flags or config keys you pass change; `config` merges server-side, so a one-key change never clobbers `triggers` or `channel_template_map`.
+- **Deleting the roster row while a trigger still points at it does not stick.** The trigger's lazy sync recreates it. Delete or reassign the triggers first.
+- **A schedule's Slack post target is a pair.** Integration id and channel id must be set together; find integration ids with `runtm-api agents list --type slack`.
+- **Scheduled prompts that end with "post the JSON" paste raw JSON into Slack.** Ask for a short plain-text summary when a person reads the channel.

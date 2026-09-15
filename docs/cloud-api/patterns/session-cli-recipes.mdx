@@ -1,0 +1,372 @@
+---
+title: "Work a session from the CLI"
+description: "Boot a session from a template, run commands with connect or exec, hot-load skills and MCP, move files, share previews, deploy, pause and resume, all with runtm-api. Read when a coding agent must drive a session end to end from the terminal."
+---
+
+Every recipe below is a `runtm-api session` subcommand. The endpoint behind each one is documented under [Sessions](/cloud-api/sessions/list); this page is about the order to run them in and the flags that matter. Sessions, templates and the file and env commands all need an org-scoped API key when the resources belong to an org; `--org` cannot substitute for one.
+
+## When to use which command
+
+| Goal | Use |
+|------|-----|
+| Boot a session from a prebuilt org template | `session create --template-id <uuid>` |
+| Run a single shell command in a session | `session exec <id> -- <command>` (scripted, returns its exit code) |
+| Run a command whose output you will parse | `session exec <id> --json -- <command>` |
+| Open a live interactive shell | `session connect <id>` (raw PTY, needs a TTY) |
+| Fire-and-forget background task | `session launch` (creates and prompts in one call) |
+| Interactive, streaming response right now | `session create` then `session prompt` |
+| Iterate on the same session across prompts | `session prompt` repeatedly with the same `<id>` |
+| Check status while polling | `session status <id>` (polling envelope with `last_prompt`) |
+| Inspect full session metadata | `session get <id>` |
+| Find a session you know something about | `session search -q "<text>" [--agent ...] [--template ...]` |
+| See why an autopilot run stalled | `session approvals list <id>` then `approvals resolve` |
+| Read a run's evaluation verdict | `session grade <id>` |
+| Add a capability without rebuilding | `session load-skills`, `load-mcps`, `load-tools <id> ...` |
+| Move binary artifacts in or out | `session file upload`, `file download <id> ...` |
+| Hold a sandbox without spending | `session pause` then `session resume` later |
+| Edit files programmatically | `session file write` |
+| Inject configuration | `session env set <id> KEY=VAL ...` |
+| Show a preview to someone outside the org | `session share create <id> --email <addr> --port N` |
+| Get the preview URLs of my own sessions | `session previews` (not `session list --team-mode`) |
+| Let teammates in the same org open a session | `session visibility <id> team` |
+
+## Recipe: boot a session from a template, then run commands
+
+The most common path: create a template once, spin up sessions from it, drive them with `connect` or `exec`.
+
+```bash
+# 1. Create a template (clone-only build; --skip-agent implies --build)
+runtm-api template create \
+  --display-name "NuvoOS Dev Environment" \
+  --github-repo runtm-ai/landing-page \
+  --github-branch main \
+  --tier standard \
+  --skip-agent
+# -> {"id": "28f6e6e6-...", "build_status": "pending", ...}
+
+# 2. Wait until it is ready (only "ready" templates boot)
+runtm-api template get 28f6e6e6-... | jq -r .build_status
+
+# 3. Create a session from the template
+runtm-api session create --template-id 28f6e6e6-...
+# -> {"id": "a6414511-...", "state": "creating", ...}
+# If the template declares session arguments, supply values with --template-args
+# (repeatable or comma-separated): --template-args BRANCH=dev,ENV=staging
+
+# 4. Run a command non-interactively (waits, prints output, exits with its code)
+runtm-api session exec a6414511-... -- pwd
+
+# 5. Or attach a live interactive shell
+runtm-api session connect a6414511-...
+```
+
+## Recipe: run commands in a session (connect vs exec)
+
+Two ways to get a shell against a session's sandbox, both over the same terminal WebSocket the dashboard uses (scope `sessions:terminal`):
+
+```bash
+# Non-interactive: run one command, print its output, exit with its exit code.
+# A throwaway PTY is used, so it never disturbs interactive terminals. Put the
+# command after -- so runtm-api does not parse its flags.
+runtm-api session exec <id> -- pwd
+runtm-api session exec <id> -- ls -la /workspace
+runtm-api session exec <id> -- "npm test"
+runtm-api session exec <id> --timeout 120 -- ./long-build.sh   # abort after N seconds
+
+# Interactive: attach a raw PTY. Keystrokes (including Ctrl-C) pass through and
+# window resizes follow. Requires a TTY on stdin. Exit the remote shell to disconnect.
+runtm-api session connect <id>
+runtm-api session connect <id> --terminal default   # share the dashboard terminal
+```
+
+Use `exec` for automation and scripted checks. Use `connect` only when a human is at a real terminal.
+
+### `--json`: use it whenever you will parse the output
+
+The default output is the raw PTY stream: stderr is merged into stdout and the sandbox's shell startup noise (mise, nvm and similar banners) rides along, which is why hand-rolled pipelines end up with a `grep -v` filter. `--json` avoids all of that:
+
+```bash
+runtm-api session exec <id> --json -- npm test
+# -> {"stdout": "...", "stderr": "...", "exit_code": 1}
+
+# Read one stream at a time
+runtm-api session exec <id> --json -- ./build.sh | jq -r .stderr
+
+# Branch on the exit code without trusting $? through a pipe
+result=$(runtm-api session exec <id> --json -- pytest -q || true)
+[ "$(jq -r .exit_code <<<"$result")" = "0" ] || echo "tests failed"
+```
+
+- The two streams are captured separately (stderr goes to a temp file in the sandbox and is replayed after a sentinel), so neither can interleave into the other.
+- PTY carriage returns are stripped, so `stdout` compares cleanly against expected text.
+- The process still exits with the remote exit code, so under `set -e` a failing command aborts the script before you can read the JSON. Capture it with `|| true` as above, then read `exit_code`.
+
+### `!` is safe
+
+Bash history expansion is disabled for the command in both modes. A literal `!` in a heredoc, a commit message or a regex reaches the sandbox intact instead of being rewritten against shell history.
+
+### Paused sandboxes resume automatically
+
+Sessions auto-pause after about 20 minutes idle. `exec`, `connect` and the file commands resume a paused sandbox in place rather than failing, so a scripted run against a session you left alone yesterday just works. The first command after a resume takes a few extra seconds. Use `session pause` when you deliberately want to stop the clock.
+
+## Recipe: unblock a stalled autopilot run (approvals)
+
+A run in `agent_status: awaiting_approval` is not broken; it is waiting for a person. List the gates, then resolve:
+
+```bash
+runtm-api session approvals list <session_id>
+runtm-api session approvals resolve <session_id> <approval_id> --approve --note "ship it"
+runtm-api session approvals resolve <session_id> <approval_id> --reject --note "wrong repo"
+```
+
+Who may resolve is enforced server-side: admins and owners always, otherwise the approval's `required_role` or `required_team_id` must match. The session flips back to working and the agent continues from the verdict. How an agent requests one from inside the run is in [Request an approval from inside a run](/guides/recipes/request-approval-from-a-run).
+
+## Recipe: hot-load capabilities into a running session
+
+Attaching a skill at template build time takes a rebuild. Loading it into the running sandbox takes seconds:
+
+```bash
+runtm-api skills list                                  # find the directive id
+runtm-api session load-skills <id> <skill_id>          # skills: directive ids
+runtm-api session load-mcps <id> <mcp_id>              # MCP servers: directive ids
+runtm-api session load-tools <id> notion bigquery      # tools: PROVIDER SLUGS
+runtm-api session tools <id>                           # what is loaded now
+```
+
+The response separates `loaded` from `needs_auth` (credentials missing) and `skipped` (wrong id or slug). Loading requires the sandbox to be running; a paused one auto-resumes. Hot-loaded capabilities last for that session only; to make them permanent, attach to the template and rebuild ([Give it tools](/build/give-it-tools)).
+
+## Recipe: move binary artifacts in and out
+
+`file write` and `file read` handle text. For CSVs, archives and anything binary:
+
+```bash
+# In: defaults to /home/user/<basename>; give an explicit remote path as the third argument
+runtm-api session file upload <id> ./leads.csv /home/user/data/leads.csv
+
+# Out: directories arrive as .tar.gz; capped at 50 MB
+runtm-api session file download <id> /home/user/output/report.pdf ./report.pdf
+```
+
+Text operations:
+
+```bash
+runtm-api session file read <id> /home/user/main.py
+runtm-api session file write <id> /home/user/main.py --content "$(cat local.py)"
+runtm-api session file list <id> --path /home/user
+runtm-api session file search <id> --query "TODO" --path /home/user/project
+```
+
+Files need `sessions:read` (list, read, search) or `sessions:write` (write, upload, mkdir, rename, delete). The HTTP shape of each call is in [Work with session files](/cloud-api/patterns/session-files).
+
+## Recipe: find the session again later
+
+```bash
+runtm-api session search -q "outbound lists"                 # fuzzy text
+runtm-api session search --template gtm-machine --team-mode  # by origin
+runtm-api session search --source schedule --created-after 2026-07-01
+```
+
+`session list` only pages. `search` filters by agent, model, template, source, creator and time windows, and matches name and prompt text with `-q`.
+
+## Recipe: find my own preview URLs
+
+When the user asks "what are my preview URLs" or "give me the link to my prototype", use `session previews`. It is scoped to the API key's own user and returns just `id`, `name`, `state`, `preview_url`.
+
+```bash
+runtm-api session previews              # my sessions that have a preview URL
+runtm-api session previews --all        # include ones with no URL yet
+runtm-api session previews --team-mode  # opt in to teammates' shared sessions
+```
+
+Do not reach for `session list --team-mode` here. In a busy org that returns every teammate's sessions, so the user gets a wall of URLs that are mostly not theirs. `session previews` defaults to `scope: "mine"` and says so in its output.
+
+A `paused` session still lists its URL. Opening a shared preview wakes the sandbox automatically, so a paused state is not a reason to withhold the link.
+
+## Recipe: share a live preview with someone outside the org
+
+Two different things, often confused:
+
+| You want | Use |
+|----------|-----|
+| A teammate in the org to open the whole session | `session visibility <id> team` |
+| Someone outside the org to view only the running app | `session share create ...` |
+
+A preview share grants exactly one `(session, port)` pair. The invitee gets the app and nothing else: no workspace, no terminal, no prompting, and they are not added to the organization. They need a Runtm account to open it, but not before being invited; the grant binds to their account the first time they sign in.
+
+```bash
+# 1. Make sure something is actually serving on the port
+runtm-api session run-server <id> --port 3000
+
+# 2. Grant access and email the link
+runtm-api session share create <id> --email client@acme.com --port 3000
+# -> {"created": true, "emailed": true, "preview_url": "https://3000-....dev.runtm.com"}
+
+# 3. See who has access and whether they opened it
+runtm-api session share list <id>
+# -> shares[].has_accessed
+
+# 4. Withdraw access
+runtm-api session share revoke <id> <share_id>
+```
+
+If `emailed` is `false`, delivery is not configured; send `preview_url` to the invitee yourself. Re-inviting an address that already has the port is a no-op and sends no second email.
+
+A shared link keeps working through auto-pause: opening it wakes the sandbox and lands the visitor on the preview after a few seconds. Do not pre-emptively `session resume` just to keep a share alive. Revocation applies once the holder's current preview cookie expires (a few minutes), not instantly; to cut access immediately, also pause or destroy the session.
+
+## Recipe: ship a deployment and track it afterwards
+
+`session deploy` ships from the sandbox; `deployments` is how you see the result later without switching tools.
+
+```bash
+# 1. Validate, then deploy (SSE stream of build and deploy progress)
+runtm-api session deploy validate <id>
+runtm-api session deploy run <id>
+
+# 2. Link the session to its deployment
+runtm-api session get <id> | jq -r .last_deployment_id
+
+# 3. Track, read logs, tear down
+runtm-api deployments get <dep_id>            # state, live URL, version
+runtm-api deployments logs <dep_id> --type runtime --lines 100
+runtm-api deployments list --state ready      # everything currently serving
+runtm-api deployments destroy <dep_id> --yes  # URL goes offline
+```
+
+## Recipe: launch an agent from scratch
+
+```bash
+# Fire-and-forget
+runtm-api session launch \
+  --prompt "Build a REST API with FastAPI that manages TODO items" \
+  --agent claude-code \
+  --on-complete pause \
+  --ttl-minutes 60
+# -> {"id": "86e11104-...", "state": "creating", ...}
+
+# Poll until done (last_prompt.status -> completed | error | timed_out)
+runtm-api session status 86e11104-...
+
+# Open a PR with the agent's changes
+runtm-api session git 86e11104-... create_branch_and_pr \
+  --pr-title "Add TODO REST API" \
+  --pr-body "Implements CRUD endpoints."
+```
+
+Lifecycle policy (`--on-complete`): `pause` (default, sandbox pauses and is resumable), `destroy` (torn down immediately, for one-shot tasks), `keep_alive` (stays running until the TTL, for iteration). `--ttl-minutes` is the hard upper bound, maximum 1440. The HTTP side is in [Manage sessions at scale](/cloud-api/patterns/sessions-at-scale).
+
+## Recipe: interactive iteration
+
+```bash
+# 1. Create a blank session
+runtm-api session create --agent claude-code --on-complete keep_alive
+
+# 2. Wait for it to be running
+runtm-api session get <id>   # poll until .state == "running"
+
+# 3. First prompt (streams SSE as JSON lines)
+runtm-api session prompt <id> "Build a REST API for managing invoices"
+
+# 4. Follow-up
+runtm-api session prompt <id> "Add pagination and filtering to the list endpoint"
+
+# 5. Open a PR
+runtm-api session git <id> create_branch_and_pr --pr-title "Invoice API with pagination"
+
+# 6. Clean up
+runtm-api session destroy <id>
+```
+
+## Recipe: pre-seed files and env, then prompt
+
+```bash
+runtm-api session create --agent claude-code --on-complete keep_alive
+# wait for running...
+
+# Write a config file
+runtm-api session file write <id> /home/user/.env --content "API_KEY=abc123\nDEBUG=1"
+
+# Set runtime env vars
+runtm-api session env set <id> NODE_ENV=development DATABASE_URL=postgres://...
+
+# Verify
+runtm-api session file list <id> --path /home/user
+runtm-api session env get <id>   # values come back masked
+
+# Prompt the agent against the prepared workspace
+runtm-api session prompt <id> "Use the config in .env to wire the DB connection."
+```
+
+## Recipe: pause and resume
+
+```bash
+runtm-api session pause <id>    # sandbox frozen, no compute cost
+runtm-api session resume <id>   # back to running
+runtm-api session prompt <id> "Continue from where we left off."
+```
+
+## Reading `session status` and `session prompt` output
+
+`session status` returns an envelope tuned for polling:
+
+```json
+{
+  "state": "running",
+  "last_prompt": {"status": "running", "started_at": "...", "prompt_preview": "Fix the auth..."},
+  "lifecycle": {"on_complete": "pause", "ttl_minutes": 60, "ttl_expires_at": "..."}
+}
+```
+
+Stop polling when `last_prompt.status` is `completed`, `error` or `timed_out`. The `summary` field holds the agent's final response, truncated to 500 characters. For high-volume workflows prefer [outbound webhooks](/cloud-api/patterns/outbound-webhooks) over polling.
+
+`session prompt` streams JSON lines, one event per line:
+
+```
+{"event":"assistant_message","data":{"type":"assistant_message","content":"I'll add..."}}
+{"event":"tool_use","data":{"type":"tool_use","name":"Edit","input":{...}}}
+{"event":"tool_result","data":{...}}
+{"event":"result","data":{"content":"Done","metadata":{"cost_usd":0.018}}}
+{"event":"done","data":{"message":"Stream complete"}}
+```
+
+Read until an event of type `done` or `error`. Filter with `jq`:
+
+```bash
+runtm-api session prompt <id> "..." | jq -c 'select(.event == "result")'
+```
+
+The WebSocket equivalent, with the full event vocabulary, is in [Stream prompts over WebSockets](/cloud-api/patterns/streaming-prompts).
+
+## Git operations
+
+`session git <id> <operation>`:
+
+| Operation | Purpose |
+|-----------|---------|
+| `status` | Inspect repo state, current branch, dirty files |
+| `commit` | Commit changes (requires `--message`) |
+| `push` | Push the current branch |
+| `create_branch_and_pr` | Branch, commit, push and open a PR in one call (typical end of task) |
+| `list_branches` | List existing branches |
+| `init_repo` | Initialize a fresh repo |
+
+The working directory defaults to `/home/user`. Set `--working-dir` if the repo is elsewhere, for example in a monorepo with several workdirs.
+
+## Env vars
+
+```bash
+runtm-api session env get <id>                                        # values masked as *****
+runtm-api session env set <id> NODE_ENV=development DATABASE_URL=...  # several at once
+runtm-api session env delete <id> DATABASE_URL
+runtm-api session env detected <id>                                   # what the sandbox itself reports
+```
+
+Env-var endpoints use the `secrets:read` and `secrets:write` scopes, not `sessions:write`. Confirm the API key has them with `runtm-api auth status` before suggesting env changes.
+
+## Gotchas
+
+- **Parsing default `exec` output.** Without `--json` the stream mixes stderr, stdout and shell banners. Always pass `--json` when a script reads the result.
+- **`set -e` swallows the JSON.** `exec` exits with the remote exit code, so capture with `|| true` and branch on `.exit_code`.
+- **`session list --team-mode` for "my preview URLs".** It returns every teammate's sessions. Use `session previews`.
+- **Sharing vs visibility.** `visibility team` opens the whole session to the org; `share create` shows one port to one outside person.
+- **Env scopes.** `env set` needs `secrets:write`; a key with only `sessions:write` gets a 403.
+- **`--skip-agent` implies `--build`.** A template created that way starts building immediately with whatever is attached at that moment; attach skills first or rebuild afterwards ([Launch and iterate](/build/launch-and-iterate)).

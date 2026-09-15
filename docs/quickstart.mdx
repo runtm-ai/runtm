@@ -1,166 +1,137 @@
 ---
-title: Quick Start
-description: "Create a session and send your first prompt in 5 minutes"
+title: "Quickstart: build your first agent"
+description: "Go from a new organization to a roster agent with a template, one evaluation category, one trigger and a graded run. Read this first; it introduces the dashboard flow and the runtm-api CLI."
 ---
+
+By the end of this page you will have one agent that has a job, a way to measure it, a place to run, a trigger, and a first graded run on the scorecard. It takes about ten minutes.
 
 ## Prerequisites
 
-- A [Runtime account](https://app.runtm.com)
-- An API key (created in **Settings > API Keys**)
+- A [Runtime account](https://app.runtm.com) and an organization. Agents live in organizations, not in personal mode; the dashboard's Quickstart creates one for you.
+- Optionally, a Slack workspace you can install an app into, or nothing at all if you use the Email trigger.
 
-## 1. Create an API key
+## The guided path
 
-Sign in at [app.runtm.com](https://app.runtm.com), go to **Settings > API Keys**, and click **Create key**.
+New organizations land on the **Quickstart** page. The third step, **Set Up Your First Agent**, asks a short set of questions and builds the agent with you.
 
-Pick the **Session automation** preset for this tutorial. Copy the secret immediately - it is shown only once.
+<Frame caption="The Quickstart page: create an organization, invite the team, then set up the first agent.">
+  <img src="/images/build/quickstart-first-agent.png" alt="Quickstart page showing the three onboarding steps" />
+</Frame>
 
-<Warning>
-Store the key in a secret manager (1Password, Doppler, GitHub Actions secrets). Runtime does not store the raw key and cannot recover it.
-</Warning>
+The questions map directly onto the first steps of building an agent:
 
-## 2. Verify the key
+| Question you are asked | What it decides |
+|---|---|
+| **What do you do?** (Support, Data, Engineering, Ops, Leadership) | Which agent archetype to start from. |
+| **What should Runtm take off your plate first?** | The job. This becomes the agent's description and the first line of its instructions. |
+| Which tools from your stack | Which tool providers to prepare (Zendesk, Stripe, Postgres, Datadog and others appear as ready-to-connect cards). |
+| **Where should this agent live?** (Slack, Email, Runtm dashboard) | Which trigger to connect. |
+| **Roughly how big is the team this would help?** | Sizing hints only. |
 
-<CodeGroup>
+When you click **Set this up**, Runtime creates a template named after the agent, a roster agent whose default template points at it, a runbook skill attached to the template, one "Connect X" card per tool you named, and a setup session where the agent finishes wiring itself. A **Finish your setup** checklist inside that session tracks the remaining connections (GitHub App, Slack app, email inbox, tool credentials).
 
-```bash cURL
-curl https://app.runtm.com/auth/verify \
-  -H "Authorization: Bearer runtm_xxx"
-```
+If you prefer to see every piece, follow the manual path below. It creates the same objects.
 
-```python Python
-import requests
+## The manual path
 
-response = requests.get(
-    "https://app.runtm.com/auth/verify",
-    headers={"Authorization": "Bearer runtm_xxx"},
-)
-print(response.json())
-```
+<Steps>
+  <Step title="Create the agent">
+    Go to **Agents** and click **New Agent**. The dialog has three steps: **Profile**, **Instructions**, **Triggers**.
 
-```javascript JavaScript
-const response = await fetch("https://app.runtm.com/auth/verify", {
-  headers: { Authorization: "Bearer runtm_xxx" },
-});
-console.log(await response.json());
-```
+    <Frame caption="New Agent, step 1: name and avatar.">
+      <img src="/images/build/new-agent-profile.png" alt="New Agent dialog, Profile step" />
+    </Frame>
 
-</CodeGroup>
+    On **Profile**, name the agent (for example `Payment Support`). On **Instructions**, write a one-line **Description** that states the job, and **System instructions** that say how to do it and what never to do. Skip **Triggers** for now and click **Create agent**.
 
-You should see your key's scopes and metadata:
+    {/* cli: runtm-api agents create --name "Payment Support" --description "Reconstructs disputed charges from a ticket and drafts a reply, never sends" --instructions "$(cat instructions.md)" */}
 
-```json
-{
-  "valid": true,
-  "key_id": "1f3c5e2a-...",
-  "name": "my-key",
-  "scopes": ["sessions:read", "sessions:write", "sessions:prompt", "context:read"]
-}
-```
+    A good first description names the input, the output, and the boundary: "Given a Zendesk ticket about a charge, reconstruct the payment timeline from Stripe and the ledger and draft a customer reply. Never send it." See [Define the job](/build/define-the-job).
+  </Step>
 
-## 3. Create a session
+  <Step title="Give it a place to run">
+    Open the agent (click its card) and set **Default template**. If you have no template yet, go to **Templates > New Template**, choose **Blank environment**, name it, and click **Create Template**. A blank template boots with your org's skills and tools and nothing cloned.
 
-<CodeGroup>
+    {/* cli: runtm-api template create --display-name "Payment Support" --github-repo <owner>/<repo> --skip-agent   # the CLI requires a repo; a blank environment is dashboard-only today */}
+    {/* cli: runtm-api agents update <agent_id> --template "payment-support" */}
+    {/* cli-verify: runtm-api template get <template_id> | jq -r .build_status   # wait for "ready" */}
 
-```bash cURL
-curl -X POST https://app.runtm.com/api/sessions \
-  -H "Authorization: Bearer runtm_xxx" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "my-first-session"}'
-```
+    Tools, MCP servers and secrets attach to the template, not the agent. [Give it tools](/build/give-it-tools) covers connecting Zendesk, Stripe and a read-only database.
+  </Step>
 
-```python Python
-response = requests.post(
-    "https://app.runtm.com/api/sessions",
-    headers={
-        "Authorization": "Bearer runtm_xxx",
-        "Content-Type": "application/json",
-    },
-    json={"name": "my-first-session"},
-)
-session = response.json()
-print(f"Session ID: {session['id']}, State: {session['state']}")
-```
+  <Step title="Add one evaluation category">
+    Still in the agent's **Profile** tab, scroll to **Performance evaluation** and click **Add evaluation category**.
 
-```javascript JavaScript
-const response = await fetch("https://app.runtm.com/api/sessions", {
-  method: "POST",
-  headers: {
-    Authorization: "Bearer runtm_xxx",
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({ name: "my-first-session" }),
-});
-const session = await response.json();
-console.log(`Session ID: ${session.id}, State: ${session.state}`);
-```
+    <Frame caption="One evaluation category: what it is called, when it applies, and how to grade it.">
+      <img src="/images/build/agent-evaluation.png" alt="Performance evaluation section with one category" />
+    </Frame>
 
-</CodeGroup>
+    Fill in a category name (`duplicate-charge`), when to use it ("the customer reports being charged twice for one order"), and the success criteria ("the draft cites both charge IDs, states which one settled, and proposes the refund amount"). Add **Avg human cost (USD)** and **Avg human time (minutes)** so the scorecard can value each success. Click **Save profile**.
 
-The session starts in `creating` state. Poll `GET /api/sessions/{id}` until it becomes `running`, or call `POST /api/sessions/{id}/start` to wait for it.
+    {/* cli: runtm-api agents update <agent_id> --evaluator-criteria '{"categories":[{"key":"duplicate-charge","description":"Customer reports two charges for one order","success_criteria":"Draft cites both charge IDs, states which settled, proposes the refund amount","tags":{},"human_cost_usd":18,"human_minutes":25}]}' */}
 
-## 4. Send a prompt
+    Without at least one category, runs are never graded and the scorecard shows zeros. See [Measure success](/build/measure-success).
+  </Step>
 
-Once the session is `running`:
+  <Step title="Connect a trigger">
+    In the agent's sheet, under **Triggers**, add one:
 
-<CodeGroup>
+    - **Email** is the fastest: click **Create inbox** and Runtime mints an address like `acme-payment-support@agents.runtm.com`. Emails to it start a run; the reply comes back in the same thread.
+    - **Slack** installs an app into your workspace so people can `@mention` the agent in a channel or DM it.
 
-```bash cURL
-curl -X POST "https://app.runtm.com/api/sessions/${SESSION_ID}/prompt" \
-  -H "Authorization: Bearer runtm_xxx" \
-  -H "Content-Type: application/json" \
-  -d '{"prompt": "Create a simple Express.js hello world server"}'
-```
+    {/* cli: runtm-api agents create --type email --name payment-support --agent-id <agent_id> */}
+    {/* cli: runtm-api agents create --type slack --name "Payment Support"   # finishes in the browser */}
 
-```python Python
-response = requests.post(
-    f"https://app.runtm.com/api/sessions/{session_id}/prompt",
-    headers={"Authorization": "Bearer runtm_xxx"},
-    json={"prompt": "Create a simple Express.js hello world server"},
-)
-print(response.json())
-```
+    Every trigger uses the agent's default template and instructions unless its own settings tab overrides them. See [Triggers](/build/how-it-works/triggers).
+  </Step>
 
-```javascript JavaScript
-const response = await fetch(
-  `https://app.runtm.com/api/sessions/${sessionId}/prompt`,
-  {
-    method: "POST",
-    headers: {
-      Authorization: "Bearer runtm_xxx",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      prompt: "Create a simple Express.js hello world server",
-    }),
-  }
-);
-console.log(await response.json());
-```
+  <Step title="Run it once">
+    Send the agent a real case. Email the inbox, or mention it in Slack:
 
-</CodeGroup>
+    > @Payment Support Customer on order #48213 says they were charged twice. Ticket 88231.
 
-## 5. Check the workspace
+    The run appears under **Sessions** (and under **Agents > Runs**). Open it to watch the agent work, or wait for the reply in the thread.
 
-List the files the agent created:
+    {/* cli: runtm-api session list */}
+  </Step>
+
+  <Step title="Read the grade">
+    A few minutes after the run finishes, open **Activity > Agents**. Your agent shows one graded run, whether it passed, and the value returned based on the human cost you entered.
+
+    {/* cli-verify: runtm-api session grade <session_id>       # {"graded": true, "success": ..., "reason": ..., "task": "duplicate-charge"} */}
+    {/* cli-verify: runtm-api agents scorecard --days 7 */}
+
+    If the run failed the grade, the `reason` tells you why. Tighten the success criteria or the instructions and send the next case. See [Prove it works and iterate](/build/launch-and-iterate). Guardrails come after the agent passes its cases: [Add guardrails and approvals](/build/guardrails-and-approvals).
+  </Step>
+</Steps>
+
+## The same thing from the CLI
+
+Every step above is one `runtm-api` command. Coding agents use this CLI to build and operate other agents; this is the only page in Documentation that shows it in full, so you know it exists.
 
 ```bash
-curl "https://app.runtm.com/api/sessions/${SESSION_ID}/files?path=/" \
-  -H "Authorization: Bearer runtm_xxx"
+curl -fsSL https://runtm.com/install | bash
+export RUNTM_API_KEY=runtm_...        # an org-scoped key from Settings > API Keys
+
+runtm-api template create --display-name "Payment Support" --github-repo <owner>/<repo> --skip-agent
+runtm-api agents create --name "Payment Support" \
+  --description "Reconstructs disputed charges from a ticket and drafts a reply, never sends" \
+  --instructions "$(cat instructions.md)" \
+  --template payment-support
+runtm-api agents update <agent_id> --evaluator-criteria "$(cat rubric.json)"
+runtm-api agents create --type email --name payment-support --agent-id <agent_id>
+runtm-api agents scorecard --days 7
 ```
+
+Every Build and Guides page carries the CLI equivalent of each dashboard step as a hidden comment in its markdown source, so an agent reading `https://docs.runtm.com/<page>.md` can lift the exact command. The full command table is on the [Agent CLI](/cloud-api/agent-cli) page.
 
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Manage sessions at scale" icon="cube" href="/guides/managing-sessions-at-scale">
-    Lifecycle, polling, heartbeats, and error recovery patterns.
+  <Card title="Build an agent" icon="hammer" href="/build/overview">
+    Each of the six steps in depth, including when to add guardrails.
   </Card>
-  <Card title="Stream prompts over WebSockets" icon="bolt" href="/guides/streaming-prompts-over-websockets">
-    Real-time agent output with token exchange and event streaming.
-  </Card>
-  <Card title="Best practices" icon="shield" href="/guides/best-practices">
-    Key hygiene, scope selection, prompt design, and cost controls.
-  </Card>
-  <Card title="API Reference" icon="code" href="/cloud-api/overview">
-    Full endpoint reference for sessions, deploys, templates, and more.
+  <Card title="Payment support agent" icon="headset" href="/guides/overview">
+    The complete worked example this quickstart is based on.
   </Card>
 </CardGroup>

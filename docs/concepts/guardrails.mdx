@@ -1,9 +1,9 @@
 ---
 title: Guardrails
-description: "Allowlists, hooks, network rules, approvals, RBAC, and audit trails that govern agent behavior"
+description: "Reference for allowlists, hooks, network rules, approvals, RBAC and audit: what each governs, dispositions and precedence, hook events, and a typical org configuration. Read when a command was blocked or you need to know which layer enforces what."
 ---
 
-Guardrails let you set the rules your entire team operates under. They govern what agents can run, what they can access, and where they can deploy. Set guardrails once at the org level, and every [session](/concepts/sessions) and [agent](/concepts/agents) inherits them automatically.
+Guardrails let you set the rules your entire team operates under. They govern what agents can run, what they can access, and where they can deploy. Set guardrails once at the org level, and every [session](/concepts/sessions) and [agent](/build/how-it-works/triggers) inherits them automatically.
 
 The dashboard's **Guardrails** page has six tabs, each controlling a different enforcement layer:
 
@@ -89,7 +89,7 @@ Hooks can be synchronous (block until the script finishes) or asynchronous (fire
 
 ### Scoping
 
-Hooks can be scoped to personal or team, and attached to all repos or specific ones. Like other directives, they are versioned and publishable.
+Hooks can be scoped to personal or team, and attached to all repos or specific ones. Like other directives, each hook has exactly one live version; lock it to freeze edits.
 
 ### API endpoints
 
@@ -156,7 +156,7 @@ Beyond roles, admins can set per-user limits:
 - Model restrictions (which LLMs the user's agents can call)
 - Deploy target restrictions (staging only, specific apps only)
 
-See [Org Limits](/cloud-api/guardrails/org-limits).
+See [Org Limits](/cloud-api/guardrails/org-limits-get).
 
 ## Audit
 
@@ -203,10 +203,10 @@ With these in place, agents can move fast on routine work while the org stays in
 ## Related guides
 
 <CardGroup cols={2}>
-  <Card title="Best practices" icon="shield" href="/guides/best-practices">
+  <Card title="Best practices" icon="shield" href="/build/define-the-job">
     Key hygiene, scope selection, and cost control patterns.
   </Card>
-  <Card title="Teach the agent your codebase" icon="brain" href="/guides/teach-the-agent-your-codebase">
+  <Card title="Teach the agent your codebase" icon="brain" href="/build/how-it-works/instructions">
     AGENTS.md, skills, and org instructions.
   </Card>
 </CardGroup>
