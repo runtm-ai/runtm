@@ -58,6 +58,13 @@ jobs:
           echo "clean_tag=${CLEAN_TAG}" >> "$GITHUB_OUTPUT"
           echo "Release tag (Go-compatible): ${TAG_FULL}"
           echo "Embedded version:            ${CLEAN_TAG}"
+          # goreleaser >= 2.18 reads the contents of GORELEASER_CURRENT_TAG from
+          # the local repo (`git tag -l --format=%(contents) <tag>`) and fails
+          # with "couldn't get tag contents: unexpected git tag" when only the
+          # prefixed monorepo tag exists. Create a local lightweight alias with
+          # the clean name on the same commit so both old and new goreleaser
+          # versions find it. Never pushed.
+          git tag -f "${CLEAN_TAG}" "$(git rev-parse "${TAG_FULL}^{commit}")"
 
       - name: Build and archive with goreleaser
         uses: goreleaser/goreleaser-action@v6
