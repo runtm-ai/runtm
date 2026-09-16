@@ -67,7 +67,12 @@ snapshot:
   version_template: "{{ incpatch .Version }}-next"
 
 changelog:
-  use: github
+  # The GitHub release notes are written by release-agent.yml
+  # (`gh release create --notes-file`), so goreleaser's changelog is unused.
+  # It must also stay off: with `use: github`, goreleaser >= 2.18 compares the
+  # previous (real, prefixed) tag against GORELEASER_CURRENT_TAG, which is a
+  # local-only alias (see the workflow), and GitHub answers 404.
+  disable: true
   sort: asc
   groups:
     - title: Features
