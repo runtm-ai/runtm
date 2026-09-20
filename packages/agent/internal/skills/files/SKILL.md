@@ -75,7 +75,7 @@ Create the template, attach skills and MCP servers, verify with `template get`, 
 - **Delete an agent's triggers before the agent.**
 - **Approvals are runbook steps, not settings.** They appear on the session card and in `session approvals list`, never in Slack.
 - **Budget caps do not pause anything.** They flag on the scorecard and write an audit event.
-- **Subagents are ordinary agents.** Delegation is a script that calls `POST /api/cloud/sessions` with `template_id` and `agent_id` plus a `PreToolUse` gate hook; the CLI's `session create` has no `--agent-id` flag yet. Build and prove each child alone before wiring the orchestrator; children never delegate.
+- **Subagents are ordinary agents.** Delegate with `session launch --agent-id <uuid>` (or `session create --agent-id`), plus a `PreToolUse` gate hook when a human has to see it first; pass `--approval-id` when the callee's caller edge demands an approval. The callee's caller list decides who may launch it — naming any caller closes it to everyone else — and chains cap at 3 hops. Build and prove each child alone before wiring the orchestrator; children never delegate.
 
 ## Auth and org context
 

@@ -98,8 +98,9 @@ All endpoints are organization scoped when the `X-Organization-Id` header is pre
 
 Naming anyone closes the agent to everyone else, so an agent whose only entry
 is another agent is delegation-only — a person calling with their own key gets
-`403 AGENT_NOT_CALLABLE`. An edge may also require an approval before each
-delegation. [Trigger a subagent](/cloud-api/patterns/subagents) walks the
+`403 AGENT_NOT_CALLABLE`. Org admins keep their override under the `role`
+access model; `humans: false` is the hard switch that bars every person,
+admins included. An edge may also require an approval before each delegation. [Trigger a subagent](/cloud-api/patterns/subagents) walks the
 whole flow.
 
 The roster itself is visible to every member of the organization; the

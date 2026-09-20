@@ -18,7 +18,7 @@ There is no "delegate" primitive in Runtime. Delegation is composed from four th
 | Gate hook | A `PreToolUse` command hook (matcher `Bash`) on the parent's template. It recognises a delegation command, opens an approval with `runtm-approval request --wait`, and returns `allow` or `deny`. | Parent template, Guardrails > Hooks |
 | Attribution comment | The first line of every delegation command: `# runtm-api session create --template-id <t> --agent-id <a>   # "<Agent>" (via delegate.sh)`. The dashboard parses it to draw the card; the hook denies a call without it. | The runbook text |
 
-The sandbox already has what the script needs: `RUNTM_API_URL` and a session-scoped `RUNTM_API_KEY` that mirrors the launching user's role, so a member's session can create sessions. The create endpoint accepts `agent_id` directly; `runtm-api session create` has no `--agent-id` flag yet, which is why the script uses `curl` for that one call and the CLI for everything else.
+The sandbox already has what the script needs: `RUNTM_API_URL` and a session-scoped `RUNTM_API_KEY` that mirrors the launching user's role, so a member's session can create sessions. The script below posts the create call with `curl` because it reads the raw response; `runtm-api session create --template-id <t> --agent-id <a>` does the same thing in one line if you don't need the body. See [Trigger a subagent](/cloud-api/patterns/subagents) for who is allowed to launch what, and for the approval that a caller edge can require.
 
 ```mermaid
 flowchart LR

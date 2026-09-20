@@ -69,6 +69,7 @@ Each agent carries a `callable_by` allowlist — set it in the dashboard under
 | `groups: ["<team>"]` | Members of those groups |
 | `agents: [{agent_id}]` | Those agents, when they are the caller |
 | Both | Either |
+| `humans: false` | No person at all, whatever the lists say — and no admin override |
 
 **Naming anyone closes the agent to everyone else.** An agent whose only entry
 is another agent is delegation-only: a person calling the API with their own
@@ -98,7 +99,7 @@ launch is refused with `APPROVAL_REQUIRED` until one exists.
 2. Someone in the required group resolves it — in the dashboard, or with
    [Resolve Approval](/cloud-api/sessions/approvals-resolve). Find its id with
    [List Approvals](/cloud-api/sessions/approvals-list) or
-   `runtm-api session approvals <parent-session-id>`.
+   `runtm-api session approvals list <parent-session-id>`.
 3. Retry the launch with that approval's id:
 
 ```bash
