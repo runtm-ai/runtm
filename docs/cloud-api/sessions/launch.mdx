@@ -30,6 +30,18 @@ This is the core "fire and forget" endpoint for programmatic agent workflows. It
   Coding agent: `claude-code`, `codex`, `github-copilot`, or `opencode`.
 </ParamField>
 
+<ParamField body="agent_id" type="string">
+  Roster agent UUID to run the session as — the subagent entry point. The run
+  takes that agent's system instructions, identity and defaults, and is graded
+  against its rubric. Subject to the agent's `callable_by` allowlist; see
+  [Trigger a subagent](/cloud-api/patterns/subagents).
+</ParamField>
+
+<ParamField body="approval_id" type="string">
+  An approved approval on the **calling** session, when the callee's caller
+  edge requires one. Resolved within the last 10 minutes.
+</ParamField>
+
 <ParamField body="template" type="string">
   Project template: `web-app`, `backend-service`, `static-site`.
 </ParamField>

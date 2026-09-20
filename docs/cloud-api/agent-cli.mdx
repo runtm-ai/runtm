@@ -73,8 +73,8 @@ The same API key works for both this CLI and the pip CLI.
 | Command | What it does |
 |---|---|
 | `runtm-api auth status` | Verify the API key against `/api/v1/me`. |
-| `runtm-api session create` | Create a sandbox (no prompt). |
-| `runtm-api session launch` | Create + fire a prompt as a background task. |
+| `runtm-api session create` | Create a sandbox (no prompt). Add `--agent-id` to run it as a roster agent. |
+| `runtm-api session launch` | Create + fire a prompt as a background task. Add `--agent-id` to spawn a [subagent](/cloud-api/patterns/subagents). |
 | `runtm-api session list` | List sessions for the API key. |
 | `runtm-api session status <id>` | Get state + `last_prompt` polling fields. |
 | `runtm-api session prompt <id> <text>` | Stream a prompt as SSE → JSON lines. |
@@ -87,7 +87,7 @@ The same API key works for both this CLI and the pip CLI.
 | `runtm-api session file upload\|download <id> ...` | Binary-safe file transfer in and out of the sandbox. |
 | `runtm-api session destroy <id>` | Tear down a sandbox. |
 | `runtm-api session git <id> <op>` | Run a git operation (commit, push, create_branch_and_pr, ...). |
-| `runtm-api agents list\|create\|update\|delete` | The agent roster (no `--type`); triggers with `--type slack\|github\|linear\|email`. |
+| `runtm-api agents list\|create\|update\|delete` | The agent roster (no `--type`); triggers with `--type slack\|github\|linear\|email`. `list --can-launch` narrows to what this key may launch. |
 | `runtm-api agents scorecard` | Per-agent performance, spend, and budget. |
 | `runtm-api template list` | List org templates (needs an org-scoped API key; the org is read from the key). |
 | `runtm-api template get <id>` | Inspect one template, including its attached skills and build staleness. |

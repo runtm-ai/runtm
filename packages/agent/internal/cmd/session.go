@@ -58,6 +58,8 @@ func newSessionCreate(rt *Runtime) *cobra.Command {
 		template     string
 		templateID   string
 		templateArgs map[string]string
+		agentID      string
+		approvalID   string
 		mode         string
 		onComplete   string
 		ttlMinutes   int
@@ -79,6 +81,13 @@ Boot sources (highest precedence first):
   --template <scaffold>  Scaffold a starter project (web-app, backend-service,
                          static-site).
 
+Run it as one of the org's agents with --agent-id <uuid> ('runtm-api agents
+list' has the ids). The session takes that agent's persona, identity and
+defaults, exactly as a Slack or Linear trigger would — which is how a session
+spawns a subagent. The callee decides who may do that (its "who may launch
+this agent" list); when the edge requires an approval, pass it with
+--approval-id. Do not confuse it with --agent, which picks the coding harness.
+
 See https://docs.runtm.com/cloud-api/sessions/create for the full schema.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c, _, err := rt.Client()
@@ -97,6 +106,12 @@ See https://docs.runtm.com/cloud-api/sessions/create for the full schema.`,
 			}
 			if templateID != "" {
 				body["template_id"] = templateID
+			}
+			if agentID != "" {
+				body["agent_id"] = agentID
+			}
+			if approvalID != "" {
+				body["approval_id"] = approvalID
 			}
 			if len(templateArgs) > 0 {
 				args := make(map[string]any, len(templateArgs))
@@ -134,6 +149,8 @@ See https://docs.runtm.com/cloud-api/sessions/create for the full schema.`,
 	cmd.Flags().StringVar(&template, "template", "", "Project template scaffold (web-app, backend-service, static-site)")
 	cmd.Flags().StringVar(&templateID, "template-id", "", "Org template UUID to boot from (takes precedence over --template and --repo)")
 	cmd.Flags().StringToStringVar(&templateArgs, "template-args", nil, "Org template session args as key=value pairs (only with --template-id)")
+	cmd.Flags().StringVar(&agentID, "agent-id", "", "Roster agent UUID to run the session as (NOT --agent; see 'runtm-api agents list')")
+	cmd.Flags().StringVar(&approvalID, "approval-id", "", "Approval on this session satisfying the target agent's caller policy")
 	cmd.Flags().StringVar(&mode, "mode", "", "Session mode: autopilot (default) or interactive")
 	cmd.Flags().StringVar(&onComplete, "on-complete", "", "Lifecycle action after prompts complete: pause, destroy, keep_alive")
 	cmd.Flags().IntVar(&ttlMinutes, "ttl-minutes", 0, "Max session lifetime in minutes (1-1440)")
@@ -149,6 +166,8 @@ func newSessionLaunch(rt *Runtime) *cobra.Command {
 	var (
 		prompt        string
 		agent         string
+		agentID       string
+		approvalID    string
 		template      string
 		model         string
 		mode          string
@@ -164,7 +183,13 @@ func newSessionLaunch(rt *Runtime) *cobra.Command {
 		Short: "Create a session and fire a prompt in one call (POST /api/v0/sessions/launch)",
 		Long: `The canonical fire-and-forget entry point for programmatic agents
 (per the cloud-api docs). Returns immediately with the session ID; poll
-'runtm session status <id>' until last_prompt.status is completed/error/timed_out.`,
+'runtm session status <id>' until last_prompt.status is completed/error/timed_out.
+
+Pass --agent-id <uuid> to run it as one of the org's agents — the subagent
+entry point: the run takes that agent's persona, identity and defaults, and
+is graded against its rubric. The callee's "who may launch this agent" list
+decides whether the caller may; when the edge requires an approval, pass it
+with --approval-id.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if prompt == "" {
 				return fmt.Errorf("--prompt is required")
@@ -177,6 +202,12 @@ func newSessionLaunch(rt *Runtime) *cobra.Command {
 			body := map[string]any{"prompt": prompt}
 			if agent != "" {
 				body["agent"] = agent
+			}
+			if agentID != "" {
+				body["agent_id"] = agentID
+			}
+			if approvalID != "" {
+				body["approval_id"] = approvalID
 			}
 			if template != "" {
 				body["template"] = template
@@ -217,6 +248,8 @@ func newSessionLaunch(rt *Runtime) *cobra.Command {
 	}
 	cmd.Flags().StringVarP(&prompt, "prompt", "p", "", "Prompt/task for the agent (required)")
 	cmd.Flags().StringVar(&agent, "agent", "", "Coding agent (claude-code, codex, github-copilot, opencode)")
+	cmd.Flags().StringVar(&agentID, "agent-id", "", "Roster agent UUID to run as (NOT --agent; see 'runtm-api agents list')")
+	cmd.Flags().StringVar(&approvalID, "approval-id", "", "Approval on the calling session satisfying the target agent's caller policy")
 	cmd.Flags().StringVar(&template, "template", "", "Project template (web-app, backend-service, static-site)")
 	cmd.Flags().StringVar(&model, "model", "", "Model override: sonnet, opus, haiku, opusplan")
 	cmd.Flags().StringVar(&mode, "mode", "", "Session mode: autopilot or interactive")
