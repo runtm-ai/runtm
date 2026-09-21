@@ -28,6 +28,19 @@ Creates a new cloud session backed by a sandbox environment. The session starts 
   Template ID to initialize the session from.
 </ParamField>
 
+<ParamField body="agent_id" type="string">
+  Roster agent UUID to run the session as. Applies the agent's system
+  instructions, tags the session with its identity, and fills in its default
+  template and harness when you don't pass them — the same overlay a Slack or
+  Linear trigger gets. Subject to the agent's `callable_by` allowlist; see
+  [Trigger a subagent](/cloud-api/patterns/subagents).
+</ParamField>
+
+<ParamField body="approval_id" type="string">
+  An approved approval on the **calling** session, when the callee's caller
+  edge requires one.
+</ParamField>
+
 <ParamField body="name" type="string">
   Display name for the session.
 </ParamField>

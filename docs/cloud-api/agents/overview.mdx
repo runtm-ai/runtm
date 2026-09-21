@@ -66,6 +66,46 @@ All endpoints are organization scoped when the `X-Organization-Id` header is pre
   Task values and budget: `{"tasks": {"triage": {"value_usd": 10, "minutes": 20}}, "default_task": {...}, "budget": {"monthly_usd_cap": 50}}`. Feeds the scorecard's value and budget columns.
 </ResponseField>
 
+<ResponseField name="owner_team_id" type="string | null">
+  Group that may edit, disable or delete the agent. Null = everyone in the org.
+</ResponseField>
+
+<ResponseField name="callable_by" type="object | null">
+  Who may launch it: `{"humans": true, "groups": ["team_ops"], "agents": [{"agent_id": "...", "approval": {"required_team_id": "team_ops"}}]}`. See [Who may launch an agent](#who-may-launch-an-agent).
+</ResponseField>
+
+<ResponseField name="disabled_at" type="string | null">
+  Set when the kill switch is on: every launch is refused and the agent's keys were revoked.
+</ResponseField>
+
+<ResponseField name="can_launch" type="boolean | null">
+  Whether *this requester* may launch it. Null for non-person callers.
+</ResponseField>
+
+<ResponseField name="can_edit" type="boolean | null">
+  Whether *this requester* may edit it — owning-group membership, or an admin override under the `role` access model.
+</ResponseField>
+
+## Who may launch an agent
+
+`callable_by` is a single allowlist spanning people and agents:
+
+| `callable_by` | Who may launch it |
+|---|---|
+| Nothing named (the default) | Anyone in the organization |
+| `groups: ["<team>"]` | Members of those groups |
+| `agents: [{agent_id}]` | Those agents, when they are the caller |
+
+Naming anyone closes the agent to everyone else, so an agent whose only entry
+is another agent is delegation-only — a person calling with their own key gets
+`403 AGENT_NOT_CALLABLE`. Org admins keep their override under the `role`
+access model; `humans: false` is the hard switch that bars every person,
+admins included. An edge may also require an approval before each delegation. [Trigger a subagent](/cloud-api/patterns/subagents) walks the
+whole flow.
+
+The roster itself is visible to every member of the organization; the
+restrictions ride on `can_launch` / `can_edit` rather than hiding rows.
+
 ## The evaluation loop
 
 1. Set the rubric: `PATCH /api/v1/agents/{id}` with `evaluator_criteria`.
@@ -77,6 +117,7 @@ All endpoints are organization scoped when the `X-Organization-Id` header is pre
 
 ```bash
 runtm-api agents list
+runtm-api agents list --can-launch          # only what this key may launch
 runtm-api agents create --name Donna --instructions 'Be terse.'
 runtm-api agents update <id> --evaluator-criteria '{"objective":"Resolve the ticket","checks":["opened a PR"]}'
 runtm-api agents scorecard --days 30

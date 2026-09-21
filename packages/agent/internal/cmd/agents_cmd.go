@@ -118,12 +118,19 @@ func agentEndpointsFor(agentType string) (agentEndpoints, error) {
 }
 
 func newAgentList(rt *Runtime) *cobra.Command {
-	var agentType string
+	var (
+		agentType string
+		canLaunch bool
+	)
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List roster agents (default) or trigger integrations (--type)",
 		Long: `Without --type, lists the org's agent roster (GET /api/v1/agents): every
-named agent with its defaults, evaluation rubric, and budget.
+named agent with its defaults, evaluation rubric, and budget. The roster is
+org-visible; can_launch and can_edit on each row say what this key may do.
+
+--can-launch narrows it to the agents this key may actually launch, which is
+the set worth passing to 'session create --agent-id'.
 
 With --type slack|github|linear|email, lists that platform's trigger
 integrations instead.`,
@@ -133,7 +140,11 @@ integrations instead.`,
 				if err != nil {
 					return err
 				}
-				resp, err := c.Get(rosterPath, nil)
+				var query url.Values
+				if canLaunch {
+					query = url.Values{"can_launch": []string{"true"}}
+				}
+				resp, err := c.Get(rosterPath, query)
 				return runJSON(rt, resp, err)
 			}
 			ep, err := agentEndpointsFor(agentType)
@@ -149,6 +160,7 @@ integrations instead.`,
 		},
 	}
 	cmd.Flags().StringVar(&agentType, "type", "", "Trigger integration type: slack, github, linear, or email (omit for the roster)")
+	cmd.Flags().BoolVar(&canLaunch, "can-launch", false, "Only the roster agents this key may launch")
 	return cmd
 }
 

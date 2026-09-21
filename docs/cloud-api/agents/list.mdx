@@ -6,7 +6,15 @@ description: "List the organization's roster agents"
 
 Returns every agent in the active organization as a JSON array. The list lazily syncs rows from trigger integrations that carry a `config.agent_id`, so agents created through the dashboard's trigger flows appear here without a separate backfill.
 
+The roster is visible to every member of the organization; `can_launch` and `can_edit` on each row say what *this* requester may do with it.
+
 **Required scope:** `activity:read`
+
+## Query Parameters
+
+<ParamField query="can_launch" type="boolean">
+  `true` returns only the agents this caller may launch — the set you can pass to [`agent_id`](/cloud-api/patterns/subagents) on a session create or launch. Omit it to get everything visible, including agents the caller may only edit.
+</ParamField>
 
 ## Headers
 
@@ -24,13 +32,14 @@ A JSON array of [agent objects](/cloud-api/agents/overview#the-agent-object).
 
 <RequestExample>
 ```bash cURL
-curl "https://app.runtm.com/api/cloud/v1/agents" \
+curl "https://app.runtm.com/api/cloud/v1/agents?can_launch=true" \
   -H "Authorization: Bearer runtm_xxx" \
   -H "X-Organization-Id: org_abc123"
 ```
 
 ```bash CLI
 runtm-api agents list
+runtm-api agents list --can-launch
 ```
 </RequestExample>
 

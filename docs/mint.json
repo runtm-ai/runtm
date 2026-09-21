@@ -133,6 +133,7 @@
         "cloud-api/patterns/activity-and-telemetry",
         "cloud-api/patterns/outbound-webhooks",
         "cloud-api/patterns/session-cli-recipes",
+        "cloud-api/patterns/subagents",
         "cloud-api/patterns/debug-a-session",
         "cloud-api/patterns/template-lifecycle"
       ]

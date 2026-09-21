@@ -1,0 +1,138 @@
+---
+title: "Trigger a subagent"
+description: "Launch a session as one of your agents — from the CLI, the API, or from inside another agent's run"
+---
+
+A session normally runs as *you*. Pass `agent_id` and it runs as one of the
+organization's [agents](/cloud-api/agents/overview) instead: it inherits that
+agent's system instructions, default template and harness, is tagged with its
+identity for telemetry, and is graded against its rubric.
+
+That is also how one agent spawns another. A run that launches a session with
+`agent_id` creates a **subagent**: a child session doing a scoped piece of work
+under a different agent's persona and permissions, which the parent polls for
+a result.
+
+<Tip>
+  `agent_id` is the roster agent (a UUID from `runtm-api agents list`).
+  `agent` is the coding harness — `claude-code`, `codex`, `opencode`. They are
+  different fields; passing a harness name as `agent_id` fails validation.
+</Tip>
+
+## Launch one
+
+<CodeGroup>
+```bash CLI
+# Find the agent
+runtm-api agents list
+
+# Fire and forget: create the session and send the prompt in one call
+runtm-api session launch \
+  --agent-id b277d18b-b2c8-4410-9e10-8c7b2a415d73 \
+  --prompt "Reconcile yesterday's ledger and list the breaks"
+
+# Or create the session first and drive it yourself
+runtm-api session create --agent-id b277d18b-b2c8-4410-9e10-8c7b2a415d73
+```
+
+```bash cURL
+curl -X POST "https://app.runtm.com/api/v0/sessions/launch" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_id": "b277d18b-b2c8-4410-9e10-8c7b2a415d73",
+    "prompt": "Reconcile yesterday'\''s ledger and list the breaks"
+  }'
+```
+</CodeGroup>
+
+The call returns immediately with the child session ID. Poll
+[`GET /api/v0/sessions/{id}`](/cloud-api/sessions/v0-get) (or
+`runtm-api session status <id>`) until `last_prompt.status` is `completed`,
+`error`, or `timed_out`, then read the result with
+[`GET /api/sessions/{id}/history`](/cloud-api/sessions/history).
+
+The agent's own defaults fill the gaps: omit `template`/`agent` and the child
+boots on the agent's `default_template` and `default_agent`. Anything you pass
+explicitly wins.
+
+## Who is allowed to
+
+Each agent carries a `callable_by` allowlist — set it in the dashboard under
+**Access control → Who may launch this agent**, or with
+[`PATCH /api/v1/agents/{id}`](/cloud-api/agents/update):
+
+| `callable_by` | Who may launch it |
+|---|---|
+| Nothing named (the default) | Anyone in the organization |
+| `groups: ["<team>"]` | Members of those groups |
+| `agents: [{agent_id}]` | Those agents, when they are the caller |
+| Both | Either |
+| `humans: false` | No person at all, whatever the lists say — and no admin override |
+
+**Naming anyone closes the agent to everyone else.** An agent whose only entry
+is another agent is delegation-only: a person calling the API with their own
+key gets `403 AGENT_NOT_CALLABLE`, and it disappears from
+`GET /api/v1/agents?can_launch=true`. Leave the list empty to keep it open.
+
+Org admins and owners bypass the list under the default `role` access model;
+switch the organization to the `group` model to make membership the only rule.
+
+<Warning>
+  A session spawns subagents **as whoever its key is**. A session launched
+  without `agent_id` acts as the person who started it, so it cannot reach an
+  agent that only lists agents as callers. Launch the parent with
+  `--agent-id` and its session key becomes that agent principal — then the
+  caller edge applies.
+</Warning>
+
+## When the edge needs an approval
+
+A caller edge can require a human decision before each delegation:
+`{"agent_id": "...", "approval": {"required_team_id": "team_ops"}}`. The
+launch is refused with `APPROVAL_REQUIRED` until one exists.
+
+1. The calling run raises an approval on **its own** session — from inside the
+   sandbox with the `runtm-approval` helper. There is no public endpoint that
+   creates one; the API only lists and resolves.
+2. Someone in the required group resolves it — in the dashboard, or with
+   [Resolve Approval](/cloud-api/sessions/approvals-resolve). Find its id with
+   [List Approvals](/cloud-api/sessions/approvals-list) or
+   `runtm-api session approvals list <parent-session-id>`.
+3. Retry the launch with that approval's id:
+
+```bash
+runtm-api session launch \
+  --agent-id b277d18b-b2c8-4410-9e10-8c7b2a415d73 \
+  --approval-id 6f0c1a2b-... \
+  --prompt "Reconcile yesterday's ledger"
+```
+
+The approval must be `approved`, belong to the calling session, match the
+edge's `required_team_id` / `required_role` / `kind`, and have been resolved
+within the last **10 minutes**. It is not reusable for a later delegation
+once it goes stale — request a fresh one.
+
+## Limits worth knowing
+
+- **Chain depth.** Delegation is capped at **3 hops**; deeper returns
+  `DELEGATION_TOO_DEEP`. Subagents spawning subagents is supported, not
+  unbounded.
+- **Disabled agents.** An agent with a kill switch on refuses every launch and
+  has had its keys revoked.
+- **Budget and templates.** The agent's monthly cap and its
+  `access_grant.allowed_templates` are enforced at launch, so a delegation can
+  be refused for spend or for booting the wrong template.
+- **Scopes.** `sessions:write` for `session create`; `sessions:write` plus
+  `sessions:prompt` for `session launch`.
+
+## Refusals you will see
+
+| Error | Meaning |
+|---|---|
+| `AGENT_NOT_CALLABLE` | The caller is not on the callee's allowlist. The message names what it does allow — caller agents, or calling groups. |
+| `APPROVAL_REQUIRED` | The edge needs an approval; request one and retry with `approval_id`. |
+| `DELEGATION_TOO_DEEP` | More than 3 hops in the chain. |
+| `agent_template_not_allowed` | The requested template is not in the agent's allowed list. |
+| `agent_budget_exceeded` | The agent is over its monthly cap. |

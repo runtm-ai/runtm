@@ -50,6 +50,14 @@ All fields optional; omitted fields are unchanged.
   Replacement task values and budget.
 </ParamField>
 
+<ParamField body="owner_team_id" type="string | null">
+  Group that may edit, disable or delete the agent. Send `null` for everyone in the org.
+</ParamField>
+
+<ParamField body="callable_by" type="object">
+  Who may launch it: `{"humans": true, "groups": ["team_ops"], "agents": [{"agent_id": "...", "approval": {"required_team_id": "team_ops"}}]}`. Both lists empty = anyone in the org; naming anyone closes it to exactly those. `humans: false` bars every person regardless, including org admins. See [Trigger a subagent](/cloud-api/patterns/subagents).
+</ParamField>
+
 ## Response
 
 The updated [agent object](/cloud-api/agents/overview#the-agent-object).
@@ -61,6 +69,19 @@ curl -X PATCH "https://app.runtm.com/api/cloud/v1/agents/a1b2c3d4-0000-0000-0000
   -H "X-Organization-Id: org_abc123" \
   -H "Content-Type: application/json" \
   -d '{"economics": {"budget": {"monthly_usd_cap": 50}}}'
+```
+
+```bash cURL (delegation-only)
+# Only the orchestrator agent may launch it, and each delegation needs an
+# approval from the ops group. `humans: false` is what shuts people out for
+# good: naming only an agent already blocks ordinary members, but org admins
+# keep their override under the `role` access model.
+curl -X PATCH "https://app.runtm.com/api/cloud/v1/agents/a1b2c3d4-0000-0000-0000-000000000000" \
+  -H "Authorization: Bearer runtm_xxx" \
+  -H "X-Organization-Id: org_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{"callable_by": {"humans": false, "groups": [],
+       "agents": [{"agent_id": "b1c506b1-...", "approval": {"required_team_id": "team_ops"}}]}}'
 ```
 
 ```bash CLI
