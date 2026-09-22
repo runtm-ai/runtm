@@ -507,7 +507,6 @@ async def search_deployments(
     )
 
 
-
 def in_flight_conflict(existing_latest, force_new: bool) -> dict | None:
     """409 payload when the app's latest deployment is still queued/building/deploying.
 

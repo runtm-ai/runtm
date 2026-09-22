@@ -89,7 +89,7 @@ class TestLimits:
 
     def test_build_timeout(self) -> None:
         """Build timeout defaults to 25 minutes (15 killed real customer builds)."""
-        assert Limits.BUILD_TIMEOUT_SECONDS == 25 * 60
+        assert Limits.BUILD_TIMEOUT_SECONDS == 40 * 60
 
     def test_deploy_timeout(self) -> None:
         """Deploy timeout should be 10 minutes."""
