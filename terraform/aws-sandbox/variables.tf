@@ -1,12 +1,10 @@
 # ---------------------------------------------------------------------------
 # Identity: how Runtm proves it is YOUR organization when it assumes the role.
 #
-# Default (Google mode): Runtm mints one Google service account per
-# organization and presents its ID token; AWS trusts Google natively (no IAM
-# OIDC provider). The account's email is derived from the org id — see
-# locals in main.tf — so `runtm_organization_id` alone is enough.
-# Legacy mode: a single Runtm hub role + a per-organization external id
-# (set both `runtm_hub_role_arn` and `runtm_external_id`).
+# Runtm mints one Google service account per organization and presents its ID
+# token; AWS trusts Google natively (no IAM OIDC provider). The account's email
+# is derived from the org id — see locals in main.tf — so
+# `runtm_organization_id` alone is enough.
 # ---------------------------------------------------------------------------
 
 variable "runtm_organization_id" {
@@ -49,28 +47,6 @@ variable "runtm_audience" {
   validation {
     condition     = var.runtm_audience == "" || can(regex("^[A-Za-z0-9:._-]{8,128}$", var.runtm_audience))
     error_message = "runtm_audience must be 8-128 characters of [A-Za-z0-9:._-]."
-  }
-}
-
-variable "runtm_hub_role_arn" {
-  description = "LEGACY (v1) mode: the single Runtm hub role allowed to AssumeRole. Leave empty (default) for Google-identity mode."
-  type        = string
-  default     = ""
-
-  validation {
-    condition     = var.runtm_hub_role_arn == "" || can(regex("^arn:aws:iam::[0-9]{12}:role/.+$", var.runtm_hub_role_arn))
-    error_message = "runtm_hub_role_arn must be an IAM role ARN."
-  }
-}
-
-variable "runtm_external_id" {
-  description = "LEGACY (v1) mode: per-organization external id minted by Runtm. Leave empty (default) for Google-identity mode."
-  type        = string
-  default     = ""
-
-  validation {
-    condition     = var.runtm_external_id == "" || can(regex("^[A-Za-z0-9+=,.@:/_-]{16,128}$", var.runtm_external_id))
-    error_message = "runtm_external_id must be 16-128 characters of [A-Za-z0-9+=,.@:/_-]."
   }
 }
 

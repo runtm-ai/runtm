@@ -64,14 +64,14 @@ output "runtm_connection" {
     execution_role_arn   = aws_iam_role.execution.arn
     log_group            = var.create_log_group ? aws_cloudwatch_log_group.sandboxes[0].name : null
     egress_connector_arn = var.egress_connector_arn
-    identity             = local.google_mode ? "google_oidc" : "iam_role"
-    google_sa_email      = local.google_mode ? local.google_sa_email : null
-    google_subject       = local.google_mode && var.runtm_google_subject != "" ? var.runtm_google_subject : null
-    audience             = local.google_mode ? local.audience : null
+    identity             = "google_oidc"
+    google_sa_email      = local.google_sa_email
+    google_subject       = var.runtm_google_subject != "" ? var.runtm_google_subject : null
+    audience             = local.audience
   }
 }
 
 output "google_sa_email" {
   description = "The Google service-account email this role trusts (derived from runtm_organization_id + runtm_google_project). Compare with the Runtm dialog."
-  value       = local.google_mode ? local.google_sa_email : null
+  value       = local.google_sa_email
 }

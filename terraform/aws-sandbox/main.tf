@@ -14,14 +14,10 @@ locals {
   region = try(data.aws_region.current.region, data.aws_region.current.name)
   suffix = var.name_suffix != "" ? var.name_suffix : local.region
 
-  # Identity Runtm presents. Google mode is the default: the service-account
-  # email is DERIVED from the org id with the same formula cloud-api uses
+  # Identity Runtm presents: one Google service account per organization, its
+  # email DERIVED from the org id with the same formula cloud-api uses
   # (backend/app/services/aws_org_identity.py: "runtm-aws-" + sha256(org)[:20],
-  # 30 chars = GCP's account-id maximum), so the module needs nothing but the
-  # org id. Legacy mode (hub role + external id) is opt-in.
-  legacy_mode = var.runtm_hub_role_arn != "" || var.runtm_external_id != ""
-  google_mode = !local.legacy_mode
-
+  # 30 chars = GCP's account-id maximum). The org id is the only input.
   google_sa_email = "runtm-aws-${substr(sha256(var.runtm_organization_id), 0, 20)}@${var.runtm_google_project}.iam.gserviceaccount.com"
   audience        = var.runtm_audience != "" ? var.runtm_audience : "runtm-sandbox:${var.runtm_organization_id}"
 
@@ -30,24 +26,6 @@ locals {
   tags = merge(var.tags, {
     "runtm:organization" = var.runtm_organization_id
   })
-}
-
-# Legacy mode needs both of its inputs. Terraform variable validation cannot
-# see other variables, so this is a data-source precondition instead: it fails
-# the plan before any resource is touched.
-data "aws_iam_policy_document" "identity_mode_guard" {
-  statement {
-    sid     = "Placeholder"
-    effect  = "Deny"
-    actions = ["sts:GetCallerIdentity"]
-  }
-
-  lifecycle {
-    precondition {
-      condition     = !local.legacy_mode || (var.runtm_hub_role_arn != "" && var.runtm_external_id != "")
-      error_message = "Legacy mode needs both runtm_hub_role_arn and runtm_external_id (leave both empty for the default Google-identity mode)."
-    }
-  }
 }
 
 # ---------------------------------------------------------------------------
@@ -59,7 +37,6 @@ resource "aws_s3_bucket" "artifacts" {
   bucket = local.bucket_name
   tags   = merge(local.tags, { "runtm:component" = "sandbox-artifacts" })
 
-  depends_on = [data.aws_iam_policy_document.identity_mode_guard]
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "artifacts" {
@@ -264,66 +241,44 @@ resource "aws_iam_role_policy" "execution" {
 # The role Runtm's control plane assumes
 # ---------------------------------------------------------------------------
 
-# Trust: Google-identity mode pins the role to your organization's Google
-# service account by EMAIL (accounts.google.com:email — derivable, so nothing
-# is pasted) and to the audience Runtm requests. Google is a built-in
-# web-identity provider in AWS, so no IAM OIDC provider resource is needed.
-# aud AND oaud are bound because AWS maps the token's aud field to both keys
-# when azp is absent (service-account tokens). Optionally also pin the numeric
-# uniqueId (runtm_google_subject, shown in the Runtm dialog) as `sub`.
-# Legacy mode trusts Runtm's single hub role, scoped by the per-org external id.
+# Trust: pinned to your organization's Google service account by EMAIL
+# (accounts.google.com:email — derivable, so nothing is pasted) and to the
+# audience Runtm requests. Google is a built-in web-identity provider in AWS,
+# so no IAM OIDC provider resource is needed. aud AND oaud are bound because
+# AWS maps the token's aud field to both keys when azp is absent
+# (service-account tokens). Optionally also pin the numeric uniqueId
+# (runtm_google_subject, shown in the Runtm dialog) as `sub`.
 data "aws_iam_policy_document" "access_trust" {
-  dynamic "statement" {
-    for_each = local.google_mode ? [1] : []
-    content {
-      sid     = "RuntmOrgGoogleIdentity"
-      effect  = "Allow"
-      actions = ["sts:AssumeRoleWithWebIdentity", "sts:TagSession"]
-      principals {
-        type        = "Federated"
-        identifiers = ["accounts.google.com"]
-      }
-      condition {
+  statement {
+    sid     = "RuntmOrgGoogleIdentity"
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity", "sts:TagSession"]
+    principals {
+      type        = "Federated"
+      identifiers = ["accounts.google.com"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "accounts.google.com:email"
+      values   = [local.google_sa_email]
+    }
+    dynamic "condition" {
+      for_each = var.runtm_google_subject != "" ? [1] : []
+      content {
         test     = "StringEquals"
-        variable = "accounts.google.com:email"
-        values   = [local.google_sa_email]
-      }
-      dynamic "condition" {
-        for_each = var.runtm_google_subject != "" ? [1] : []
-        content {
-          test     = "StringEquals"
-          variable = "accounts.google.com:sub"
-          values   = [var.runtm_google_subject]
-        }
-      }
-      condition {
-        test     = "StringEquals"
-        variable = "accounts.google.com:aud"
-        values   = [local.audience]
-      }
-      condition {
-        test     = "StringEquals"
-        variable = "accounts.google.com:oaud"
-        values   = [local.audience]
+        variable = "accounts.google.com:sub"
+        values   = [var.runtm_google_subject]
       }
     }
-  }
-
-  dynamic "statement" {
-    for_each = local.legacy_mode ? [1] : []
-    content {
-      sid     = "RuntmHubRoleExternalId"
-      effect  = "Allow"
-      actions = ["sts:AssumeRole", "sts:TagSession"]
-      principals {
-        type        = "AWS"
-        identifiers = [var.runtm_hub_role_arn]
-      }
-      condition {
-        test     = "StringEquals"
-        variable = "sts:ExternalId"
-        values   = [var.runtm_external_id]
-      }
+    condition {
+      test     = "StringEquals"
+      variable = "accounts.google.com:aud"
+      values   = [local.audience]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "accounts.google.com:oaud"
+      values   = [local.audience]
     }
   }
 }
@@ -421,10 +376,8 @@ data "aws_iam_policy_document" "access" {
 resource "aws_iam_role" "access" {
   name               = "RuntmSandboxAccessRole-${local.suffix}"
   assume_role_policy = data.aws_iam_policy_document.access_trust.json
-  # 12h in Google mode: AssumeRoleWithWebIdentity is not role chaining, so the
-  # 1h chaining cap does not apply. Legacy hub-role AssumeRole IS chaining and
-  # is capped at 1h by STS regardless of this value.
-  max_session_duration = local.google_mode ? 43200 : 3600
+  # 12h: AssumeRoleWithWebIdentity is not role chaining, so the 1h cap does not apply.
+  max_session_duration = 43200
   tags                 = local.tags
 }
 

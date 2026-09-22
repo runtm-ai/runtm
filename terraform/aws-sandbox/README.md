@@ -66,7 +66,7 @@ aws lambda-microvms create-network-connector \
 | `create_log_group` / `log_group_name` | `true` / `/runtm/sandboxes` | CloudWatch log group for sandbox logs. |
 | `tags` | `{}` | Extra tags. |
 
-See `variables.tf` for the full list, including the legacy hub-role inputs.
+See `variables.tf` for the full list.
 
 ## Outputs
 
