@@ -507,6 +507,26 @@ async def search_deployments(
     )
 
 
+def in_flight_conflict(existing_latest, force_new: bool) -> dict | None:
+    """409 payload when the app's latest deployment is still queued/building/deploying.
+
+    Redeploying into a live build is never what the caller wants: it created a
+    brand-new Fly app and a second concurrent build. ``--new`` still opts out.
+    """
+    if force_new or existing_latest.state in (DeploymentState.READY, DeploymentState.FAILED):
+        return None
+    return {
+        "error": (
+            f"{existing_latest.name} v{existing_latest.version} is still "
+            f"{existing_latest.state.value}. Wait for it to finish or fail, then redeploy. "
+            "Use --new only to create a separate app."
+        ),
+        "code": "deployment_in_progress",
+        "deployment_id": existing_latest.deployment_id,
+        "recovery_hint": f"runtm-api deployments get {existing_latest.deployment_id} until state is ready or failed",
+    }
+
+
 @router.post(
     "",
     response_model=DeploymentResponse,
@@ -771,6 +791,11 @@ async def create_deployment(
                     previous_version + 1,
                     existing_latest.state.value,
                 )
+            elif conflict := in_flight_conflict(existing_latest, force_new):
+                # A deploy while the previous one is still building used to
+                # spawn a NEW app plus a second concurrent build (Rain,
+                # 2026-09-21: two builds starved the shared builder).
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=conflict)
             else:
                 logger.info(
                     "Creating new deployment %s (v%d -> v%d, marking previous v%d as not latest)",

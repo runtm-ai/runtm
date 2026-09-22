@@ -417,8 +417,11 @@ class Limits:
     # docs/open-source/self-hosting/configuration.mdx). The build ceiling covers the
     # whole `flyctl deploy --buildkit` run (remote image build + rolling machine
     # update), so a large Next.js build on a shared remote builder needs headroom:
-    # 15 minutes killed three consecutive real customer builds on 2026-09-11.
-    BUILD_TIMEOUT_SECONDS: int = _env_int("BUILD_TIMEOUT_SECONDS", 25 * 60)  # 25 minutes
+    # 15 minutes killed three consecutive real customer builds on 2026-09-11, and
+    # 25 minutes killed six on 2026-09-21 (one finished at 1485 s and died in
+    # image export). 40 minutes matches the `--timeout 2400` the CLI and the
+    # dashboard Deploy panel already send.
+    BUILD_TIMEOUT_SECONDS: int = _env_int("BUILD_TIMEOUT_SECONDS", 40 * 60)  # 40 minutes
     DEPLOY_TIMEOUT_SECONDS: int = _env_int("DEPLOY_TIMEOUT_SECONDS", 10 * 60)  # 10 minutes
 
     # RQ job ceiling for process_deployment. Must exceed build + deploy so RQ never
