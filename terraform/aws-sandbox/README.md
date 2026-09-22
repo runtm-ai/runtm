@@ -50,6 +50,21 @@ aws lambda-microvms create-network-connector \
   --security-group-ids $(terraform output -raw security_group_id)
 ```
 
+## CloudFormation instead of Terraform
+
+The same stack as a CloudFormation template lives in `cloudformation/v2/`
+(Google-identity trust; `v1/` is the legacy hub-role variant). The Runtm
+dialog offers a pre-filled one-click link. From a terminal, with the values
+the dialog shows:
+
+```sh
+aws cloudformation create-stack --stack-name runtm-sandbox --capabilities CAPABILITY_NAMED_IAM \
+  --template-body "$(curl -fsSL https://raw.githubusercontent.com/runtm-ai/runtm/main/terraform/aws-sandbox/cloudformation/v2/runtm-sandbox.yaml)" \
+  --parameters ParameterKey=GoogleEmail,ParameterValue=<google identity> \
+               ParameterKey=GoogleAudience,ParameterValue=runtm-sandbox:<org id> \
+               ParameterKey=OrganizationId,ParameterValue=<org id>
+```
+
 ## Inputs
 
 | Name | Default | Description |
@@ -64,6 +79,7 @@ aws lambda-microvms create-network-connector \
 | `session_artifact_retention_days` | `90` | Lifetime of paused-session snapshots. |
 | `template_versions_to_keep` | `3` | Previous template versions kept for rollback (current never expires). |
 | `create_log_group` / `log_group_name` | `true` / `/runtm/sandboxes` | CloudWatch log group for sandbox logs. |
+| `artifact_bucket_name` | `runtm-sandbox-<account>-<region>` | Override when that name is taken. |
 | `tags` | `{}` | Extra tags. |
 
 See `variables.tf` for the full list.

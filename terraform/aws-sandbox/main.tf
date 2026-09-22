@@ -21,7 +21,7 @@ locals {
   google_sa_email = "runtm-aws-${substr(sha256(var.runtm_organization_id), 0, 20)}@${var.runtm_google_project}.iam.gserviceaccount.com"
   audience        = var.runtm_audience != "" ? var.runtm_audience : "runtm-sandbox:${var.runtm_organization_id}"
 
-  bucket_name = "runtm-sandbox-${local.account_id}-${local.region}"
+  bucket_name = var.artifact_bucket_name != "" ? var.artifact_bucket_name : "runtm-sandbox-${local.account_id}-${local.region}"
 
   tags = merge(var.tags, {
     "runtm:organization" = var.runtm_organization_id

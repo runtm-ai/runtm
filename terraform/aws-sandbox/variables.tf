@@ -54,6 +54,17 @@ variable "runtm_audience" {
 # Naming / retention
 # ---------------------------------------------------------------------------
 
+variable "artifact_bucket_name" {
+  description = "Override the artifact bucket name. Default runtm-sandbox-<account>-<region> matches the CloudFormation stack and what the Runtm dialog pre-fills; override when that name is taken (e.g. a second stack in the same account+region) and paste the output into the dialog's Artifact bucket field."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.artifact_bucket_name == "" || can(regex("^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$", var.artifact_bucket_name))
+    error_message = "artifact_bucket_name must be a valid S3 bucket name."
+  }
+}
+
 variable "name_suffix" {
   description = "Suffix for the three role names (RuntmSandboxAccessRole-<suffix> ...). Defaults to the provider's region, matching the CloudFormation template, so one stack per region never collides."
   type        = string
