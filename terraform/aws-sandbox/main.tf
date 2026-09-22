@@ -244,10 +244,14 @@ resource "aws_iam_role_policy" "execution" {
 # Trust: pinned to your organization's Google service account by EMAIL
 # (accounts.google.com:email — derivable, so nothing is pasted) and to the
 # audience Runtm requests. Google is a built-in web-identity provider in AWS,
-# so no IAM OIDC provider resource is needed. aud AND oaud are bound because
-# AWS maps the token's aud field to both keys when azp is absent
-# (service-account tokens). Optionally also pin the numeric uniqueId
-# (runtm_google_subject, shown in the Runtm dialog) as `sub`.
+# so no IAM OIDC provider resource is needed.
+#
+# Claim mapping (verified against a real token, 2026-09-22): a service-account
+# ID token carries `azp` = the account's numeric id, and when `azp` is present
+# AWS maps accounts.google.com:aud to `azp` and accounts.google.com:oaud to
+# the token's `aud`. So the requested audience is pinned with `oaud`; pinning
+# `aud` to the audience string can never match and denies every assumption.
+# Optionally also pin the numeric id (runtm_google_subject) as `sub`.
 data "aws_iam_policy_document" "access_trust" {
   statement {
     sid     = "RuntmOrgGoogleIdentity"
@@ -262,6 +266,11 @@ data "aws_iam_policy_document" "access_trust" {
       variable = "accounts.google.com:email"
       values   = [local.google_sa_email]
     }
+    condition {
+      test     = "StringEquals"
+      variable = "accounts.google.com:oaud"
+      values   = [local.audience]
+    }
     dynamic "condition" {
       for_each = var.runtm_google_subject != "" ? [1] : []
       content {
@@ -269,16 +278,6 @@ data "aws_iam_policy_document" "access_trust" {
         variable = "accounts.google.com:sub"
         values   = [var.runtm_google_subject]
       }
-    }
-    condition {
-      test     = "StringEquals"
-      variable = "accounts.google.com:aud"
-      values   = [local.audience]
-    }
-    condition {
-      test     = "StringEquals"
-      variable = "accounts.google.com:oaud"
-      values   = [local.audience]
     }
   }
 }

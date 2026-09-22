@@ -32,8 +32,9 @@ Parameters:
     Default: ""
     AllowedPattern: "^([0-9]{10,30})?$"
   # The audience Runtm requests when minting the token, also per organization.
-  # Bound twice (aud + oaud) because AWS maps the Google token's aud field to
-  # both keys when azp is absent, which is the case for service-account tokens.
+  # Pinned with accounts.google.com:oaud: service-account ID tokens carry azp
+  # (= the account's numeric id), and with azp present AWS maps :aud to azp and
+  # :oaud to the token's aud. Pinning :aud to this string would deny everything.
   GoogleAudience:
     Type: String
     Description: Token audience Runtm requests for this organization (pre-filled by Runtm, runtm-sandbox:<org>).
@@ -215,10 +216,8 @@ Resources:
                 - PinSubject
                 - "accounts.google.com:email": !Ref GoogleEmail
                   "accounts.google.com:sub": !Ref GoogleSubject
-                  "accounts.google.com:aud": !Ref GoogleAudience
                   "accounts.google.com:oaud": !Ref GoogleAudience
                 - "accounts.google.com:email": !Ref GoogleEmail
-                  "accounts.google.com:aud": !Ref GoogleAudience
                   "accounts.google.com:oaud": !Ref GoogleAudience
       Policies:
         - PolicyName: runtm-sandbox-access
