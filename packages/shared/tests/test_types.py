@@ -88,7 +88,7 @@ class TestLimits:
         assert Limits.MAX_ARTIFACT_SIZE_BYTES == 20 * 1024 * 1024
 
     def test_build_timeout(self) -> None:
-        """Build timeout defaults to 25 minutes (15 killed real customer builds)."""
+        """Build timeout defaults to 40 minutes (15 and 25 both killed real customer builds)."""
         assert Limits.BUILD_TIMEOUT_SECONDS == 40 * 60
 
     def test_deploy_timeout(self) -> None:
