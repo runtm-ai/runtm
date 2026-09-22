@@ -20,16 +20,15 @@ Nothing grants Runtm access outside Lambda MicroVMs and that bucket.
 
 ## Usage
 
-Copy this from **Integrations → AWS Lambda MicroVMs → Terraform** in Runtm;
-the three values are pre-filled for your organization.
+Copy this from **Integrations → AWS Lambda MicroVMs → Terraform** in Runtm.
+Your organization id is the only input: the module derives the Google identity
+Runtm presents and the token audience from it.
 
 ```hcl
 module "runtm_sandbox" {
   source = "git::https://github.com/runtm-ai/runtm.git//terraform/aws-sandbox?ref=main"
 
   runtm_organization_id = "<org id>"
-  runtm_google_subject  = "<numeric subject>"
-  runtm_audience        = "runtm-sandbox:<org id>"
 }
 
 output "runtm_connection" {
@@ -60,7 +59,17 @@ Pin `ref=` to a tag for reproducible applies.
 Runtm mints **one Google service account per organization** and presents its
 ID token to `sts:AssumeRoleWithWebIdentity`. AWS trusts Google as a built-in
 web-identity provider, so the module creates **no IAM OIDC provider** and you
-paste **no key or secret**. The trust policy is:
+paste **no key or secret**. The account's email is *derived* from your org id:
+
+```
+runtm-aws-<first 20 hex of sha256(org id)>@<runtm_google_project>.iam.gserviceaccount.com
+```
+
+(GCP account ids are capped at 30 lowercase characters, so the org id is
+hashed rather than used verbatim. The same formula lives in Runtm Cloud —
+`terraform output google_sa_email` must equal what the Runtm dialog shows.)
+
+The trust policy pins that email and the audience:
 
 ```hcl
 data "aws_iam_policy_document" "access_trust" {
@@ -72,29 +81,37 @@ data "aws_iam_policy_document" "access_trust" {
     }
     condition {
       test     = "StringEquals"
-      variable = "accounts.google.com:sub"
-      values   = [var.runtm_google_subject]   # your org's service account, immutable numeric id
+      variable = "accounts.google.com:email"
+      values   = [local.google_sa_email]   # runtm-aws-<hash>@<project>.iam.gserviceaccount.com
     }
     condition {
       test     = "StringEquals"
       variable = "accounts.google.com:aud"
-      values   = [var.runtm_audience]         # runtm-sandbox:<org id>
+      values   = [local.audience]          # runtm-sandbox:<org id>
     }
     condition {
       test     = "StringEquals"
       variable = "accounts.google.com:oaud"
-      values   = [var.runtm_audience]
+      values   = [local.audience]
     }
+    # + accounts.google.com:sub when runtm_google_subject is set
   }
 }
 ```
 
-Only that one service account can produce a token with that `sub`; no other
-Runtm tenant, and nothing in Runtm's own AWS account, can satisfy the policy.
-`aud` and `oaud` are both bound because AWS maps a Google token's `aud` field
-to both keys when `azp` is absent (service-account tokens). Sessions last up
-to 12 h (`max_session_duration = 43200`) since web-identity assumption is not
-role chaining.
+Only a service account inside Runtm's identity project can carry that email,
+and Runtm creates exactly one per organization; no other Runtm tenant, and
+nothing in Runtm's own AWS account, can satisfy the policy. `aud` and `oaud`
+are both bound because AWS maps a Google token's `aud` field to both keys when
+`azp` is absent (service-account tokens). Sessions last up to 12 h
+(`max_session_duration = 43200`) since web-identity assumption is not role
+chaining.
+
+Optional hardening: set `runtm_google_subject` to the numeric id the Runtm
+dialog shows and the trust additionally pins `accounts.google.com:sub`
+(immutable per account; needs a re-apply if Runtm ever recreates the account).
+`runtm_google_project` only changes for Runtm staging or a Runtm deployment on
+another GCP account — the dialog's snippet includes it when needed.
 
 ### Legacy mode (hub role + external id)
 
@@ -124,8 +141,6 @@ module "runtm_sandbox" {
   source = "git::https://github.com/runtm-ai/runtm.git//terraform/aws-sandbox?ref=main"
 
   runtm_organization_id = "<org id>"
-  runtm_google_subject  = "<numeric subject>"
-  runtm_audience        = "runtm-sandbox:<org id>"
 
   create_vpc_egress    = true
   vpc_cidr             = "10.77.0.0/16"
@@ -166,9 +181,10 @@ and terminals go through Runtm's authenticated proxy.
 
 | Name | Default | Description |
 |---|---|---|
-| `runtm_organization_id` | — | Your Runtm organization id (tagging, audience). |
-| `runtm_google_subject` | `""` | Numeric id of your org's Runtm Google service account. |
-| `runtm_audience` | `""` | Audience Runtm requests (`runtm-sandbox:<org>`). |
+| `runtm_organization_id` | — | Your Runtm organization id. Derives the trusted Google identity, the audience, and tags. |
+| `runtm_google_project` | Runtm prod identity project | GCP project after the `@` in the trusted email. Override for Runtm staging / another Runtm deployment. |
+| `runtm_google_subject` | `""` | Optional: also pin the account's numeric id as `sub`. |
+| `runtm_audience` | `""` | Optional override; default `runtm-sandbox:<org>`. |
 | `runtm_hub_role_arn` | `""` | Legacy: Runtm hub role ARN. |
 | `runtm_external_id` | `""` | Legacy: per-org external id. |
 | `name_suffix` | region | Suffix on the three role names. |

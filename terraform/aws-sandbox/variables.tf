@@ -1,15 +1,16 @@
 # ---------------------------------------------------------------------------
 # Identity: how Runtm proves it is YOUR organization when it assumes the role.
 #
-# Preferred: Runtm mints one Google service account per organization and
-# presents its ID token; AWS trusts Google natively (no IAM OIDC provider), so
-# the trust policy names an identity that only your organization can produce.
-# Legacy: a single Runtm hub role + a per-organization external id.
-# Exactly one of the two pairs must be set (checked in main.tf).
+# Default (Google mode): Runtm mints one Google service account per
+# organization and presents its ID token; AWS trusts Google natively (no IAM
+# OIDC provider). The account's email is derived from the org id — see
+# locals in main.tf — so `runtm_organization_id` alone is enough.
+# Legacy mode: a single Runtm hub role + a per-organization external id
+# (set both `runtm_hub_role_arn` and `runtm_external_id`).
 # ---------------------------------------------------------------------------
 
 variable "runtm_organization_id" {
-  description = "Your Runtm organization id. Copied from the Runtm connect dialog; used for tagging and to derive the default audience."
+  description = "Your Runtm organization id (Integrations -> AWS Lambda MicroVMs). Derives the Google identity Runtm presents, the token audience, and the resource tags."
   type        = string
 
   validation {
@@ -18,8 +19,19 @@ variable "runtm_organization_id" {
   }
 }
 
+variable "runtm_google_project" {
+  description = "GCP project that hosts Runtm's per-organization identity service accounts (the part after '@' in the trusted email). Defaults to Runtm production; override only for Runtm staging or a Runtm deployment on another GCP account."
+  type        = string
+  default     = "kuimjyxqkrbfvalw-orgids"
+
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$", var.runtm_google_project))
+    error_message = "runtm_google_project must be a GCP project id."
+  }
+}
+
 variable "runtm_google_subject" {
-  description = "Numeric unique id of your organization's Runtm Google service account (pre-filled in the Runtm connect dialog). Google-identity mode."
+  description = "Optional: the numeric unique id of your organization's Runtm service account (shown in the Runtm dialog). When set, the trust ALSO pins accounts.google.com:sub — tighter than email alone, at the cost of a re-apply if Runtm ever recreates the account."
   type        = string
   default     = ""
 
@@ -30,7 +42,7 @@ variable "runtm_google_subject" {
 }
 
 variable "runtm_audience" {
-  description = "Audience Runtm requests when minting the Google token for this organization (pre-filled, runtm-sandbox:<org>). Google-identity mode."
+  description = "Optional override of the token audience Runtm requests. Defaults to runtm-sandbox:<runtm_organization_id>, which is what Runtm Cloud mints; only change it if your Runtm deployment is configured with a different audience prefix."
   type        = string
   default     = ""
 
@@ -41,7 +53,7 @@ variable "runtm_audience" {
 }
 
 variable "runtm_hub_role_arn" {
-  description = "LEGACY (v1) mode: the single Runtm hub role allowed to AssumeRole. Leave empty when using runtm_google_subject."
+  description = "LEGACY (v1) mode: the single Runtm hub role allowed to AssumeRole. Leave empty (default) for Google-identity mode."
   type        = string
   default     = ""
 
@@ -52,7 +64,7 @@ variable "runtm_hub_role_arn" {
 }
 
 variable "runtm_external_id" {
-  description = "LEGACY (v1) mode: per-organization external id minted by Runtm. Leave empty when using runtm_google_subject."
+  description = "LEGACY (v1) mode: per-organization external id minted by Runtm. Leave empty (default) for Google-identity mode."
   type        = string
   default     = ""
 

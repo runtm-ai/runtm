@@ -14,8 +14,16 @@ locals {
   region = try(data.aws_region.current.region, data.aws_region.current.name)
   suffix = var.name_suffix != "" ? var.name_suffix : local.region
 
-  google_mode = var.runtm_google_subject != "" && var.runtm_audience != ""
-  legacy_mode = var.runtm_hub_role_arn != "" && var.runtm_external_id != ""
+  # Identity Runtm presents. Google mode is the default: the service-account
+  # email is DERIVED from the org id with the same formula cloud-api uses
+  # (backend/app/services/aws_org_identity.py: "runtm-aws-" + sha256(org)[:20],
+  # 30 chars = GCP's account-id maximum), so the module needs nothing but the
+  # org id. Legacy mode (hub role + external id) is opt-in.
+  legacy_mode = var.runtm_hub_role_arn != "" || var.runtm_external_id != ""
+  google_mode = !local.legacy_mode
+
+  google_sa_email = "runtm-aws-${substr(sha256(var.runtm_organization_id), 0, 20)}@${var.runtm_google_project}.iam.gserviceaccount.com"
+  audience        = var.runtm_audience != "" ? var.runtm_audience : "runtm-sandbox:${var.runtm_organization_id}"
 
   bucket_name = "runtm-sandbox-${local.account_id}-${local.region}"
 
@@ -24,9 +32,9 @@ locals {
   })
 }
 
-# Exactly one identity mode. Terraform variable validation cannot see other
-# variables, so this is a data-source precondition instead: it fails the plan
-# before any resource is touched.
+# Legacy mode needs both of its inputs. Terraform variable validation cannot
+# see other variables, so this is a data-source precondition instead: it fails
+# the plan before any resource is touched.
 data "aws_iam_policy_document" "identity_mode_guard" {
   statement {
     sid     = "Placeholder"
@@ -36,16 +44,8 @@ data "aws_iam_policy_document" "identity_mode_guard" {
 
   lifecycle {
     precondition {
-      condition     = local.google_mode != local.legacy_mode
-      error_message = "Set exactly one identity: runtm_google_subject + runtm_audience (preferred) OR runtm_hub_role_arn + runtm_external_id (legacy)."
-    }
-    precondition {
-      condition     = !(var.runtm_google_subject != "" && var.runtm_audience == "") && !(var.runtm_google_subject == "" && var.runtm_audience != "")
-      error_message = "runtm_google_subject and runtm_audience must be set together."
-    }
-    precondition {
-      condition     = !(var.runtm_hub_role_arn != "" && var.runtm_external_id == "") && !(var.runtm_hub_role_arn == "" && var.runtm_external_id != "")
-      error_message = "runtm_hub_role_arn and runtm_external_id must be set together."
+      condition     = !local.legacy_mode || (var.runtm_hub_role_arn != "" && var.runtm_external_id != "")
+      error_message = "Legacy mode needs both runtm_hub_role_arn and runtm_external_id (leave both empty for the default Google-identity mode)."
     }
   }
 }
@@ -221,11 +221,13 @@ resource "aws_iam_role_policy" "execution" {
 # ---------------------------------------------------------------------------
 
 # Trust: Google-identity mode pins the role to your organization's Google
-# service account (subject) and the audience Runtm requests. Google is a
-# built-in web-identity provider in AWS, so no IAM OIDC provider resource is
-# needed. aud AND oaud are bound because AWS maps the token's aud field to
-# both keys when azp is absent (service-account tokens). Legacy mode trusts
-# Runtm's single hub role, scoped by the per-organization external id.
+# service account by EMAIL (accounts.google.com:email — derivable, so nothing
+# is pasted) and to the audience Runtm requests. Google is a built-in
+# web-identity provider in AWS, so no IAM OIDC provider resource is needed.
+# aud AND oaud are bound because AWS maps the token's aud field to both keys
+# when azp is absent (service-account tokens). Optionally also pin the numeric
+# uniqueId (runtm_google_subject, shown in the Runtm dialog) as `sub`.
+# Legacy mode trusts Runtm's single hub role, scoped by the per-org external id.
 data "aws_iam_policy_document" "access_trust" {
   dynamic "statement" {
     for_each = local.google_mode ? [1] : []
@@ -239,18 +241,26 @@ data "aws_iam_policy_document" "access_trust" {
       }
       condition {
         test     = "StringEquals"
-        variable = "accounts.google.com:sub"
-        values   = [var.runtm_google_subject]
+        variable = "accounts.google.com:email"
+        values   = [local.google_sa_email]
+      }
+      dynamic "condition" {
+        for_each = var.runtm_google_subject != "" ? [1] : []
+        content {
+          test     = "StringEquals"
+          variable = "accounts.google.com:sub"
+          values   = [var.runtm_google_subject]
+        }
       }
       condition {
         test     = "StringEquals"
         variable = "accounts.google.com:aud"
-        values   = [var.runtm_audience]
+        values   = [local.audience]
       }
       condition {
         test     = "StringEquals"
         variable = "accounts.google.com:oaud"
-        values   = [var.runtm_audience]
+        values   = [local.audience]
       }
     }
   }
