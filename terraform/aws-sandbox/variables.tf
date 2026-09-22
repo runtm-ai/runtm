@@ -96,13 +96,35 @@ variable "artifact_retention_days" {
 }
 
 variable "session_artifact_retention_days" {
-  description = "Days to keep paused-session filesystem snapshots (sessions/ prefix) in the bucket."
+  description = "Days to keep paused-session filesystem snapshots (sessions/ prefix). Default matches Runtm's paused-session retention (90 days)."
   type        = number
-  default     = 30
+  default     = 90
 
   validation {
     condition     = var.session_artifact_retention_days >= 1
     error_message = "session_artifact_retention_days must be at least 1."
+  }
+}
+
+variable "template_versions_to_keep" {
+  description = "Template goldens (templates/ prefix) never expire; each rebuild overwrites the object and the bucket is versioned. This many PREVIOUS versions are kept for rollback before older ones are purged."
+  type        = number
+  default     = 3
+
+  validation {
+    condition     = var.template_versions_to_keep >= 1 && var.template_versions_to_keep <= 100
+    error_message = "template_versions_to_keep must be between 1 and 100."
+  }
+}
+
+variable "template_version_retention_days" {
+  description = "Days a superseded template golden version is kept once it is older than the template_versions_to_keep newest ones."
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.template_version_retention_days >= 1
+    error_message = "template_version_retention_days must be at least 1."
   }
 }
 

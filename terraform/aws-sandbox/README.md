@@ -12,7 +12,7 @@ It creates, and only creates:
 | `RuntmSandboxAccessRole-<region>` | The role Runtm's control plane assumes. Trust is pinned to **your organization's** identity (below). Permissions: Lambda MicroVMs, `iam:PassRole` on the two roles under it, the artifact bucket, build-log reads. |
 | `RuntmMicrovmBuildRole-<region>` | Assumed by the Lambda service while it builds a MicroVM image from the zip Runtm uploads. |
 | `RuntmMicrovmExecutionRole-<region>` | The identity a running sandbox has. CloudWatch logging only; add statements if your agents should reach other AWS services. |
-| `runtm-sandbox-<account>-<region>` (S3) | Image build contexts (`images/`, 90 d) and paused-session snapshots (`sessions/`, 30 d). Encrypted, private, TLS-only. |
+| `runtm-sandbox-<account>-<region>` (S3) | Image build contexts (`images/`, 90 d), paused-session snapshots (`sessions/`, 90 d) and **template goldens (`templates/`, never expire; versioned, last 3 previous versions kept 30 d)**. Encrypted, private, TLS-only. |
 | `/runtm/sandboxes` (CloudWatch, optional) | Sandbox app logs. |
 | Egress VPC (optional) | Private subnets behind a NAT gateway, security group with your egress allow-list. See [Egress](#egress). |
 
@@ -188,8 +188,10 @@ and terminals go through Runtm's authenticated proxy.
 | `runtm_hub_role_arn` | `""` | Legacy: Runtm hub role ARN. |
 | `runtm_external_id` | `""` | Legacy: per-org external id. |
 | `name_suffix` | region | Suffix on the three role names. |
-| `artifact_retention_days` | `90` | `images/` lifetime. |
-| `session_artifact_retention_days` | `30` | `sessions/` lifetime; also the log group retention. |
+| `artifact_retention_days` | `90` | `images/` (build contexts) lifetime. |
+| `template_versions_to_keep` | `3` | Previous versions of each `templates/` golden kept for rollback (current never expires). |
+| `template_version_retention_days` | `30` | How long those previous versions live. |
+| `session_artifact_retention_days` | `90` | `sessions/` lifetime; also the log group retention. |
 | `create_log_group` | `true` | Create the CloudWatch log group. |
 | `log_group_name` | `/runtm/sandboxes` | Must start with `/runtm/`. |
 | `create_vpc_egress` | `false` | Build the egress VPC + security group. |
