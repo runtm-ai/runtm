@@ -63,7 +63,12 @@ def _zip() -> bytes:
 
 def _latest(state):
     d = MagicMock()
-    d.name, d.version, d.state, d.deployment_id = "rain-wallets-proto", 30, state, "dep_9c6b8b665d32"
+    d.name, d.version, d.state, d.deployment_id = (
+        "rain-wallets-proto",
+        30,
+        state,
+        "dep_9c6b8b665d32",
+    )
     d.is_latest = True
     return d
 
@@ -105,7 +110,11 @@ def harness(monkeypatch):
     app.include_router(deployments_router)
     app.dependency_overrides[get_db] = lambda: db
     app.dependency_overrides[get_auth_context] = lambda: AuthContext(
-        token="t", tenant_id="tenant-rain", principal_id="user-jack", api_key_id="key-1", scopes={"deploy"}
+        token="t",
+        tenant_id="tenant-rain",
+        principal_id="user-jack",
+        api_key_id="key-1",
+        scopes={"deploy"},
     )
     app.dependency_overrides[get_settings] = lambda: MagicMock()
     client = TestClient(app, raise_server_exceptions=False)
@@ -121,7 +130,9 @@ def harness(monkeypatch):
     return post, db, store, enqueue
 
 
-@pytest.mark.parametrize("state", [DeploymentState.QUEUED, DeploymentState.BUILDING, DeploymentState.DEPLOYING])
+@pytest.mark.parametrize(
+    "state", [DeploymentState.QUEUED, DeploymentState.BUILDING, DeploymentState.DEPLOYING]
+)
 def test_route_409_while_previous_build_in_flight(harness, state):
     post, db, store, enqueue = harness
     r = post(_latest(state))
