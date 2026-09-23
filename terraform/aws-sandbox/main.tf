@@ -346,6 +346,19 @@ data "aws_iam_policy_document" "access" {
   # CreateMicrovmImage passes the build role under the MicroVMs service, which
   # a "lambda.amazonaws.com" condition rejected (AccessDenied on iam:PassRole,
   # observed 2026-09-22); the resource list already bounds what can be passed.
+  # Image builds and MicroVM runs attach network connectors: the AWS-managed
+  # ones (INTERNET_EGRESS / ALL_INGRESS / SHELL_INGRESS, owned by account "aws")
+  # and, with create_vpc_egress, the connector you create in this account.
+  statement {
+    sid     = "PassNetworkConnectors"
+    effect  = "Allow"
+    actions = ["lambda:PassNetworkConnector"]
+    resources = [
+      "arn:aws:lambda:${local.region}:aws:network-connector:*",
+      "arn:aws:lambda:${local.region}:${local.account_id}:network-connector:*",
+    ]
+  }
+
   statement {
     sid     = "PassMicrovmRoles"
     effect  = "Allow"

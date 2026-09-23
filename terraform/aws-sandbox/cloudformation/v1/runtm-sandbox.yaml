@@ -238,6 +238,14 @@ Resources:
                   - lambda:CreateMicrovmAuthToken
                   - lambda:CreateMicrovmShellAuthToken
                 Resource: "*"
+              # AWS-managed connectors (INTERNET_EGRESS/ALL_INGRESS/SHELL_INGRESS, account
+              # "aws") + any VPC connector created in this account.
+              - Sid: PassNetworkConnectors
+                Effect: Allow
+                Action: ["lambda:PassNetworkConnector"]
+                Resource:
+                  - !Sub "arn:aws:lambda:${AWS::Region}:aws:network-connector:*"
+                  - !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:network-connector:*"
               # Scoped to exactly these two roles; no PassedToService condition —
               # the MicroVMs service passes them under its own principal.
               - Sid: PassMicrovmRoles
