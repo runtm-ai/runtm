@@ -55,13 +55,13 @@ variable "runtm_audience" {
 # ---------------------------------------------------------------------------
 
 variable "suffix" {
-  description = "Optional human-readable label put in front of the per-organization slug in every resource name, e.g. \"pci\" or \"ops\": runtm-sandbox-pci-<slug>-<region>. 1-12 lowercase letters, digits or hyphens. Enter the same value in the Runtm dialog so its pre-filled names match."
+  description = "Optional human-readable label put in front of the per-organization slug in every resource name, e.g. \"pci\" or \"ops\": runtm-sandbox-pci-<slug>-<region>. 1-10 lowercase letters, digits or hyphens (10 keeps RuntmMicrovmExecutionRole-<suffix>-<slug>-ap-northeast-1 at IAM's 64-char role-name limit). Enter the same value in the Runtm dialog so its pre-filled names match."
   type        = string
   default     = ""
 
   validation {
-    condition     = var.suffix == "" || can(regex("^[a-z0-9]([a-z0-9-]{0,10}[a-z0-9])?$", var.suffix))
-    error_message = "suffix must be 1-12 lowercase letters, digits or hyphens, starting and ending with a letter or digit."
+    condition     = var.suffix == "" || can(regex("^[a-z0-9]([a-z0-9-]{0,8}[a-z0-9])?$", var.suffix))
+    error_message = "suffix must be 1-10 lowercase letters, digits or hyphens, starting and ending with a letter or digit."
   }
 }
 
@@ -77,9 +77,14 @@ variable "artifact_bucket_name" {
 }
 
 variable "name_suffix" {
-  description = "Override the suffix of the three role names (RuntmSandboxAccessRole-<name_suffix> ...). Default <suffix>-<slug>-<region>, matching the CloudFormation template, so one stack per organization and region never collides."
+  description = "Override the suffix of the three role names (RuntmSandboxAccessRole-<name_suffix> ...). Default <suffix>-<slug>-<region>, matching the CloudFormation template, so one stack per organization and region never collides. At most 38 chars: the longest prefix, RuntmMicrovmExecutionRole-, is 26 and IAM caps role names at 64."
   type        = string
   default     = ""
+
+  validation {
+    condition     = length(var.name_suffix) <= 38 && can(regex("^[A-Za-z0-9_+=,.@-]*$", var.name_suffix))
+    error_message = "name_suffix must be at most 38 characters of [A-Za-z0-9_+=,.@-] (IAM role names are capped at 64)."
+  }
 }
 
 variable "artifact_retention_days" {
