@@ -70,7 +70,7 @@ aws cloudformation create-stack --stack-name runtm-sandbox --capabilities CAPABI
 | Name | Default | Description |
 |---|---|---|
 | `runtm_organization_id` | — | Your Runtm organization id. |
-| `runtm_google_project` | Runtm production | Only for Runtm staging or a self-hosted Runtm; the dialog's snippet includes it when needed. |
+| `runtm_google_project` | Runtm production | Leave unset. Runtm staff only, for testing a stack against Runtm staging. |
 | `runtm_google_subject` | `""` | Optional extra pin on the identity's numeric id. |
 | `create_vpc_egress` | `false` | Build the egress VPC + security group. |
 | `egress_allowed_cidrs` | `["0.0.0.0/0"]` | Destinations sandboxes may reach. |
