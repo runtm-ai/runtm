@@ -296,11 +296,20 @@ data "aws_iam_policy_document" "access" {
     resources = ["*"]
   }
 
+  # Create is authorised against "*" (the image does not exist yet, so there is
+  # no ARN to scope to — observed AccessDenied "on resource: *", 2026-09-22).
+  # Everything that touches an EXISTING image stays scoped to runtm-* below.
+  statement {
+    sid       = "CreateRuntmImages"
+    effect    = "Allow"
+    actions   = ["lambda:CreateMicrovmImage"]
+    resources = ["*"]
+  }
+
   statement {
     sid    = "ManageRuntmImages"
     effect = "Allow"
     actions = [
-      "lambda:CreateMicrovmImage",
       "lambda:UpdateMicrovmImage",
       "lambda:UpdateMicrovmImageVersion",
       "lambda:DeleteMicrovmImage",

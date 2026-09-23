@@ -205,10 +205,15 @@ Resources:
                   - lambda:ListManagedMicrovmImageVersions
                   - sts:GetCallerIdentity
                 Resource: "*"
+              # Create is authorised against "*" (no ARN exists yet); everything
+              # touching an EXISTING image stays scoped to runtm-* below.
+              - Sid: CreateRuntmImages
+                Effect: Allow
+                Action: [lambda:CreateMicrovmImage]
+                Resource: "*"
               - Sid: ManageRuntmImages
                 Effect: Allow
                 Action:
-                  - lambda:CreateMicrovmImage
                   - lambda:UpdateMicrovmImage
                   - lambda:UpdateMicrovmImageVersion
                   - lambda:DeleteMicrovmImage
