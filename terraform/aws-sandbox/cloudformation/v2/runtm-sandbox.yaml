@@ -266,14 +266,14 @@ Resources:
                   - lambda:CreateMicrovmAuthToken
                   - lambda:CreateMicrovmShellAuthToken
                 Resource: "*"
+              # Scoped to exactly these two roles; no PassedToService condition —
+              # the MicroVMs service passes them under its own principal.
               - Sid: PassMicrovmRoles
                 Effect: Allow
                 Action: ["iam:PassRole"]
                 Resource:
                   - !GetAtt MicrovmBuildRole.Arn
                   - !GetAtt MicrovmExecutionRole.Arn
-                Condition:
-                  StringEquals: { "iam:PassedToService": lambda.amazonaws.com }
               - Sid: Artifacts
                 Effect: Allow
                 Action: ["s3:PutObject", "s3:GetObject", "s3:DeleteObject", "s3:AbortMultipartUpload"]

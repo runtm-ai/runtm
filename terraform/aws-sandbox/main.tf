@@ -341,6 +341,10 @@ data "aws_iam_policy_document" "access" {
     resources = ["*"]
   }
 
+  # Scoped to exactly the two roles above. No iam:PassedToService condition:
+  # CreateMicrovmImage passes the build role under the MicroVMs service, which
+  # a "lambda.amazonaws.com" condition rejected (AccessDenied on iam:PassRole,
+  # observed 2026-09-22); the resource list already bounds what can be passed.
   statement {
     sid     = "PassMicrovmRoles"
     effect  = "Allow"
@@ -349,11 +353,6 @@ data "aws_iam_policy_document" "access" {
       aws_iam_role.build.arn,
       aws_iam_role.execution.arn,
     ]
-    condition {
-      test     = "StringEquals"
-      variable = "iam:PassedToService"
-      values   = ["lambda.amazonaws.com"]
-    }
   }
 
   statement {
