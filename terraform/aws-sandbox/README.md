@@ -18,7 +18,7 @@ output "runtm_connection" {
 }
 ```
 
-Your organization id is in Runtm under **Integrations → AWS Lambda MicroVMs**.
+Your organization id is in Runtm under **Integrations → AWS MicroVMs**.
 Apply, then paste `terraform output runtm_connection` into that dialog.
 
 The module uses the region your `aws` provider is configured for. Supported
