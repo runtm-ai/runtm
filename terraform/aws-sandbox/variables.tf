@@ -54,8 +54,19 @@ variable "runtm_audience" {
 # Naming / retention
 # ---------------------------------------------------------------------------
 
+variable "suffix" {
+  description = "Optional human-readable label put in front of the per-organization slug in every resource name, e.g. \"pci\" or \"ops\": runtm-sandbox-pci-<slug>-<region>. 1-12 lowercase letters, digits or hyphens. Enter the same value in the Runtm dialog so its pre-filled names match."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.suffix == "" || can(regex("^[a-z0-9]([a-z0-9-]{0,10}[a-z0-9])?$", var.suffix))
+    error_message = "suffix must be 1-12 lowercase letters, digits or hyphens, starting and ending with a letter or digit."
+  }
+}
+
 variable "artifact_bucket_name" {
-  description = "Override the artifact bucket name. Default runtm-sandbox-<account>-<region> matches the CloudFormation stack and what the Runtm dialog pre-fills; override when that name is taken (e.g. a second stack in the same account+region) and paste the output into the dialog's Artifact bucket field."
+  description = "Override the artifact bucket name. Default runtm-sandbox-<suffix>-<slug>-<region> (slug = sha256 of the org id, 12 hex) matches the CloudFormation stack and what the Runtm dialog pre-fills. Only needed when that name is somehow taken; paste the output into the dialog's Artifact bucket field."
   type        = string
   default     = ""
 
@@ -66,7 +77,7 @@ variable "artifact_bucket_name" {
 }
 
 variable "name_suffix" {
-  description = "Suffix for the three role names (RuntmSandboxAccessRole-<suffix> ...). Defaults to the provider's region, matching the CloudFormation template, so one stack per region never collides."
+  description = "Override the suffix of the three role names (RuntmSandboxAccessRole-<name_suffix> ...). Default <suffix>-<slug>-<region>, matching the CloudFormation template, so one stack per organization and region never collides."
   type        = string
   default     = ""
 }
@@ -126,12 +137,12 @@ variable "create_log_group" {
 }
 
 variable "log_group_name" {
-  description = "CloudWatch log group for sandbox app logs. Must start with /runtm/ to match the execution role's policy."
+  description = "CloudWatch log group for sandbox app logs. Default /runtm/sandboxes/<suffix>-<slug>. Must start with /runtm/ to match the execution role's policy."
   type        = string
-  default     = "/runtm/sandboxes"
+  default     = ""
 
   validation {
-    condition     = startswith(var.log_group_name, "/runtm/")
+    condition     = var.log_group_name == "" || startswith(var.log_group_name, "/runtm/")
     error_message = "log_group_name must start with /runtm/ (the execution role only writes there)."
   }
 }

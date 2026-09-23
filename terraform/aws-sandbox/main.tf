@@ -12,7 +12,20 @@ locals {
   account_id = data.aws_caller_identity.current.account_id
   # aws >= 6 renamed .name to .region and deprecates the old attribute; support both.
   region = try(data.aws_region.current.region, data.aws_region.current.name)
-  suffix = var.name_suffix != "" ? var.name_suffix : local.region
+
+  # The Runtm organization is the tenant. Every fixed-name resource below
+  # carries a slug DERIVED from the org id — the first 12 hex chars of the same
+  # sha256 the org's Google service account is named from — so two orgs (two
+  # teams, PCI and non-PCI, Runtm staging and a developer) can share one AWS
+  # account and region without a single name collision. `suffix` is an optional
+  # human-readable label (pci, ops, revenue) in front of the slug. cloud-api
+  # computes the same names (backend/app/services/sandbox_connections.py:
+  # resource_slug); the CloudFormation twin takes the slug as TenantSlug.
+  slug  = substr(sha256(var.runtm_organization_id), 0, 12)
+  label = var.suffix != "" ? "${var.suffix}-${local.slug}" : local.slug
+  # Role-name suffix: <label>-<region> (IAM roles are account-global, so one
+  # org in two regions needs the region too). name_suffix overrides the whole thing.
+  suffix = var.name_suffix != "" ? var.name_suffix : "${local.label}-${local.region}"
 
   # Identity Runtm presents: one Google service account per organization, its
   # email DERIVED from the org id with the same formula cloud-api uses
@@ -21,10 +34,12 @@ locals {
   google_sa_email = "runtm-aws-${substr(sha256(var.runtm_organization_id), 0, 20)}@${var.runtm_google_project}.iam.gserviceaccount.com"
   audience        = var.runtm_audience != "" ? var.runtm_audience : "runtm-sandbox:${var.runtm_organization_id}"
 
-  bucket_name = var.artifact_bucket_name != "" ? var.artifact_bucket_name : "runtm-sandbox-${local.account_id}-${local.region}"
+  bucket_name    = var.artifact_bucket_name != "" ? var.artifact_bucket_name : "runtm-sandbox-${local.label}-${local.region}"
+  log_group_name = var.log_group_name != "" ? var.log_group_name : "/runtm/sandboxes/${local.label}"
 
   tags = merge(var.tags, {
     "runtm:organization" = var.runtm_organization_id
+    "runtm:label"        = local.label
   })
 }
 
@@ -415,7 +430,7 @@ resource "aws_iam_role_policy" "access" {
 resource "aws_cloudwatch_log_group" "sandboxes" {
   count = var.create_log_group ? 1 : 0
 
-  name              = var.log_group_name
+  name              = local.log_group_name
   retention_in_days = var.session_artifact_retention_days
   tags              = local.tags
 }
@@ -438,14 +453,14 @@ resource "aws_vpc" "egress" {
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
   enable_dns_hostnames = true
-  tags                 = merge(local.tags, { Name = "runtm-sandbox-egress" })
+  tags                 = merge(local.tags, { Name = "runtm-sandbox-egress-${local.label}" })
 }
 
 resource "aws_internet_gateway" "egress" {
   count = var.create_vpc_egress ? 1 : 0
 
   vpc_id = aws_vpc.egress[0].id
-  tags   = merge(local.tags, { Name = "runtm-sandbox-egress" })
+  tags   = merge(local.tags, { Name = "runtm-sandbox-egress-${local.label}" })
 }
 
 resource "aws_subnet" "public" {
@@ -454,7 +469,7 @@ resource "aws_subnet" "public" {
   vpc_id            = aws_vpc.egress[0].id
   cidr_block        = var.public_subnet_cidr
   availability_zone = data.aws_availability_zones.available[0].names[0]
-  tags              = merge(local.tags, { Name = "runtm-sandbox-egress-public" })
+  tags              = merge(local.tags, { Name = "runtm-sandbox-egress-${local.label}-public" })
 }
 
 resource "aws_subnet" "private" {
@@ -463,14 +478,14 @@ resource "aws_subnet" "private" {
   vpc_id            = aws_vpc.egress[0].id
   cidr_block        = var.private_subnet_cidrs[count.index]
   availability_zone = data.aws_availability_zones.available[0].names[count.index]
-  tags              = merge(local.tags, { Name = "runtm-sandbox-egress-private-${count.index}" })
+  tags              = merge(local.tags, { Name = "runtm-sandbox-egress-${local.label}-private-${count.index}" })
 }
 
 resource "aws_eip" "nat" {
   count = var.create_vpc_egress ? 1 : 0
 
   domain = "vpc"
-  tags   = merge(local.tags, { Name = "runtm-sandbox-egress-nat" })
+  tags   = merge(local.tags, { Name = "runtm-sandbox-egress-${local.label}-nat" })
 
   depends_on = [aws_internet_gateway.egress]
 }
@@ -480,7 +495,7 @@ resource "aws_nat_gateway" "egress" {
 
   allocation_id = aws_eip.nat[0].id
   subnet_id     = aws_subnet.public[0].id
-  tags          = merge(local.tags, { Name = "runtm-sandbox-egress" })
+  tags          = merge(local.tags, { Name = "runtm-sandbox-egress-${local.label}" })
 
   depends_on = [aws_internet_gateway.egress]
 }
@@ -489,7 +504,7 @@ resource "aws_route_table" "public" {
   count = var.create_vpc_egress ? 1 : 0
 
   vpc_id = aws_vpc.egress[0].id
-  tags   = merge(local.tags, { Name = "runtm-sandbox-egress-public" })
+  tags   = merge(local.tags, { Name = "runtm-sandbox-egress-${local.label}-public" })
 }
 
 resource "aws_route" "public_default" {
@@ -511,7 +526,7 @@ resource "aws_route_table" "private" {
   count = var.create_vpc_egress ? 1 : 0
 
   vpc_id = aws_vpc.egress[0].id
-  tags   = merge(local.tags, { Name = "runtm-sandbox-egress-private" })
+  tags   = merge(local.tags, { Name = "runtm-sandbox-egress-${local.label}-private" })
 }
 
 resource "aws_route" "private_default" {
@@ -534,10 +549,10 @@ resource "aws_route_table_association" "private" {
 resource "aws_security_group" "sandbox" {
   count = var.create_vpc_egress ? 1 : 0
 
-  name        = "runtm-sandbox-egress"
+  name        = "runtm-sandbox-egress-${local.label}"
   description = "Runtm sandboxes: no ingress, egress restricted to the allow-list"
   vpc_id      = aws_vpc.egress[0].id
-  tags        = merge(local.tags, { Name = "runtm-sandbox-egress" })
+  tags        = merge(local.tags, { Name = "runtm-sandbox-egress-${local.label}" })
 }
 
 resource "aws_vpc_security_group_egress_rule" "sandbox" {
@@ -561,7 +576,7 @@ resource "aws_vpc_endpoint" "s3" {
   service_name      = "com.amazonaws.${local.region}.s3"
   vpc_endpoint_type = "Gateway"
   route_table_ids   = [aws_route_table.private[0].id]
-  tags              = merge(local.tags, { Name = "runtm-sandbox-egress-s3" })
+  tags              = merge(local.tags, { Name = "runtm-sandbox-egress-${local.label}-s3" })
 }
 
 resource "aws_vpc_security_group_egress_rule" "sandbox_s3" {

@@ -71,6 +71,11 @@ output "runtm_connection" {
   }
 }
 
+output "resource_label" {
+  description = "<suffix>-<slug> (or <slug>): the per-organization part every resource name carries."
+  value       = local.label
+}
+
 output "google_sa_email" {
   description = "The Google service-account email this role trusts (derived from runtm_organization_id + runtm_google_project). Compare with the Runtm dialog."
   value       = local.google_sa_email

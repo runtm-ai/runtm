@@ -46,6 +46,21 @@ Parameters:
     Description: Runtm organization id (used for tagging only).
     MaxLength: 64
     Default: ""
+  # The Runtm organization is the tenant: every fixed-name resource below
+  # carries this slug — the first 12 hex chars of sha256(organization id), the
+  # same hash the organization's Google service account is named from — so two
+  # organizations (or Runtm staging and a developer) can share one AWS account
+  # and region. CloudFormation cannot hash, so Runtm pre-fills it.
+  TenantSlug:
+    Type: String
+    Description: Per-organization resource slug (pre-filled by Runtm, sha256 of the organization id).
+    AllowedPattern: "^[a-f0-9]{12}$"
+  # Optional human-readable label in front of the slug: runtm-sandbox-pci-<slug>-<region>.
+  Suffix:
+    Type: String
+    Description: Optional label for this stack's resource names, e.g. pci or ops (1-12 lowercase letters, digits or hyphens).
+    Default: ""
+    AllowedPattern: "^([a-z0-9]([a-z0-9-]{0,10}[a-z0-9])?)?$"
   ArtifactRetentionDays:
     Type: Number
     Description: Days to keep template/image build artifacts in the bucket.
@@ -70,6 +85,7 @@ Parameters:
 
 Conditions:
   PinSubject: !Not [!Equals [!Ref GoogleSubject, ""]]
+  HasSuffix: !Not [!Equals [!Ref Suffix, ""]]
 
 Resources:
   ArtifactBucket:
@@ -77,7 +93,9 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      BucketName: !Sub "runtm-sandbox-${AWS::AccountId}-${AWS::Region}"
+      BucketName: !Sub
+        - "runtm-sandbox-${Label}-${AWS::Region}"
+        - Label: !If [HasSuffix, !Sub "${Suffix}-${TenantSlug}", !Ref TenantSlug]
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 }
@@ -119,6 +137,7 @@ Resources:
             ExpiredObjectDeleteMarker: true
       Tags:
         - { Key: runtm:organization, Value: !Ref OrganizationId }
+        - { Key: runtm:label, Value: !If [HasSuffix, !Sub "${Suffix}-${TenantSlug}", !Ref TenantSlug] }
         - { Key: runtm:component, Value: sandbox-artifacts }
 
   ArtifactBucketPolicy:
@@ -143,7 +162,9 @@ Resources:
   MicrovmBuildRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "RuntmMicrovmBuildRole-${AWS::Region}"
+      RoleName: !Sub
+        - "RuntmMicrovmBuildRole-${Label}-${AWS::Region}"
+        - Label: !If [HasSuffix, !Sub "${Suffix}-${TenantSlug}", !Ref TenantSlug]
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -168,6 +189,7 @@ Resources:
                 Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/runtm/*"
       Tags:
         - { Key: runtm:organization, Value: !Ref OrganizationId }
+        - { Key: runtm:label, Value: !If [HasSuffix, !Sub "${Suffix}-${TenantSlug}", !Ref TenantSlug] }
 
   # Assumed by the MicroVM itself at runtime. Deliberately minimal: the
   # sandbox gets CloudWatch logging and nothing else. Add statements here if
@@ -175,7 +197,9 @@ Resources:
   MicrovmExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "RuntmMicrovmExecutionRole-${AWS::Region}"
+      RoleName: !Sub
+        - "RuntmMicrovmExecutionRole-${Label}-${AWS::Region}"
+        - Label: !If [HasSuffix, !Sub "${Suffix}-${TenantSlug}", !Ref TenantSlug]
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -194,6 +218,7 @@ Resources:
                 Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/runtm/*"
       Tags:
         - { Key: runtm:organization, Value: !Ref OrganizationId }
+        - { Key: runtm:label, Value: !If [HasSuffix, !Sub "${Suffix}-${TenantSlug}", !Ref TenantSlug] }
 
   # The role Runtm's control plane assumes. Trust is pinned to your
   # organization's Google service account (subject) and the audience Runtm
@@ -203,7 +228,9 @@ Resources:
   RuntmSandboxAccessRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "RuntmSandboxAccessRole-${AWS::Region}"
+      RoleName: !Sub
+        - "RuntmSandboxAccessRole-${Label}-${AWS::Region}"
+        - Label: !If [HasSuffix, !Sub "${Suffix}-${TenantSlug}", !Ref TenantSlug]
       MaxSessionDuration: 43200
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
@@ -298,10 +325,11 @@ Resources:
                   - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/runtm/*"
       Tags:
         - { Key: runtm:organization, Value: !Ref OrganizationId }
+        - { Key: runtm:label, Value: !If [HasSuffix, !Sub "${Suffix}-${TenantSlug}", !Ref TenantSlug] }
 
 Outputs:
   RoleArn:
-    Description: Paste this into Runtm (Integrations -> AWS Lambda MicroVMs).
+    Description: Paste this into Runtm (Integrations -> AWS MicroVMs).
     Value: !GetAtt RuntmSandboxAccessRole.Arn
   GoogleEmail:
     Value: !Ref GoogleEmail
@@ -315,6 +343,9 @@ Outputs:
     Value: !Ref "AWS::Region"
   ArtifactBucket:
     Value: !Ref ArtifactBucket
+  ResourceLabel:
+    Description: <suffix>-<slug> (or <slug>) — the per-organization part of every resource name.
+    Value: !If [HasSuffix, !Sub "${Suffix}-${TenantSlug}", !Ref TenantSlug]
   BuildRoleArn:
     Value: !GetAtt MicrovmBuildRole.Arn
   ExecutionRoleArn:

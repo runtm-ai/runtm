@@ -21,6 +21,20 @@ output "runtm_connection" {
 Your organization id is in Runtm under **Integrations → AWS MicroVMs**.
 Apply, then paste `terraform output runtm_connection` into that dialog.
 
+Every resource name carries a slug derived from the organization id, so several
+organizations (or several Runtm environments) can share one AWS account and
+region. Add an optional `suffix` for a human-readable label, and enter the same
+value in the dialog:
+
+```hcl
+module "runtm_sandbox" {
+  source = "git::https://github.com/runtm-ai/runtm.git//terraform/aws-sandbox?ref=main"
+
+  runtm_organization_id = "<org id>"
+  suffix                = "pci" # runtm-sandbox-pci-<slug>-<region>
+}
+```
+
 The module uses the region your `aws` provider is configured for. Supported
 regions: `us-east-1`, `us-east-2`, `us-west-2`, `eu-west-1`, `ap-northeast-1`.
 One module instance per region. Pin `ref=` to a tag for reproducible applies.
@@ -62,7 +76,8 @@ aws cloudformation create-stack --stack-name runtm-sandbox --capabilities CAPABI
   --template-body "$(curl -fsSL https://raw.githubusercontent.com/runtm-ai/runtm/main/terraform/aws-sandbox/cloudformation/v2/runtm-sandbox.yaml)" \
   --parameters ParameterKey=GoogleEmail,ParameterValue=<google identity> \
                ParameterKey=GoogleAudience,ParameterValue=runtm-sandbox:<org id> \
-               ParameterKey=OrganizationId,ParameterValue=<org id>
+               ParameterKey=OrganizationId,ParameterValue=<org id> \
+               ParameterKey=TenantSlug,ParameterValue=<slug shown in the dialog>
 ```
 
 ## Inputs
@@ -70,6 +85,7 @@ aws cloudformation create-stack --stack-name runtm-sandbox --capabilities CAPABI
 | Name | Default | Description |
 |---|---|---|
 | `runtm_organization_id` | — | Your Runtm organization id. |
+| `suffix` | `""` | Optional label in front of the org slug in every resource name (`pci`, `ops`). |
 | `runtm_google_project` | Runtm production | Leave unset. Runtm staff only, for testing a stack against Runtm staging. |
 | `runtm_google_subject` | `""` | Optional extra pin on the identity's numeric id. |
 | `create_vpc_egress` | `false` | Build the egress VPC + security group. |
@@ -78,8 +94,8 @@ aws cloudformation create-stack --stack-name runtm-sandbox --capabilities CAPABI
 | `artifact_retention_days` | `90` | Lifetime of image build contexts. |
 | `session_artifact_retention_days` | `90` | Lifetime of paused-session snapshots. |
 | `template_versions_to_keep` | `3` | Previous template versions kept for rollback (current never expires). |
-| `create_log_group` / `log_group_name` | `true` / `/runtm/sandboxes` | CloudWatch log group for sandbox logs. |
-| `artifact_bucket_name` | `runtm-sandbox-<account>-<region>` | Override when that name is taken. |
+| `create_log_group` / `log_group_name` | `true` / `/runtm/sandboxes/<label>` | CloudWatch log group for sandbox logs. |
+| `artifact_bucket_name` | `runtm-sandbox-<label>-<region>` | Override only when that name is taken. |
 | `tags` | `{}` | Extra tags. |
 
 See `variables.tf` for the full list.
@@ -89,7 +105,7 @@ See `variables.tf` for the full list.
 `runtm_connection` bundles everything the Runtm dialog asks for. Individual
 outputs: `role_arn`, `artifact_bucket`, `build_role_arn`,
 `execution_role_arn`, `log_group`, `vpc_id`, `private_subnet_ids`,
-`security_group_id`, `google_sa_email`.
+`security_group_id`, `google_sa_email`, `resource_label`.
 
 ## Requirements
 
