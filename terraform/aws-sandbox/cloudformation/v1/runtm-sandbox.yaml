@@ -209,7 +209,7 @@ Resources:
               # touching an EXISTING image stays scoped to runtm-* below.
               - Sid: CreateRuntmImages
                 Effect: Allow
-                Action: [lambda:CreateMicrovmImage]
+                Action: [lambda:CreateMicrovmImage, lambda:TagResource] # TagResource = tag-on-create
                 Resource: "*"
               - Sid: ManageRuntmImages
                 Effect: Allow

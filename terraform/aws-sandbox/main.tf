@@ -300,9 +300,10 @@ data "aws_iam_policy_document" "access" {
   # no ARN to scope to — observed AccessDenied "on resource: *", 2026-09-22).
   # Everything that touches an EXISTING image stays scoped to runtm-* below.
   statement {
-    sid       = "CreateRuntmImages"
-    effect    = "Allow"
-    actions   = ["lambda:CreateMicrovmImage"]
+    sid    = "CreateRuntmImages"
+    effect = "Allow"
+    # TagResource here covers tag-on-create, which is evaluated against "*" too.
+    actions   = ["lambda:CreateMicrovmImage", "lambda:TagResource"]
     resources = ["*"]
   }
 
