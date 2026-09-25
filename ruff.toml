@@ -1,7 +1,7 @@
 # Ruff configuration for Runtm monorepo
 # See pyproject.toml for full settings - this file provides IDE support
 
-target-version = "py39"
+target-version = "py310"
 line-length = 100
 src = ["packages/*/"]
 
