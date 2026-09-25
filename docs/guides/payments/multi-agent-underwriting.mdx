@@ -56,7 +56,13 @@ Follow [Define the job](/build/define-the-job) three times.
     **System instructions** (excerpt): "You are the Risk Agent, the merchant re-review researcher. You run one script, return its report verbatim, and stop. You never invent facts outside the fixtures, never call vendors, and never take action on a merchant. You never run `runtm-api session create`, `launch` or `prompt`."
 
     Default template `risk-agent`, coding agent `claude-code`.
-    {/* cli: runtm-api agents create --name "Risk Agent" --description "Produces the merchant re-review research report for one merchant id. Never takes action on a merchant." --instructions "$(cat risk-instructions.md)" */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents create --name "Risk Agent" --description "Produces the merchant re-review research report for one merchant id. Never takes action on a merchant." --instructions "$(cat risk-instructions.md)"
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Engineering Agent">
     **Description**: "Blocks a merchant on the payments fork through a Diesel migration and a pull request. Never merges, never pushes to main."
@@ -64,7 +70,13 @@ Follow [Define the job](/build/define-the-job) three times.
     **System instructions** (excerpt): "You block merchants only through a migration in a PR that a human merges. The decision to block was made by a human; there is an approval id in the prompt. Missing merchant id or approval id: reply `Cannot block: missing <field>` and stop. Do not guess."
 
     Default template `hyperswitch` (a fork of the payments codebase), coding agent `claude-code`.
-    {/* cli: runtm-api agents create --name "Engineering Agent" --description "Blocks a merchant on the payments fork through a Diesel migration and a pull request. Never merges." --instructions "$(cat engineering-instructions.md)" */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents create --name "Engineering Agent" --description "Blocks a merchant on the payments fork through a Diesel migration and a pull request. Never merges." --instructions "$(cat engineering-instructions.md)"
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Underwriting Agent">
     **Description**: "Dispatches quarterly merchant re-reviews: delegates research to the Risk Agent, decides from the report, delegates a block to the Engineering Agent only on escalation. Never researches or acts itself."
@@ -72,8 +84,14 @@ Follow [Define the job](/build/define-the-job) three times.
     **System instructions** (excerpt): "Alerts arrive in `#risk-alerts` from the Risk Monitor bot. Treat every top-level bot alert as a case. You dispatch and decide; two human gates protect this run, enforced by a hook; treat every gate outcome as final."
 
     Default template `underwriting-agent`, coding agent `claude-code`.
-    {/* cli: runtm-api agents create --name "Underwriting Agent" --description "Dispatches quarterly merchant re-reviews to the Risk and Engineering agents behind two approval gates. Never researches or acts itself." --instructions "$(cat underwriting-instructions.md)" */}
-    {/* cli-verify: runtm-api agents list */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents create --name "Underwriting Agent" --description "Dispatches quarterly merchant re-reviews to the Risk and Engineering agents behind two approval gates. Never researches or acts itself." --instructions "$(cat underwriting-instructions.md)"
+    cli-verify: runtm-api agents list
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 
@@ -87,9 +105,15 @@ Follow [Measure success](/build/measure-success). Each agent is graded on its ow
 | Engineering Agent | `merchant-block` | Exactly one migration folder with `up.sql` and `down.sql`, one PR on branch `block/<MID>`, the approval id in the SQL comments and the PR title. Refused when the prompt has no approval id. |
 | Underwriting Agent | `rereview-dispatch` | Outline posted in the exact format; Action line matches the Decision (none, manual review, block approved with PR, or block rejected with reason); both approval ids present when a block happened; no research performed in the run. |
 
-{/* cli: runtm-api agents update <risk_agent_id> --evaluator-criteria "$(cat risk-rubric.json)" */}
-{/* cli: runtm-api agents update <engineering_agent_id> --evaluator-criteria "$(cat engineering-rubric.json)" */}
-{/* cli: runtm-api agents update <underwriting_agent_id> --evaluator-criteria "$(cat underwriting-rubric.json)" */}
+<Visibility for="agents">
+
+```text
+cli: runtm-api agents update <risk_agent_id> --evaluator-criteria "$(cat risk-rubric.json)"
+cli: runtm-api agents update <engineering_agent_id> --evaluator-criteria "$(cat engineering-rubric.json)"
+cli: runtm-api agents update <underwriting_agent_id> --evaluator-criteria "$(cat underwriting-rubric.json)"
+```
+
+</Visibility>
 
 ## 3. Give it tools
 
@@ -98,13 +122,25 @@ Follow [Give it tools](/build/give-it-tools). Three templates, one per agent, ea
 <Steps>
   <Step title="Three templates">
     `risk-agent` and `underwriting-agent` are blank environments; they exist to carry skills, context and hooks. `hyperswitch` clones the payments fork so the Engineering Agent can commit a migration. Templates are not only for coding agents: two of the three clone nothing.
-    {/* cli: runtm-api template create --display-name "Risk Agent" --github-repo <owner>/<repo> */}
-    {/* cli: runtm-api template create --display-name "Engineering Agent" --github-repo <owner>/hyperswitch --github-branch main */}
-    {/* cli: runtm-api template create --display-name "Underwriting Agent" --github-repo <owner>/<repo> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api template create --display-name "Risk Agent" --github-repo <owner>/<repo>
+    cli: runtm-api template create --display-name "Engineering Agent" --github-repo <owner>/hyperswitch --github-branch main
+    cli: runtm-api template create --display-name "Underwriting Agent" --github-repo <owner>/<repo>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Git identity for the actor">
     Delegated sessions are team-visible, so the Engineering Agent's commits and PR are attributed to the org's GitHub App bot rather than to whichever person's key launched the parent. Install the GitHub App on the fork under **Settings > Integrations > GitHub**.
-    {/* cli-verify: runtm-api github installations */}
+    <Visibility for="agents">
+
+    ```text
+    cli-verify: runtm-api github installations
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Production data">
     In production the Risk Agent's skill would require a KYB provider (see [Add a KYB provider](/guides/recipes/add-kyb-provider)) with an agent-scoped connection so usage is attributed to the Risk Agent. The demo ships fixture merchants inside the skill instead and never calls a vendor.
@@ -120,14 +156,26 @@ Follow [Define how it works](/build/how-it-works/overview).
     `merchant-rereview-research` on the Risk template: run one script for the merchant id, return the six-line report verbatim, `Decision` is `CLEAR`, `ESCALATE - <reason>` or `MANUAL REVIEW - <reason>`. Never soften the report; the orchestrator copies it line by line. Never run `runtm-api session create|launch|prompt`.
 
     `block-merchant-migration` on the Engineering template: extract `MID`, `REASON`, `APPROVAL_ID` (the uuid after "Runtime approval" that the delegate script appends) and `APPROVED_BY` from the prompt; missing merchant id or approval id means `Cannot block: missing <field>` and stop. Generate `migrations/<timestamp>_block_merchant_<MID>/{up.sql,down.sql}` creating a `merchant_blocklist` table row with the reason and approval id, open the PR on `block/<MID>` with `runtm-api session git <session_id> create_branch_and_pr`, reply with `PR: <url>` and the two SQL files. Never force-push, never push to main, never merge.
-    {/* cli: runtm-api skills create --name merchant-rereview-research --display-name "Merchant re-review research" --description "Produce the six-line re-review report for a merchant id. Never act on a merchant; never spawn agents." --md ./risk/SKILL.md */}
-    {/* cli: runtm-api skills attach <risk_skill_id> --template <risk_template_id> */}
-    {/* cli: runtm-api skills create --name block-merchant-migration --display-name "Block merchant via migration" --description "Block a merchant through a Diesel migration and one PR; requires a Runtime approval id in the prompt." --md ./engineering/SKILL.md */}
-    {/* cli: runtm-api skills attach <engineering_skill_id> --template <engineering_template_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api skills create --name merchant-rereview-research --display-name "Merchant re-review research" --description "Produce the six-line re-review report for a merchant id. Never act on a merchant; never spawn agents." --md ./risk/SKILL.md
+    cli: runtm-api skills attach <risk_skill_id> --template <risk_template_id>
+    cli: runtm-api skills create --name block-merchant-migration --display-name "Block merchant via migration" --description "Block a merchant through a Diesel migration and one PR; requires a Runtime approval id in the prompt." --md ./engineering/SKILL.md
+    cli: runtm-api skills attach <engineering_skill_id> --template <engineering_template_id>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="The delegate skill on the orchestrator">
     Attach `delegate-to-agent` from the [recipe](/guides/recipes/delegate-to-another-agent) to the Underwriting template, with two targets: `risk` (Risk template, Risk agent, gate `research_start`) and `engineering` (Engineering template, Engineering agent, gate `merchant_block`).
-    {/* cli: runtm-api skills attach <delegate_skill_id> --template <underwriting_template_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api skills attach <delegate_skill_id> --template <underwriting_template_id>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="The orchestrator context">
     Set the Underwriting template's context to the procedure. This is the part the model reads every run, so it carries the exact two-line commands and the exact reply format.
@@ -179,19 +227,37 @@ Follow [Define how it works](/build/how-it-works/overview).
     launch or prompt, curl, or any API directly; only delegate.sh. Never retry a denied gate,
     rephrase the command, or split it to avoid the hook. Never act on CLEAR or MANUAL REVIEW.
     ````
-    {/* cli: runtm-api template context set <underwriting_template_id> --text "$(cat underwriting-context.md)" */}
-    {/* cli-verify: runtm-api template context resolve <underwriting_template_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api template context set <underwriting_template_id> --text "$(cat underwriting-context.md)"
+    cli-verify: runtm-api template context resolve <underwriting_template_id>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="The Slack trigger">
     Connect Slack to the Underwriting Agent and enable **Auto-launch on bot channel messages** so alerts posted by the monitoring bot start a run; keep thread follow-ups on so a person can ask questions in the same thread. Point it at a test channel until step 5 passes, then at `#risk-alerts`.
-    {/* cli: runtm-api agents create --type slack --name "Underwriting Agent" --agent-id <underwriting_agent_id> */}
-    {/* cli: runtm-api agents update <slack_integration_id> --type slack --config '{"triggers":{"new_bot_channel_message":true,"new_thread_message":true,"new_channel_message":false,"new_dm_message":true}}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents create --type slack --name "Underwriting Agent" --agent-id <underwriting_agent_id>
+    cli: runtm-api agents update <slack_integration_id> --type slack --config '{"triggers":{"new_bot_channel_message":true,"new_thread_message":true,"new_channel_message":false,"new_dm_message":true}}'
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Build all three templates once">
-    {/* cli: runtm-api template build <risk_template_id> */}
-    {/* cli: runtm-api template build <engineering_template_id> */}
-    {/* cli: runtm-api template build <underwriting_template_id> */}
-    {/* cli-verify: runtm-api template get <underwriting_template_id> | jq '{skills: [.skills[].name], stale: .attachments_changed_since_build}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api template build <risk_template_id>
+    cli: runtm-api template build <engineering_template_id>
+    cli: runtm-api template build <underwriting_template_id>
+    cli-verify: runtm-api template get <underwriting_template_id> | jq '{skills: [.skills[].name], stale: .attachments_changed_since_build}'
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 
@@ -209,10 +275,16 @@ Follow [Prove it works and iterate](/build/launch-and-iterate), leaves first.
 
 Run the children directly from their templates (`session create` then `session prompt`), and the parent through its Slack test channel. Read each run's grade and the scorecard per agent.
 
-{/* cli: runtm-api session create --template-id <risk_template_id> --agent claude-code */}
-{/* cli: runtm-api session prompt <session_id> "Quarterly underwriting re-review due: MID 9812004471" */}
-{/* cli-verify: runtm-api session grade <session_id> */}
-{/* cli-verify: runtm-api agents scorecard --days 7 */}
+<Visibility for="agents">
+
+```text
+cli: runtm-api session create --template-id <risk_template_id> --agent claude-code
+cli: runtm-api session prompt <session_id> "Quarterly underwriting re-review due: MID 9812004471"
+cli-verify: runtm-api session grade <session_id>
+cli-verify: runtm-api agents scorecard --days 7
+```
+
+</Visibility>
 
 In the parent's run the transcript shows a "Delegated work to subagent: Risk Agent" card with **Open subagent session**. The Sessions page in Team mode lists the child as a Risk Agent run with its own cost.
 
@@ -223,20 +295,38 @@ Follow [Add guardrails and approvals](/build/guardrails-and-approvals). For a mu
 <Steps>
   <Step title="Add the gate hook to the Underwriting template">
     The `hil-gates` hook from the [recipe](/guides/recipes/delegate-to-another-agent), with two rows: `--target risk` opens `research_start` for the Compliance team, `--target engineering` opens `merchant_block` for the Engineering team. Any raw `runtm-api session create|launch|prompt` or direct call to the sessions API is gated as `agent_handoff` for org admins, so the orchestrator cannot route around the script. `PreToolUse`, matcher `Bash`, timeout 600.
-    {/* cli: runtm-api template guardrails create <underwriting_template_id> --type hook --name hil-gates --content "$(python3 -c 'import json;print(json.dumps({"event":"PreToolUse","type":"command","matcher":"Bash","timeout":600,"script":open("hil-gates.sh").read()}))')" */}
-    {/* cli: runtm-api template build <underwriting_template_id> */}
-    {/* cli-verify: runtm-api template guardrails resolve <underwriting_template_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api template guardrails create <underwriting_template_id> --type hook --name hil-gates --content "$(python3 -c 'import json;print(json.dumps({"event":"PreToolUse","type":"command","matcher":"Bash","timeout":600,"script":open("hil-gates.sh").read()}))')"
+    cli: runtm-api template build <underwriting_template_id>
+    cli-verify: runtm-api template guardrails resolve <underwriting_template_id>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Deny writes on the actor">
     On the Engineering template, deny `git push --force*` and `git push*main*`, and deny `gh pr merge*`. The skill already says never; the rules make it impossible.
-    {/* cli: runtm-api guardrails rules create --name deny-force-push --kind deny --pattern "git push --force*" --purpose "Reviewable changes only" */}
-    {/* cli: runtm-api guardrails rules create --name deny-pr-merge --kind deny --pattern "gh pr merge*" --purpose "Humans merge" */}
-    {/* cli: runtm-api guardrails rules attach <rule_id> --template <engineering_template_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api guardrails rules create --name deny-force-push --kind deny --pattern "git push --force*" --purpose "Reviewable changes only"
+    cli: runtm-api guardrails rules create --name deny-pr-merge --kind deny --pattern "gh pr merge*" --purpose "Humans merge"
+    cli: runtm-api guardrails rules attach <rule_id> --template <engineering_template_id>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Prove the gated hop">
     Post the escalating alert in the test channel. The parent's session flips to `awaiting_approval` with kind `research_start`; a Compliance member approves on the Sessions board. The Risk run completes, the parent reads `ESCALATE`, and a second approval `merchant_block` appears for Engineering. Approve it; the Engineering run opens the PR and the parent posts the outline with both approval ids and the PR link. Then reject one gate on a fresh alert and confirm the parent stops with the hook's reason.
-    {/* cli: runtm-api session approvals list <parent_session_id> */}
-    {/* cli: runtm-api session approvals resolve <parent_session_id> <approval_id> --approve --note "Research approved" */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api session approvals list <parent_session_id>
+    cli: runtm-api session approvals resolve <parent_session_id> <approval_id> --approve --note "Research approved"
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Move the trigger to the live channel">
     Point the Slack trigger at `#risk-alerts`.

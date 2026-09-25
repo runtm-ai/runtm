@@ -1,11 +1,9 @@
 ---
 title: Integrations
-description: "Reference for the org-level integrations: GitHub App and user tokens, Linear, Slack, knowledge providers and skills, and the permissions around them. Read when connecting a system; the Build Triggers page covers how each one starts an agent."
+description: "Reference for the org-level integrations that start runs and carry results back: GitHub App and user tokens, Linear and Slack, and the permissions around them. Read when connecting one of these systems; the Build Triggers page covers how each one starts an agent. For credentials an agent uses during a run (Stripe, databases, Notion), read Tools and connections instead."
 ---
 
-Integrations connect Runtime to the tools your team already uses. Sessions and agents can clone repos, respond to tickets, post to Slack, and read your team's docs without any custom plumbing. Integrations are configured at the organization level by admins.
-
-## Available integrations
+Integrations connect Runtime to the systems where work arrives and results go: a Slack mention or a Linear assignment launches a run, and GitHub gives it a repo to clone and push to. They are configured by org admins under **Settings > Integrations** and hold their own credentials (an app installation or a bot token). What an agent can reach while it works is a separate concept: see [Tools and connections](/concepts/tools).
 
 <CardGroup cols={2}>
   <Card title="GitHub App" icon="github">
@@ -20,13 +18,9 @@ Integrations connect Runtime to the tools your team already uses. Sessions and a
   <Card title="Slack" icon="hashtag">
     Trigger agent sessions from Slack messages. Users mention the bot, and it spins up a session to handle the request.
   </Card>
-  <Card title="Knowledge Sources" icon="book">
-    Give agents access to documentation, wikis, Notion pages, Confluence spaces, and other knowledge bases via OAuth or API keys.
-  </Card>
-  <Card title="Skills" icon="scroll" href="/concepts/skills">
-    Reusable instruction bundles that extend agent capabilities. Manage MCP servers, reference docs, and custom workflows centrally.
-  </Card>
 </CardGroup>
+
+Email, WhatsApp, SMS, schedules and webhooks also start runs. They are configured per agent rather than per org; see [Triggers](/build/how-it-works/triggers).
 
 ## GitHub App
 
@@ -80,36 +74,17 @@ Two connection methods are available:
 
 See the [Slack API reference](/cloud-api/integrations/slack/integration-get).
 
-## Knowledge sources
-
-Knowledge integrations give agents access to your documentation and internal knowledge bases. Supported providers include:
-
-- Documentation sites
-- Notion workspaces
-- Confluence spaces
-- Custom API-backed sources
-
-Each provider defines the tools it exposes to agents (search, read page, list articles, etc.). The [catalog endpoint](/cloud-api/context/knowledge/catalog) lists all available providers and their capabilities.
-
-Connections are established via OAuth or static API keys, depending on the provider.
-
-## Skills
-
-Skills are reusable instruction bundles that extend what agents can do. They include markdown instructions, reference files, MCP server configurations, and required tooling. Skills can be authored directly through the API, imported from Git repositories, or discovered from connected repos.
-
-See [Skills](/concepts/skills) for the full skill format and the [Skills API reference](/cloud-api/context/skills/list) for the endpoints.
-
 ## Permissions
 
-All integration endpoints require the `integrations:read` or `integrations:write` scope, and only org admins/owners can create or modify integrations. Members can read integration status.
+Integration endpoints require the `integrations:read` or `integrations:write` scope. Org admins and owners set up integrations; members can read their status.
 
 ## Related guides
 
 <CardGroup cols={2}>
+  <Card title="Triggers" icon="bolt" href="/build/how-it-works/triggers">
+    How Slack, Linear, GitHub, email, schedules and webhooks start an agent.
+  </Card>
   <Card title="Webhooks and triggers" icon="webhook" href="/cloud-api/patterns/outbound-webhooks">
     Outbound webhook events and built-in trigger patterns.
-  </Card>
-  <Card title="Teach the agent your codebase" icon="brain" href="/build/how-it-works/instructions">
-    Skills, knowledge sources, and how context layers compose.
   </Card>
 </CardGroup>

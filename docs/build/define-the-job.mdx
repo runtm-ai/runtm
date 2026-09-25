@@ -76,7 +76,13 @@ Pick `claude-code` unless you have a reason not to; every worked example in Guid
 
     Click **Create agent**. Skip **Triggers** for now; the [Triggers](/build/how-it-works/triggers) page covers them.
 
-    {/* cli: runtm-api agents create --name "Payment Support" --description "Given a Zendesk ticket about a charge, reconstruct the payment timeline from Stripe and the ledger and draft a customer reply. Never send it." --instructions "$(cat instructions.md)" */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents create --name "Payment Support" --description "Given a Zendesk ticket about a charge, reconstruct the payment timeline from Stripe and the ledger and draft a customer reply. Never send it." --instructions "$(cat instructions.md)"
+    ```
+
+    </Visibility>
   </Step>
 
   <Step title="Set the default template and coding agent">
@@ -88,8 +94,14 @@ Pick `claude-code` unless you have a reason not to; every worked example in Guid
 
     Click **Save profile**. Saving fans the profile out to every trigger already bound to the agent.
 
-    {/* cli: runtm-api agents update <agent_id> --template <template_name> --agent claude-code */}
-    {/* cli-verify: runtm-api agents get <agent_id> | jq '{name, default_template, default_agent}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents update <agent_id> --template <template_name> --agent claude-code
+    cli-verify: runtm-api agents get <agent_id> | jq '{name, default_template, default_agent}'
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 
@@ -101,7 +113,13 @@ Pick `claude-code` unless you have a reason not to; every worked example in Guid
 
 Open **Agents**; the card shows the name and description. `runtm-api agents get <agent_id>` returns `name`, `description`, `system_instructions`, `default_template` and `default_agent`. If `default_template` is null, the agent will run on a bare sandbox.
 
-{/* cli-verify: runtm-api agents get <agent_id> */}
+<Visibility for="agents">
+
+```text
+cli-verify: runtm-api agents get <agent_id>
+```
+
+</Visibility>
 
 ## Where instructions sit
 

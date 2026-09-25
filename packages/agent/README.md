@@ -105,7 +105,7 @@ export RUNTM_API_URL=http://localhost:8081/api
 
 ## Skill
 
-One file, [`skills/SKILL.md`](./skills/SKILL.md), teaches AI agents how to use this CLI. It is deliberately short: how to read the docs (`https://docs.runtm.com/llms.txt`, then `<page>.md`, then lift the `{/* cli: ... */}` comments), the six-step method for building an agent, two golden paths, the rules that fail silently, auth and org context, and the output contract.
+One file, [`skills/SKILL.md`](./skills/SKILL.md), teaches AI agents how to use this CLI. It is deliberately short: how to read the docs (`https://docs.runtm.com/llms.txt`, then `<page>.md`, then lift the agent-only `cli:`, `cli-verify:` and `cli-handoff:` lines), the six-step method for building an agent, two golden paths, the rules that fail silently, auth and org context, and the output contract.
 
 Everything else lives in the docs, which are the single source of truth: the Build pages (method), Guides (worked agents and recipes), and API Reference > Patterns (session, template and debugging recipes for the CLI). Change the docs, not the skill, when behaviour changes.
 

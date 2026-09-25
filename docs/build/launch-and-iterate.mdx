@@ -36,32 +36,56 @@ Every capability the agent has hangs off its template. Skills, MCP servers, tool
 
     From the CLI, read `skills[].name` and `attachments_changed_since_build`. An empty `skills` array means attach. `true` means rebuild.
 
-    {/* cli-verify: runtm-api template get <template_id> | jq '{skills: [.skills[].name], stale: .attachments_changed_since_build, build: .build_status}' */}
-    {/* cli: runtm-api skills attach <skill_id> --template <template_id> */}
-    {/* cli: runtm-api mcp attach <mcp_id> --template <template_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli-verify: runtm-api template get <template_id> | jq '{skills: [.skills[].name], stale: .attachments_changed_since_build, build: .build_status}'
+    cli: runtm-api skills attach <skill_id> --template <template_id>
+    cli: runtm-api mcp attach <mcp_id> --template <template_id>
+    ```
+
+    </Visibility>
   </Step>
 
   <Step title="Build once, after everything is attached">
     Click **Build** on the template's **Build** tab. The pane says "Build in progress - this may take 5-15 minutes. You can navigate away safely." Attaching more after this point makes the template stale again.
 
-    {/* cli: runtm-api template build <template_id> */}
-    {/* cli-verify: runtm-api template get <template_id> | jq -r .build_status */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api template build <template_id>
+    cli-verify: runtm-api template get <template_id> | jq -r .build_status
+    ```
+
+    </Visibility>
   </Step>
 
   <Step title="Run the agent once, on purpose">
     Use the trigger the agent will live on. For Slack, mention it in a test channel with the first case. For a scheduled agent, use **Run now** on the **Scheduled** tab; it executes the identical code path a cron tick takes, so a failure here is the failure you would otherwise get at 03:00 UTC. For an agent with no trigger yet, create a session from the template and send the case as the prompt.
 
-    {/* cli: runtm-api scheduled-agents run-now <scheduled_agent_id> */}
-    {/* cli: runtm-api session create --template-id <template_id> --agent claude-code */}
-    {/* cli: runtm-api session prompt <session_id> "<first test case>" */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api scheduled-agents run-now <scheduled_agent_id>
+    cli: runtm-api session create --template-id <template_id> --agent claude-code
+    cli: runtm-api session prompt <session_id> "<first test case>"
+    ```
+
+    </Visibility>
   </Step>
 
   <Step title="Read the run">
     Open **Agents → Runs** or **Sessions**. The card shows the harness, the first prompt, status, elapsed time and cost. Open it to read the transcript: which tools it called, what it read, where it stopped. If it is sitting in `awaiting_approval`, resolve the request so the run can finish and be graded.
 
-    {/* cli: runtm-api session status <session_id> */}
-    {/* cli: runtm-api session history <session_id> */}
-    {/* cli: runtm-api session approvals list <session_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api session status <session_id>
+    cli: runtm-api session history <session_id>
+    cli: runtm-api session approvals list <session_id>
+    ```
+
+    </Visibility>
   </Step>
 
   <Step title="Read the grade">
@@ -74,14 +98,26 @@ Every capability the agent has hangs off its template. Skills, MCP servers, tool
 
     `{"graded": false}` means no verdict yet. Wait for the run to finish, then check that the agent has categories and the org has an Anthropic key.
 
-    {/* cli-verify: runtm-api session grade <session_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli-verify: runtm-api session grade <session_id>
+    ```
+
+    </Visibility>
   </Step>
 
   <Step title="Read the scorecard">
     Open **Activity → Agents**. Per agent over the window you pick: sessions, turns, tokens, spend, `graded_runs`, `successful_runs`, `objective_hit_rate` (successful divided by graded), per-category runs and successes, `value_usd` (successful runs times the category's human cost), `minutes_returned` (human minutes minus agent minutes, floored at zero), and the monthly budget with `exceeded` when spend has passed the cap. Nothing is stored; editing a category's human cost re-values history on the next read.
 
-    {/* cli-verify: runtm-api agents scorecard --days 7 */}
-    {/* cli: runtm-api agents scorecard --start 2026-09-01 --end 2026-09-15 */}
+    <Visibility for="agents">
+
+    ```text
+    cli-verify: runtm-api agents scorecard --days 7
+    cli: runtm-api agents scorecard --start 2026-09-01 --end 2026-09-15
+    ```
+
+    </Visibility>
   </Step>
 
   <Step title="Tighten one thing">
@@ -92,9 +128,15 @@ Every capability the agent has hangs off its template. Skills, MCP servers, tool
     - **Runbook.** A run that skipped a check gets an explicit step in the skill. A run that guessed a value gets a tool that returns it.
     - **Tools.** A run that could not answer because the data was out of reach gets a provider or an MCP server, attached and rebuilt.
 
-    {/* cli: runtm-api agents update <agent_id> --evaluator-criteria "$(cat rubric.json)" */}
-    {/* cli: runtm-api skills update <skill_id> --content "$(cat skill.json)" */}
-    {/* cli: runtm-api template build <template_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents update <agent_id> --evaluator-criteria "$(cat rubric.json)"
+    cli: runtm-api skills update <skill_id> --content "$(cat skill.json)"
+    cli: runtm-api template build <template_id>
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 
@@ -116,8 +158,14 @@ Before calling the agent launched, all of these are true:
 - `agents scorecard --days 7` shows `graded_runs` equal to the number of finished cases and a per-category breakdown under `tasks`.
 - You have written down every command pattern and host the passing runs used. That list is the input to [Add guardrails and approvals](/build/guardrails-and-approvals).
 
-{/* cli-verify: runtm-api template get <template_id> | jq '{skills: [.skills[].name], stale: .attachments_changed_since_build}' */}
-{/* cli-verify: runtm-api agents scorecard --days 7 */}
+<Visibility for="agents">
+
+```text
+cli-verify: runtm-api template get <template_id> | jq '{skills: [.skills[].name], stale: .attachments_changed_since_build}'
+cli-verify: runtm-api agents scorecard --days 7
+```
+
+</Visibility>
 
 ## Gotchas
 

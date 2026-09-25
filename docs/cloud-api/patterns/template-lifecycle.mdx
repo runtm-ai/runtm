@@ -291,12 +291,12 @@ An integration is three separate objects. They live in different places and only
 | Object | What it is | Where it lives | Command |
 |---|---|---|---|
 | **Definition** | The wiring, no secrets. A tool provider (service, auth methods, package to install) or an MCP server (transport, command or URL). | `/api/knowledge/providers`, `/api/agent-directives` | `tools providers create`, `mcp create` |
-| **Connection** | Credentials supplied against a definition, encrypted, with a status and a scope (org, agent or personal). One definition, many connections. | `/api/knowledge/integrations`, `/api/agent-directives/{id}/connections` | `tools create` for providers; MCP connections are dashboard or API only |
+| **Connection** | Credentials supplied against a definition, encrypted, with a status and a scope (org, agent or personal). One definition, many connections. | `/api/knowledge/integrations`, `/api/agent-directives/{id}/connections` | A person, through a `/connect?provider=<slug>` link for providers (`tools create` for their own scripts); MCP connections are dashboard or API only |
 | **Attachment** | Where a skill or MCP server loads: templates, repos, or all repos. Creating a definition attaches it nowhere. | `/api/agent-directives/{id}/attachments` | `skills attach`, `mcp attach` |
 
-Rule of thumb for a coding agent: build definitions and attachments; send the person to the dashboard to create connections, so secrets never pass through the agent. `tools create --credentials` and MCP `--env` or `--header` can carry a secret for non-interactive automation, but they are not the path for a secret a person is handing you.
+Rule of thumb for a coding agent: build definitions and attachments; send the person a `/connect` link to create connections, so secrets never pass through the agent (see [Credentials go to Runtime, never to an agent](/build/give-it-tools#credentials-go-to-runtime-never-to-an-agent)). Pages mark that step with a `cli-handoff: <url>` line in their agent-only blocks. `tools create --credentials` and MCP `--env` or `--header` can carry a secret for non-interactive automation, but they are not the path for a secret a person is handing you.
 
-Adding a new integration follows the same five steps every time: research every way to reach the service (MCP server, ready-made skill, CLI, SDK, REST API), weigh the auth methods (OAuth, API key, service account file), let the person pick the combination, build the definition, then hand off to the dashboard to connect. Prefer an existing MCP server or skill when a good one exists, then a CLI wrapped in a skill, then SDK or API recipes in a skill. Check `runtm-api tools providers list` before defining a provider that already exists.
+Adding a new integration follows the same five steps every time: research every way to reach the service (MCP server, ready-made skill, CLI, SDK, REST API), weigh the auth methods (OAuth, API key, service account file), let the person pick the combination, build the definition, then hand off to the dashboard to connect. Prefer an existing MCP server or skill when a good one exists, then a CLI wrapped in a skill, then SDK recipes, then raw API recipes, and a `browser` auth method only when the vendor has no programmatic access. Check `runtm-api tools providers list` before defining a provider that already exists.
 
 ## CLI details the Build pages omit
 
@@ -315,7 +315,7 @@ runtm-api skills upload-file <id> --file ./data/lookup.csv --path data/lookup.cs
 
 `resync`, `lock`, `unlock` and `facets` exist on `mcp` as well. Common flags on every list: `--page-size`, `--page-token`. Every delete needs `--yes`.
 
-**Tool connections** (`runtm-api tools`, static credentials only; OAuth connects in the dashboard):
+**Tool connections** (`runtm-api tools`, static credentials only; OAuth connects in the dashboard). For scripts a person runs with a secret they already control, such as CI or a bootstrap reading a secret manager. An agent handed a secret sends a `/connect` link instead:
 
 ```bash
 runtm-api tools create --provider bigquery --auth-method service_account_json --scope org \

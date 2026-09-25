@@ -37,18 +37,36 @@ At the step you chose, the run pauses in `awaiting_approval`, a person approves 
 
     `--required-role <org-role>` or `--required-team <team-id>` restricts who may resolve it. Admins and owners always can. With neither flag, anyone with access to the session can.
 
-    {/* cli: runtm-api skills update <skill_id> --md ./SKILL.md */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api skills update <skill_id> --md ./SKILL.md
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Rebuild and run a seeded case">
     Editing the skill rebuilds the templates it is attached to. Run one seeded case that reaches the step. The session flips to `awaiting_approval` and its card shows **Approve** and **Reject** inline with the message in the tooltip.
 
-    {/* cli-verify: runtm-api session approvals list <session_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli-verify: runtm-api session approvals list <session_id>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Resolve it">
     Click **Approve** or **Reject** on the card, or resolve from the CLI with a note the agent will see.
 
-    {/* cli: runtm-api session approvals resolve <session_id> <approval_id> --approve --note "Checked the ledger entry, post it" */}
-    {/* cli: runtm-api session approvals resolve <session_id> <approval_id> --reject --note "Wrong customer, re-run with the account id" */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api session approvals resolve <session_id> <approval_id> --approve --note "Checked the ledger entry, post it"
+    cli: runtm-api session approvals resolve <session_id> <approval_id> --reject --note "Wrong customer, re-run with the account id"
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 

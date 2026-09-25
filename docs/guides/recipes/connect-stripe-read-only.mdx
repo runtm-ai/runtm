@@ -1,6 +1,6 @@
 ---
 title: "Connect Stripe with a restricted read-only key"
-description: "Create Stripe as a custom tool provider, connect it org-wide with a restricted key that can only read, and make a skill require it so sessions receive it. Read when an agent needs charges, payment intents, refunds or disputes and must never move money."
+description: "Create Stripe as a custom tool provider, connect it to one agent with a restricted key that can only read, and make a skill require it. Read when an agent needs charges, payment intents, refunds or disputes and must never move money."
 ---
 
 ## Outcome
@@ -11,7 +11,8 @@ Sessions launched from the agent's template have `STRIPE_SECRET_KEY` set to a ke
 
 - You are an admin of the organization, with an org-scoped API key if you use the CLI.
 - Stripe is not a built-in provider. If your org went through **Set Up Your First Agent** and picked Stripe, the provider already exists under **Tools & MCP** and you can skip to step 3.
-- A skill is attached to the agent's template. Org-wide connections reach a session only when an attached skill asks for the provider.
+- The roster agent exists and you have its id (`runtm-api agents list`). The connection is scoped to that agent.
+- A skill is attached to the agent's template. The agent connection reaches the agent's runs without it, but declaring the provider keeps the requirement visible and is required if you ever fall back to an org-wide connection.
 
 ## Do it
 
@@ -22,39 +23,69 @@ Sessions launched from the agent's template have `STRIPE_SECRET_KEY` set to a ke
   <Step title="Define the Stripe provider">
     In **Settings > Context > Tools & MCP** click **New tool or MCP server**, choose **Tool**, then define a custom provider named Stripe in category `sales`. Add one static auth method with a single secret field, `secret_key`, materialized as the environment variable `STRIPE_SECRET_KEY`. Add the Stripe CLI as a package so the agent can run `stripe` commands.
 
-    {/* cli: runtm-api tools providers create --slug stripe --name Stripe --category sales --tagline "Payments and billing data" --package stripe=github:stripe/stripe-cli --auth-methods '[{"id":"api_credentials","display_name":"Secret key","kind":"static","fields":[{"id":"secret_key","label":"Secret key","kind":"secret","required":true}],"materialization":{"env":{"STRIPE_SECRET_KEY":"{fields.secret_key}"}}}]' */}
-  </Step>
-  <Step title="Connect it org-wide">
-    Back in **Tools & MCP**, open **Add a provider**, pick Stripe, paste the restricted key, and choose **Teams** so every template in the org can use it.
+    <Visibility for="agents">
 
-    {/* cli: runtm-api tools create --provider stripe --auth-method api_credentials --scope org --display-name "Stripe read-only" --credentials '{"secret_key":"rk_live_..."}' */}
-    {/* cli-verify: runtm-api tools list --provider stripe --scope org */}
+    ```text
+    cli: runtm-api tools providers create --slug stripe --name Stripe --category sales --tagline "Payments and billing data" --package stripe=github:stripe/stripe-cli --auth-methods '[{"id":"api_credentials","display_name":"Secret key","kind":"static","fields":[{"id":"secret_key","label":"Secret key","kind":"secret","required":true}],"materialization":{"env":{"STRIPE_SECRET_KEY":"{fields.secret_key}"}}}]'
+    ```
+
+    </Visibility>
+  </Step>
+  <Step title="Connect it to the agent">
+    Back in **Tools & MCP**, open **Add a provider**, pick Stripe, paste the restricted key, choose the **Agent** scope and pick the agent. Only that agent's runs use this key, and each other agent that needs Stripe gets its own restricted key with its own scopes. Choose **Teams** only if many agents truly share one read-only key. Paste the key into Runtime yourself. If an agent is setting this up, it sends you a `/connect` link that opens this dialog with Stripe and the agent already selected, and it never sees the key.
+
+    <Visibility for="agents">
+
+    ```text
+    cli-handoff: https://app.runtm.com/connect?provider=stripe&agent=<agent_id>&method=api_credentials
+    cli-verify: runtm-api tools list --provider stripe
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Make the skill require it">
-    Open the agent's runbook skill and add `stripe` to `requires.integrations`. Without this the connection is filtered out of the session, silently.
+    Open the agent's runbook skill and add `stripe` to `requires.integrations`. The agent connection does not need it, but an org-wide or personal Stripe connection is filtered out of the session, silently, without it.
 
-    {/* cli: runtm-api skills update <skill_id> --content '{"entry_md":"SKILL.md","files":[{"path":"SKILL.md","mode":"text","inline":"..."}],"requires":{"integrations":["stripe"]}}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api skills update <skill_id> --content '{"entry_md":"SKILL.md","files":[{"path":"SKILL.md","mode":"text","inline":"..."}],"requires":{"integrations":["stripe"]}}'
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Rebuild the template">
     Editing the skill triggers a rebuild of the templates it is attached to. If you attached a new skill instead, build once yourself.
 
-    {/* cli: runtm-api template build <template_id> */}
-    {/* cli-verify: runtm-api template get <template_id> | jq '{build_status, stale: .attachments_changed_since_build}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api template build <template_id>
+    cli-verify: runtm-api template get <template_id> | jq '{build_status, stale: .attachments_changed_since_build}'
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 
 ## Verify
 
-Launch a session from the template and list one charge. A read succeeds; a write is refused by Stripe with a permissions error.
+Launch a session as the agent and list one charge. A session opened from the template without the agent never receives agent connections. A read succeeds; a write is refused by Stripe with a permissions error.
 
-{/* cli: runtm-api session create --template-id <template_id> --agent claude-code */}
-{/* cli-verify: runtm-api session exec <session_id> --json -- stripe charges list --limit 1 */}
-{/* cli-verify: runtm-api session exec <session_id> --json -- sh -c 'stripe refunds create --charge ch_test 2>&1 | head -3' */}
+<Visibility for="agents">
+
+```text
+cli: runtm-api session create --template-id <template_id> --agent claude-code --agent-id <agent_id>
+cli-verify: runtm-api session exec <session_id> --json -- stripe charges list --limit 1
+cli-verify: runtm-api session exec <session_id> --json -- sh -c 'stripe refunds create --charge ch_test 2>&1 | head -3'
+```
+
+</Visibility>
 
 ## Gotchas
 
 - **A full secret key works too, which is the problem.** Nothing in Runtime downgrades a credential. If you paste `sk_live_...`, the agent can refund. Use the restricted key.
-- **Connected but not required.** The provider shows as connected under **Tools & MCP**, but `env | grep STRIPE` inside the session is empty. An attached skill must list `stripe` in `requires.integrations`, or the connection must be agent-scoped.
+- **Connected but not required.** The provider shows as connected under **Tools & MCP**, but `env | grep STRIPE` inside the session is empty. Either the session is not running as the agent that owns the connection (dashboard sessions run as no agent), or the connection is org-wide or personal and no attached skill lists `stripe` in `requires.integrations`.
 - **Test mode versus live mode.** A restricted key belongs to one mode. Investigations of real customers need a live-mode key; seeded cases in step 5 of Build can run on a test-mode key.
 
 <Card title="3. Give it tools" icon="plug" href="/build/give-it-tools">

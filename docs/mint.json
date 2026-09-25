@@ -104,6 +104,7 @@
         "concepts/guardrails",
         "concepts/deployments",
         "concepts/integrations",
+        "concepts/tools",
         "concepts/organizations",
         "concepts/observability",
         "concepts/real-time"

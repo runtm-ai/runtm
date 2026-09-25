@@ -19,20 +19,38 @@ Issues assigned to the agent from one Linear team launch on a dedicated template
   <Step title="Confirm the fallback">
     Open the agent from **Agents** and check **Default template** on the **Profile** tab. This is what every trigger uses unless a trigger or a team override says otherwise.
 
-    {/* cli-verify: runtm-api agents get <agent_id> | jq '{name, default_template}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli-verify: runtm-api agents get <agent_id> | jq '{name, default_template}'
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Add the team override">
     Open the **Linear** tab. Under **Team overrides** ("Route specific Linear teams to a different template.") add a row: pick the Linear team and the template it should launch on. Save.
 
     The override is stored on the Linear integration as `team_template_map`, keyed by the Linear team id. From the CLI, merge it into the integration's config.
 
-    {/* cli: runtm-api agents update <linear_integration_id> --type linear --config '{"team_template_map":{"<linear_team_id>":"<template_name>"}}' */}
-    {/* cli-verify: runtm-api agents get <linear_integration_id> --type linear | jq '.config.team_template_map' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents update <linear_integration_id> --type linear --config '{"team_template_map":{"<linear_team_id>":"<template_name>"}}'
+    cli-verify: runtm-api agents get <linear_integration_id> --type linear | jq '.config.team_template_map'
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Check the template carries what that team needs">
     A different template means different skills, tools and secrets. Confirm the routed template has the runbook and connections that team's issues need, and that it is built.
 
-    {/* cli-verify: runtm-api template get <template_id> | jq '{build_status, skills: [.skills[].name], stale: .attachments_changed_since_build}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli-verify: runtm-api template get <template_id> | jq '{build_status, skills: [.skills[].name], stale: .attachments_changed_since_build}'
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 
@@ -40,7 +58,13 @@ Issues assigned to the agent from one Linear team launch on a dedicated template
 
 Create a test issue in the routed team and assign it to the agent. Open **Sessions** or **Agents > Runs**; the new run's card shows the template it launched on. Then assign an issue from any other team and confirm it launched on the default template.
 
-{/* cli-verify: runtm-api session list | jq '.[0] | {id, template_id, source}' */}
+<Visibility for="agents">
+
+```text
+cli-verify: runtm-api session list | jq '.[0] | {id, template_id, source}'
+```
+
+</Visibility>
 
 ## Gotchas
 

@@ -26,7 +26,10 @@ classifiers = [
 ]
 dependencies = [
     "runtm-shared>=0.1.0",
-    "sqlalchemy>=2.0,<3.0",
+    # <2.1: SQLAlchemy 2.1 (released 2026-09-24) makes psycopg 3 the default
+    # postgresql:// driver; we ship psycopg2-binary, so 2.1 breaks every engine
+    # at import (No module named psycopg). Lift deliberately, not by drift.
+    "sqlalchemy>=2.0,<2.1",
     "psycopg2-binary>=2.9,<3.0",
     "redis>=4.5,<6.0",
     "rq>=2.3.2,<3.0",

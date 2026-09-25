@@ -57,25 +57,55 @@ Skills attach to one or more templates, to a repository, or to every repo in the
 <Steps>
   <Step title="Start a new skill">
     Go to **Settings > Context > Skills** and click **New skill**. You can write the `SKILL.md` inline, scan a GitHub repo for existing skills, or open a session in which the harness drafts the skill with you and you publish it from the session.
-    {/* cli: runtm-api skills create --name <slug> --display-name "<Name>" --description "<what and when>" --md ./SKILL.md */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api skills create --name <slug> --display-name "<Name>" --description "<what and when>" --md ./SKILL.md
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Add reference files">
     Add the files the runbook cites. Keep long tables and templates out of `SKILL.md` and in `references/` so the entry stays short enough to read every time.
-    {/* cli: runtm-api skills upload-file <skill_id> --file ./references/decline-codes.md --path references/decline-codes.md --mode text */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api skills upload-file <skill_id> --file ./references/decline-codes.md --path references/decline-codes.md --mode text
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Declare required tools">
     Set `requires.integrations` to the provider slugs the runbook uses. The platform materializes those connections for any template the skill is attached to and reports unmet ones in the session manifest.
-    {/* cli: runtm-api skills update <skill_id> --content '{"entry_md":"SKILL.md","files":[{"path":"SKILL.md","mode":"text","inline":"..."}],"requires":{"integrations":["stripe","postgres","zendesk"]}}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api skills update <skill_id> --content '{"entry_md":"SKILL.md","files":[{"path":"SKILL.md","mode":"text","inline":"..."}],"requires":{"integrations":["stripe","postgres","zendesk"]}}'
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Attach it">
     Attach the skill to the agent's template. Use a repo attachment when the skill is about one codebase, or **All** when every agent in the org should have it.
-    {/* cli: runtm-api skills attach <skill_id> --template <template_id> */}
-    {/* cli-verify: runtm-api skills attachments <skill_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api skills attach <skill_id> --template <template_id>
+    cli-verify: runtm-api skills attachments <skill_id>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Rebuild the template">
     Attachments reach sessions only through a build.
-    {/* cli: runtm-api template build <template_id> */}
-    {/* cli-verify: runtm-api template get <template_id> | jq '{build_status, attachments_changed_since_build, skills: [.skills[].name]}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api template build <template_id>
+    cli-verify: runtm-api template get <template_id> | jq '{build_status, attachments_changed_since_build, skills: [.skills[].name]}'
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 
@@ -84,15 +114,33 @@ Skills attach to one or more templates, to a repository, or to every repo in the
 <Steps>
   <Step title="Scan the repo">
     Point the importer at a GitHub repository. It walks the tree once and lists every `SKILL.md` under a `.claude/skills/` or `.cursor/skills/` folder, marking ones already imported.
-    {/* cli: runtm-api skills discover --repo <owner/repo> --ref main */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api skills discover --repo <owner/repo> --ref main
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Import the candidates you want">
     Import all of them or only chosen paths, and attach them in the same call. Sibling files up to 512 KiB are bundled; the total is capped at 5 MiB.
-    {/* cli: runtm-api skills import --source github_repo --uri <owner/repo> --ref main --path .claude/skills/<name>/SKILL.md --attach-template <template_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api skills import --source github_repo --uri <owner/repo> --ref main --path .claude/skills/<name>/SKILL.md --attach-template <template_id>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Keep it in sync">
     Resync re-reads the source and rebuilds only when content changed. The skill remembers the commit it was imported from.
-    {/* cli: runtm-api skills resync <skill_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api skills resync <skill_id>
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 
@@ -100,12 +148,24 @@ Skills attach to one or more templates, to a repository, or to every repo in the
 
 For a quick test without a rebuild, hot-load a skill into a live session. It is written into the session's skills directory immediately and does not change the template.
 
-{/* cli: runtm-api session load-skills <session_id> <skill_id> */}
+<Visibility for="agents">
+
+```text
+cli: runtm-api session load-skills <session_id> <skill_id>
+```
+
+</Visibility>
 
 ### Lock a finished skill
 
-{/* cli: runtm-api skills lock <skill_id> */}
-{/* cli: runtm-api skills unlock <skill_id> */}
+<Visibility for="agents">
+
+```text
+cli: runtm-api skills lock <skill_id>
+cli: runtm-api skills unlock <skill_id>
+```
+
+</Visibility>
 
 ## Example: a payments runbook
 

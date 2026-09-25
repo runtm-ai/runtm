@@ -39,22 +39,46 @@ The agent has a written method it follows every run, knows which instructions wi
 <Steps>
   <Step title="Write the skill first">
     The runbook is the thing you will edit most. Get it into a skill and attached to the template before any trigger exists. Include the prohibitions and the approval step as runbook text.
-    {/* cli: runtm-api skills create --name payment-investigation --display-name "Payment investigation" --description "How to reconstruct a charge, decline or refund and draft a cited reply" --md ./SKILL.md */}
-    {/* cli: runtm-api skills upload-file <skill_id> --path references/decline-codes.md --file ./references/decline-codes.md */}
-    {/* cli: runtm-api skills attach <skill_id> --template <template_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api skills create --name payment-investigation --display-name "Payment investigation" --description "How to reconstruct a charge, decline or refund and draft a cited reply" --md ./SKILL.md
+    cli: runtm-api skills upload-file <skill_id> --path references/decline-codes.md --file ./references/decline-codes.md
+    cli: runtm-api skills attach <skill_id> --template <template_id>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Check the instruction layers">
     Read the agent's system instructions next to the org and template instructions. The later layers win, so an org policy like "never paste card numbers" already applies and does not need repeating.
-    {/* cli-verify: runtm-api template context resolve <template_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli-verify: runtm-api template context resolve <template_id>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Rebuild the template once">
     Attachments made after the last build are not in the snapshot until you rebuild.
-    {/* cli: runtm-api template build <template_id> */}
-    {/* cli-verify: runtm-api template get <template_id> | jq '{skills: [.skills[].name], stale: .attachments_changed_since_build}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api template build <template_id>
+    cli-verify: runtm-api template get <template_id> | jq '{skills: [.skills[].name], stale: .attachments_changed_since_build}'
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Connect a test trigger">
     Once the template proves it carries the skill, connect Slack, Email or a schedule, pointed at a test channel or created disabled so you can `run-now`. A trigger connected before the template is ready runs a bare agent.
-    {/* cli: runtm-api scheduled-agents create --name "<name>" --cron "0 * * * *" --prompt "<prompt>" --template <template_id> --disabled */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api scheduled-agents create --name "<name>" --cron "0 * * * *" --prompt "<prompt>" --template <template_id> --disabled
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Go prove it">
     Continue to [Prove it works and iterate](/build/launch-and-iterate). Come back to guardrails only after the seeded cases pass.

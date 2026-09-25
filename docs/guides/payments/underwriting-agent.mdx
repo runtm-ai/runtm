@@ -63,13 +63,25 @@ Read [Define the job](/build/define-the-job) first. The objective needs an input
 
     Skip **Triggers** for now and click **Create agent**.
 
-    {/* cli: runtm-api agents create --name "Underwriting Agent" --description "Given a pending merchant application, compares the KYB result, registry, ownership and application answers and writes a decision memo where every flag is resolved with a source or listed open, plus a draft document request. Never changes an application's status." --instructions "$(cat instructions.md)" */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents create --name "Underwriting Agent" --description "Given a pending merchant application, compares the KYB result, registry, ownership and application answers and writes a decision memo where every flag is resolved with a source or listed open, plus a draft document request. Never changes an application's status." --instructions "$(cat instructions.md)"
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Point it at a template">
     Open the agent's card. Under **Default template** pick `Underwriting` (create it in step 3 if it does not exist yet) and leave **Coding agent** on Claude Code. Click **Save profile**.
 
-    {/* cli: runtm-api agents update <agent_id> --template Underwriting --agent claude-code */}
-    {/* cli-verify: runtm-api agents get <agent_id> | jq '{name, default_template, default_agent}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents update <agent_id> --template Underwriting --agent claude-code
+    cli-verify: runtm-api agents get <agent_id> | jq '{name, default_template, default_agent}'
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 
@@ -93,13 +105,25 @@ Read [Measure success](/build/measure-success). Underwriting has three kinds of 
 
     Add a grading tag `risk_tier` on every category with the instruction "low, medium or high, taken from the memo's recommendation line". Set **Avg human cost (USD)** to `90` and **Avg human time (minutes)** to `75`.
 
-    {/* cli: runtm-api agents update <agent_id> --evaluator-criteria "$(cat rubric.json)" */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents update <agent_id> --evaluator-criteria "$(cat rubric.json)"
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Set the monthly budget">
     Set **Monthly budget** to `800`. This flags the agent on the scorecard and writes an audit event when spend passes the cap. It does not stop runs; use org limits under **Guardrails > Limits** for a hard cap.
 
-    {/* cli: runtm-api agents update <agent_id> --economics '{"budget":{"monthly_usd_cap":800}}' */}
-    {/* cli-verify: runtm-api agents get <agent_id> | jq '{categories: [.evaluator_criteria.categories[].key], budget: .economics.budget}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents update <agent_id> --economics '{"budget":{"monthly_usd_cap":800}}'
+    cli-verify: runtm-api agents get <agent_id> | jq '{categories: [.evaluator_criteria.categories[].key], budget: .economics.budget}'
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 
@@ -140,7 +164,13 @@ Read [Give it tools](/build/give-it-tools). None of the KYB vendors is a built-i
   <Step title="Create the Underwriting template">
     Go to **Templates**, click **New Template**, choose **Blank environment**, name it `Underwriting`, and click **Create Template**. Nothing is cloned; the template exists to carry connections, the skill and later the guardrails.
 
-    {/* cli: runtm-api template list */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api template list
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Define Middesk as a custom provider">
     In **Settings > Context > Tools & MCP**, click **New tool or MCP server**, choose **Tool**, and define a custom provider with one static auth method. The secret lands in `MIDDESK_API_KEY`; an optional base URL lets you point the sandbox at Middesk's sandbox environment while proving.
@@ -165,24 +195,49 @@ Read [Give it tools](/build/give-it-tools). None of the KYB vendors is a built-i
     }
     ```
 
-    {/* cli: runtm-api tools providers create --slug middesk --name Middesk --category custom --tagline "Business verification (KYB)" --auth-methods "$(cat middesk-auth.json)" */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api tools providers create --slug middesk --name Middesk --category custom --tagline "Business verification (KYB)" --auth-methods "$(cat middesk-auth.json)"
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Connect Middesk at agent scope">
     Connect the new provider and choose the agent scope, picking `Underwriting Agent`. An agent-scoped connection is used only by this agent's runs, so Middesk usage is attributed to the agent, and it reaches the agent's sessions without any skill having to require it. The CLI creates only org and personal connections, so this one is done in the dashboard. See [the credential hierarchy](/build/give-it-tools#who-the-agent-acts-as-the-credential-hierarchy).
 
-    {/* cli-verify: runtm-api tools list --provider middesk */}
+    <Visibility for="agents">
+
+    ```text
+    cli-verify: runtm-api tools list --provider middesk
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Define and connect Postgres read-only">
     Create a second custom provider, `postgres`, with one static field `connection_string` (kind `secret`) materialized to `POSTGRES_CONNECTION_STRING`. Connect it at org scope with a role that can only `SELECT` from the `applications`, `owners` and `documents` views. Nothing in Runtime downgrades a credential, so the read-only guarantee has to come from the database role.
 
-    {/* cli: runtm-api tools providers create --slug postgres --name Postgres --category data --tagline "Read-only access to the applications database" --auth-methods '[{"id":"connection","display_name":"Connection string","kind":"static","fields":[{"id":"connection_string","label":"Connection string (read-only role)","kind":"secret","required":true}],"materialization":{"env":{"POSTGRES_CONNECTION_STRING":"{fields.connection_string}"}}}]' */}
-    {/* cli: runtm-api tools create --provider postgres --auth-method connection --scope org --credentials '{"connection_string":"postgres://underwriting_ro:<password>@<host>:5432/merchants"}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api tools providers create --slug postgres --name Postgres --category data --tagline "Read-only access to the applications database" --auth-methods '[{"id":"connection","display_name":"Connection string","kind":"static","fields":[{"id":"connection_string","label":"Connection string (read-only role)","kind":"secret","required":true}],"materialization":{"env":{"POSTGRES_CONNECTION_STRING":"{fields.connection_string}"}}}]'
+    cli-handoff: https://app.runtm.com/connect?provider=postgres&scope=org&method=connection
+    cli-verify: runtm-api tools list --provider postgres --scope org
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Connect Notion from the catalog">
     Click **New tool or MCP server**, choose **Tool**, pick **Notion** from **Add a provider**, and connect it at org scope with an internal integration token that has read access to the Underwriting Policy pages. The skill cites these pages by URL.
 
-    {/* cli: runtm-api tools create --provider notion --auth-method static --scope org --credentials '{"notion_api_token":"<token>"}' */}
-    {/* cli-verify: runtm-api tools list --scope org */}
+    <Visibility for="agents">
+
+    ```text
+    cli-handoff: https://app.runtm.com/connect?provider=notion&scope=org&method=static
+    cli-verify: runtm-api tools list --provider notion --scope org
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 
@@ -254,17 +309,29 @@ Read [Define how it works](/build/how-it-works/overview). The runbook is a skill
 
     Create the skill, upload the two reference files, and declare the providers it requires.
 
-    {/* cli: runtm-api skills create --name underwriting-memo --display-name "Underwriting memo" --description "Assemble a merchant underwriting decision memo from Middesk, the applications database and the underwriting policy" --md ./SKILL.md */}
-    {/* cli: runtm-api skills upload-file <skill_id> --file ./references/memo-template.md --path references/memo-template.md */}
-    {/* cli: runtm-api skills upload-file <skill_id> --file ./references/flag-glossary.md --path references/flag-glossary.md */}
-    {/* cli: runtm-api skills update <skill_id> --content '{"entry_md":"SKILL.md","files":[{"path":"SKILL.md","mode":"text","inline":"..."}],"requires":{"integrations":["middesk","postgres","notion"]}}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api skills create --name underwriting-memo --display-name "Underwriting memo" --description "Assemble a merchant underwriting decision memo from Middesk, the applications database and the underwriting policy" --md ./SKILL.md
+    cli: runtm-api skills upload-file <skill_id> --file ./references/memo-template.md --path references/memo-template.md
+    cli: runtm-api skills upload-file <skill_id> --file ./references/flag-glossary.md --path references/flag-glossary.md
+    cli: runtm-api skills update <skill_id> --content '{"entry_md":"SKILL.md","files":[{"path":"SKILL.md","mode":"text","inline":"..."}],"requires":{"integrations":["middesk","postgres","notion"]}}'
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Attach the skill and build the template">
     Attach `underwriting-memo` to the `Underwriting` template and build once. Anything attached after this build is not in the snapshot until the next one.
 
-    {/* cli: runtm-api skills attach <skill_id> --template <template_id> */}
-    {/* cli: runtm-api template build <template_id> */}
-    {/* cli-verify: runtm-api template get <template_id> | jq '{skills: [.skills[].name], stale: .attachments_changed_since_build, build: .build_status}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api skills attach <skill_id> --template <template_id>
+    cli: runtm-api template build <template_id>
+    cli-verify: runtm-api template get <template_id> | jq '{skills: [.skills[].name], stale: .attachments_changed_since_build, build: .build_status}'
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Connect Linear for new applications">
     In the agent sheet, under **Triggers**, click **Connect** on the Linear row. The OAuth flow finishes in the browser. In the **Linear** tab, keep **Default template** on `Underwriting`, and under **Team overrides** route the `Underwriting` Linear team to this template so that other teams' assignments do not launch it. Assigning a ticket to the agent, or mentioning it, launches a run; the memo comes back as agent activities and a comment on the issue.
@@ -275,9 +342,15 @@ Read [Define how it works](/build/how-it-works/overview). The runbook is a skill
 
     If your team does not use Linear, click **Create inbox** on the Email row instead and have the application system forward new applications to the agent's address. The reply comes back in the same email thread.
 
-    {/* cli: runtm-api agents create --type linear --name "Underwriting Agent" --agent-id <agent_id> --template Underwriting */}
-    {/* cli: runtm-api agents update <linear_integration_id> --type linear --config '{"team_template_map":{"<linear_team_id>":"Underwriting"}}' */}
-    {/* cli: runtm-api agents create --type email --name underwriting-agent --agent-id <agent_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents create --type linear --name "Underwriting Agent" --agent-id <agent_id> --template Underwriting
+    cli: runtm-api agents update <linear_integration_id> --type linear --config '{"team_template_map":{"<linear_team_id>":"Underwriting"}}'
+    cli: runtm-api agents create --type email --name underwriting-agent --agent-id <agent_id>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Schedule the periodic reviews">
     Open **Agents > Scheduled** and click **New scheduled agent**. Name it `Periodic merchant reviews`, run it as the `Underwriting Agent` roster agent so the run is graded under `periodic-review` and receives the agent-scoped Middesk key, and use this prompt:
@@ -286,7 +359,13 @@ Read [Define how it works](/build/how-it-works/overview). The runbook is a skill
 
     Schedule it weekly on Monday at 13:00 UTC and post to the `#underwriting` Slack channel. Cron is five fields in UTC with no time zone, so 13:00 UTC is 06:00 in San Francisco in summer and 05:00 in winter. Create it disabled; you enable it in step 5 after a Run now.
 
-    {/* cli: runtm-api scheduled-agents create --name "Periodic merchant reviews" --cron "0 13 * * 1" --prompt "Run the periodic review for every merchant whose next_review_at is before today. One memo per merchant using the underwriting-memo skill. End with a summary table: merchant, risk tier, what changed." --template <template_id> --agent claude-code --disabled --slack-integration <slack_integration_id> --slack-channel <channel_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api scheduled-agents create --name "Periodic merchant reviews" --cron "0 13 * * 1" --prompt "Run the periodic review for every merchant whose next_review_at is before today. One memo per merchant using the underwriting-memo skill. End with a summary table: merchant, risk tier, what changed." --template <template_id> --agent claude-code --disabled --slack-integration <slack_integration_id> --slack-channel <channel_id>
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 
@@ -315,27 +394,51 @@ Read [Prove it works and iterate](/build/launch-and-iterate). No guardrail exist
       <img src="/images/dashboard/session-awaiting-approval.png" alt="Sessions grid with a run showing its approval outcome" />
     </Frame>
 
-    {/* cli: runtm-api session list */}
-    {/* cli: runtm-api session approvals list <session_id> */}
-    {/* cli: runtm-api session approvals resolve <session_id> <approval_id> --approve --note "Seeded case, memo checked" */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api session list
+    cli: runtm-api session approvals list <session_id>
+    cli: runtm-api session approvals resolve <session_id> <approval_id> --approve --note "Seeded case, memo checked"
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Run the schedule once by hand">
     On **Agents > Scheduled**, use **Run now** on `Periodic merchant reviews`. It executes the identical code path a Monday tick takes, so a misconfigured schedule fails in front of you instead of silently at 13:00 UTC. Read the summary in `#underwriting`.
 
-    {/* cli: runtm-api scheduled-agents run-now <scheduled_agent_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api scheduled-agents run-now <scheduled_agent_id>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Read the grades and the scorecard">
     A few minutes after each run finishes, read its grade. Then open **Activity > Agents** and pick `Underwriting Agent`: six graded runs, the hit rate, and value returned at $90 per success.
 
-    {/* cli-verify: runtm-api session grade <session_id> */}
-    {/* cli-verify: runtm-api agents scorecard --days 7 */}
+    <Visibility for="agents">
+
+    ```text
+    cli-verify: runtm-api session grade <session_id>
+    cli-verify: runtm-api agents scorecard --days 7
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Tighten one thing, re-run, then enable the schedule">
     A memo that missed the third officer gets a step in the skill. A grader that passed a memo without sources gets a stricter `success_criteria`. A run that could not read `documents` gets the view added to the role. Change one thing, re-run the affected case, and only when all five pass enable the schedule.
 
     While the cases run, write down every command pattern and host the agent used. That list is the input to step 6.
 
-    {/* cli: runtm-api scheduled-agents update <scheduled_agent_id> --enabled */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api scheduled-agents update <scheduled_agent_id> --enabled
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 
@@ -347,47 +450,83 @@ Read [Add guardrails and approvals](/build/guardrails-and-approvals). Only now, 
   <Step title="Deny writes to the application tables">
     Under **Settings > Guardrails > Allowlists**, create deny rules for anything that writes through `psql`, then attach them to the `Underwriting` template.
 
-    {/* cli: runtm-api guardrails rules create --name deny-applications-update --kind deny --pattern "psql*UPDATE*" --purpose "The agent never changes an application" */}
-    {/* cli: runtm-api guardrails rules create --name deny-applications-insert --kind deny --pattern "psql*INSERT*" --purpose "Read-only underwriting" */}
-    {/* cli: runtm-api guardrails rules create --name deny-applications-delete --kind deny --pattern "psql*DELETE*" --purpose "Read-only underwriting" */}
-    {/* cli: runtm-api guardrails rules attach <rule_id> --template <template_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api guardrails rules create --name deny-applications-update --kind deny --pattern "psql*UPDATE*" --purpose "The agent never changes an application"
+    cli: runtm-api guardrails rules create --name deny-applications-insert --kind deny --pattern "psql*INSERT*" --purpose "Read-only underwriting"
+    cli: runtm-api guardrails rules create --name deny-applications-delete --kind deny --pattern "psql*DELETE*" --purpose "Read-only underwriting"
+    cli: runtm-api guardrails rules attach <rule_id> --template <template_id>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Deny Middesk writes, except the one the runbook needs">
     Creating a Middesk business is a `POST` to `/v1/businesses`. Ordering extra verifications is a `POST` under `/v1/businesses/<id>/`. Deny beats allow whenever both match, so the deny pattern itself has to leave out any path you intend to keep.
 
     If onboarding already created the Middesk business and the runbook only reads, deny every `POST`:
 
-    {/* cli: runtm-api guardrails rules create --name allow-middesk-reads --kind allow --pattern "curl*api.middesk.com*" --purpose "KYB reads" */}
-    {/* cli: runtm-api guardrails rules create --name deny-middesk-post --kind deny --pattern "curl*-X POST*api.middesk.com*" --purpose "The agent does not create or order anything in Middesk" */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api guardrails rules create --name allow-middesk-reads --kind allow --pattern "curl*api.middesk.com*" --purpose "KYB reads"
+    cli: runtm-api guardrails rules create --name deny-middesk-post --kind deny --pattern "curl*-X POST*api.middesk.com*" --purpose "The agent does not create or order anything in Middesk"
+    ```
+
+    </Visibility>
 
     If the runbook must create the business itself, deny only writes below an existing business plus every `PATCH` and `DELETE`. The create call matches no deny rule and falls through to the allow rule, so it needs no rule of its own:
 
-    {/* cli: runtm-api guardrails rules create --name allow-middesk-reads --kind allow --pattern "curl*api.middesk.com*" --purpose "KYB reads and the create-business call" */}
-    {/* cli: runtm-api guardrails rules create --name deny-middesk-orders --kind deny --pattern "curl*-X POST*api.middesk.com/v1/businesses/*" --purpose "The agent never orders verifications on an existing business" */}
-    {/* cli: runtm-api guardrails rules create --name deny-middesk-patch --kind deny --pattern "curl*-X PATCH*api.middesk.com*" --purpose "Read-only underwriting" */}
-    {/* cli: runtm-api guardrails rules create --name deny-middesk-delete --kind deny --pattern "curl*-X DELETE*api.middesk.com*" --purpose "Read-only underwriting" */}
-    {/* cli: runtm-api guardrails rules attach <rule_id> --template <template_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api guardrails rules create --name allow-middesk-reads --kind allow --pattern "curl*api.middesk.com*" --purpose "KYB reads and the create-business call"
+    cli: runtm-api guardrails rules create --name deny-middesk-orders --kind deny --pattern "curl*-X POST*api.middesk.com/v1/businesses/*" --purpose "The agent never orders verifications on an existing business"
+    cli: runtm-api guardrails rules create --name deny-middesk-patch --kind deny --pattern "curl*-X PATCH*api.middesk.com*" --purpose "Read-only underwriting"
+    cli: runtm-api guardrails rules create --name deny-middesk-delete --kind deny --pattern "curl*-X DELETE*api.middesk.com*" --purpose "Read-only underwriting"
+    cli: runtm-api guardrails rules attach <rule_id> --template <template_id>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Set the default policy to ask">
     On the **Allowlists** tab set the default policy to `ask`, so any command outside the patterns above pauses for a permission decision instead of running. The CLI does not set this; use the tab or `PUT /api/cloud/organizations/<org_id>/allowlist-policy` with `{"default_policy": "ask"}`.
 
-    {/* cli-verify: runtm-api template guardrails resolve <template_id> | jq .allowlist_default_policy */}
+    <Visibility for="agents">
+
+    ```text
+    cli-verify: runtm-api template guardrails resolve <template_id> | jq .allowlist_default_policy
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Pin the network">
     As soon as one network rule exists, egress is deny-all plus the list. This agent needs five hosts.
 
-    {/* cli: runtm-api guardrails network create --name middesk-api --kind host --value api.middesk.com --purpose "KYB reads" */}
-    {/* cli: runtm-api guardrails network create --name notion-api --kind host --value api.notion.com --purpose "Underwriting policy pages" */}
-    {/* cli: runtm-api guardrails network create --name merchants-db --kind host --value <postgres_host> --purpose "Read-only applications database" */}
-    {/* cli: runtm-api guardrails network create --name runtm-app --kind host --value app.runtm.com --purpose "runtm-api and runtm-approval" */}
-    {/* cli: runtm-api guardrails network create --name runtm-docs --kind host --value docs.runtm.com --purpose "Agent reads the docs" */}
-    {/* cli: runtm-api guardrails network attach <rule_id> --template <template_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api guardrails network create --name middesk-api --kind host --value api.middesk.com --purpose "KYB reads"
+    cli: runtm-api guardrails network create --name notion-api --kind host --value api.notion.com --purpose "Underwriting policy pages"
+    cli: runtm-api guardrails network create --name merchants-db --kind host --value <postgres_host> --purpose "Read-only applications database"
+    cli: runtm-api guardrails network create --name runtm-app --kind host --value app.runtm.com --purpose "runtm-api and runtm-approval"
+    cli: runtm-api guardrails network create --name runtm-docs --kind host --value docs.runtm.com --purpose "Agent reads the docs"
+    cli: runtm-api guardrails network attach <rule_id> --template <template_id>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Rebuild and re-run a case">
     Allowlist rules are materialized into the snapshot; network rules apply at session creation. Rebuild, then re-run the clean approval and the missing-document cases. If one now stalls, the last rule you added is the cause.
 
-    {/* cli: runtm-api template build <template_id> */}
-    {/* cli-verify: runtm-api template guardrails resolve <template_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api template build <template_id>
+    cli-verify: runtm-api template guardrails resolve <template_id>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Keep both approval gates in the runbook">
     The skill already requests two approvals: `memo_attach` before the memo is posted to the ticket, and `document_request` before any request goes to the merchant. Both use `--required-team <underwriting_team_id>` so only underwriters can resolve them; admins and owners always can. Approvals are resolved on the session card or with the CLI, not in Slack or Linear.
@@ -398,8 +537,14 @@ Read [Add guardrails and approvals](/build/guardrails-and-approvals). Only now, 
       --required-team <underwriting_team_id> --wait
     ```
 
-    {/* cli: runtm-api session approvals resolve <session_id> <approval_id> --approve --note "Memo checked against the registry filing" */}
-    {/* cli: runtm-api session approvals resolve <session_id> <approval_id> --reject --note "Wrong entity, re-run with the parent company id" */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api session approvals resolve <session_id> <approval_id> --approve --note "Memo checked against the registry filing"
+    cli: runtm-api session approvals resolve <session_id> <approval_id> --reject --note "Wrong entity, re-run with the parent company id"
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 

@@ -194,7 +194,7 @@ Everything an agent can do hangs off one template. The roster row carries identi
 |---|---|---|
 | Follow a written procedure | Skill | `skills create` or `skills import` |
 | Call a service with typed tools | MCP server | `mcp create` |
-| Authenticate to a service | Tool provider connection | `tools create` (org or personal scope; agent scope in the dashboard) |
+| Authenticate to a service | Tool provider connection | A person, via `https://app.runtm.com/connect?provider=<slug>` (any scope). `tools create` only for scripts a person runs with their own secret |
 | Be prevented from doing something | Guardrail | `guardrails rules|hooks|network` or `template guardrails` |
 | Always be told something | Template context | `template context set` |
 
@@ -294,7 +294,7 @@ The CLI embeds one `SKILL.md` ([`packages/agent/skills/`](https://github.com/run
 runtm-api skills install
 ```
 
-The skill is deliberately short. It teaches the golden paths, the rules that fail silently, and the output contract on this page, and it points at https://docs.runtm.com/llms.txt for everything else: an agent reads the index, picks a page by its description, fetches `https://docs.runtm.com/<page>.md`, and lifts the `cli:` comments that every Build and Guides step carries. Inside a sandbox the same content is reachable through the sandbox's fetch tool or `curl`.
+The skill is deliberately short. It teaches the golden paths, the rules that fail silently, and the output contract on this page, and it points at https://docs.runtm.com/llms.txt for everything else: an agent reads the index, picks a page by its description, fetches `https://docs.runtm.com/<page>.md`, and lifts the `cli:` lines that every Build and Guides step carries in an agent-only block (hidden on the website, present at the `.md` URL). A `cli-handoff:` comment marks a step only a person can do, usually entering a credential: the agent sends the person that URL (with the placeholders filled in), then runs the step's `cli-verify:` to confirm it was done. Inside a sandbox the same content is reachable through the sandbox's fetch tool or `curl`.
 
 ## Source
 

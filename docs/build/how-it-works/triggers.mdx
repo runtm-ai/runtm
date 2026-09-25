@@ -55,36 +55,66 @@ Create the agent first, then attach triggers. Triggers created from the New Agen
   <Step title="Open the agent's Triggers list">
     On **Agents**, open your agent. The edit sheet's **Profile** tab ends with a **Triggers** list and dashed `Add Slack trigger`, `Add Linear trigger`, `Add GitHub trigger`, `Add Email trigger` rows. The sheet says "The profile is shared across this agent's triggers."
 
-    {/* cli: runtm-api agents get <agent_id> */}
-    {/* cli: runtm-api agents list --type slack */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents get <agent_id>
+    cli: runtm-api agents list --type slack
+    ```
+
+    </Visibility>
   </Step>
 
   <Step title="Slack: create the app for this agent">
     Click **Connect** on the Slack row. The dialog builds a Slack app from a manifest under your workspace, or you paste an App ID, an `xoxb-` bot token and the signing secret. Once connected, open the trigger's **Slack** tab and set the four launch toggles ("Auto-launch on new channel messages", "Auto-launch on bot channel messages", "Auto-reply to thread follow-ups", "Auto-launch on direct messages"), the default template, the **Event context** fields, and any **Channel → template overrides**.
 
-    {/* cli: runtm-api agents create --type slack --name "<agent name>" --template <template_id> */}
-    {/* cli: runtm-api agents update <slack_integration_id> --type slack --config '{"agent_id":"<agent_id>","triggers":{"new_dm_message":true,"new_thread_message":true,"new_channel_message":false},"event_context_fields":["channel_name","user_name"]}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents create --type slack --name "<agent name>" --template <template_id>
+    cli: runtm-api agents update <slack_integration_id> --type slack --config '{"agent_id":"<agent_id>","triggers":{"new_dm_message":true,"new_thread_message":true,"new_channel_message":false},"event_context_fields":["channel_name","user_name"]}'
+    ```
+
+    </Visibility>
   </Step>
 
   <Step title="Linear: authorize the workspace">
     Click **Connect** on the Linear row. Linear OAuth runs with the managed client or your own `client_id` and `client_secret`. Afterwards the **Linear** tab has `Agent name`, the default template, `Default agent`, `Rate limit (per hour)`, and **Team overrides** ("Route specific Linear teams to a different template.").
 
-    {/* cli: runtm-api agents create --type linear --name "<agent name>" --linear-api-key <linear_personal_api_key> --service-user <runtm_user_id> --template <template_id> */}
-    {/* cli: runtm-api agents update <linear_integration_id> --type linear --config '{"agent_id":"<agent_id>","team_template_map":{"<linear_team_id>":"<template_name>"}}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents create --type linear --name "<agent name>" --linear-api-key <linear_personal_api_key> --service-user <runtm_user_id> --template <template_id>
+    cli: runtm-api agents update <linear_integration_id> --type linear --config '{"agent_id":"<agent_id>","team_template_map":{"<linear_team_id>":"<template_name>"}}'
+    ```
+
+    </Visibility>
   </Step>
 
   <Step title="GitHub: create a customer-owned App">
     Click **Create app** on the GitHub row. GitHub's manifest flow creates an App under your account or org and returns you to **Agents**. In the **GitHub** tab, enable `Code review on assignment`, `Review when ready for review`, `Re-review when review is re-requested`, `Comment mentions` with its `Mention prefix` (default `@<app_slug>`), and optionally a `Filter label` so the bot only acts on labeled pull requests.
 
-    {/* cli: runtm-api agents create --type github --name "<agent name>" --github-org <github_org> --template <template_id> */}
-    {/* cli: runtm-api agents update <github_integration_id> --type github --config '{"agent_id":"<agent_id>","enable_code_review_on_assignment":true,"enable_comment_handling":true}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents create --type github --name "<agent name>" --github-org <github_org> --template <template_id>
+    cli: runtm-api agents update <github_integration_id> --type github --config '{"agent_id":"<agent_id>","enable_code_review_on_assignment":true,"enable_comment_handling":true}'
+    ```
+
+    </Visibility>
   </Step>
 
   <Step title="Email: mint the inbox">
     Click **Create inbox** on the Email row. One click provisions `<org-slug>-<agent-slug>@agents.runtm.com`. In the **Email** tab, add a sender allowlist (one address or `@domain` per line) and a signature. The default rate limit is 15 emails per hour.
 
-    {/* cli: runtm-api agents create --type email --name "<agent name>" --agent-id <agent_id> --template <template_id> */}
-    {/* cli-verify: runtm-api agents list --type email */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents create --type email --name "<agent name>" --agent-id <agent_id> --template <template_id>
+    cli-verify: runtm-api agents list --type email
+    ```
+
+    </Visibility>
   </Step>
 
   <Step title="WhatsApp or SMS: claim a number">
@@ -98,16 +128,28 @@ Create the agent first, then attach triggers. Triggers created from the New Agen
 
     Create it disabled, run it once, read the session, then enable. `run-now` executes the identical code path a cron tick takes, so a misconfigured schedule fails in front of you instead of silently at 03:00 UTC.
 
-    {/* cli: runtm-api scheduled-agents create --name "<name>" --cron "0 * * * *" --prompt "<prompt>" --template <template_id> --agent claude-code --disabled --slack-integration <slack_integration_id> --slack-channel <channel_id> */}
-    {/* cli-verify: runtm-api scheduled-agents run-now <scheduled_agent_id> */}
-    {/* cli: runtm-api scheduled-agents update <scheduled_agent_id> --enabled */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api scheduled-agents create --name "<name>" --cron "0 * * * *" --prompt "<prompt>" --template <template_id> --agent claude-code --disabled --slack-integration <slack_integration_id> --slack-channel <channel_id>
+    cli-verify: runtm-api scheduled-agents run-now <scheduled_agent_id>
+    cli: runtm-api scheduled-agents update <scheduled_agent_id> --enabled
+    ```
+
+    </Visibility>
   </Step>
 
   <Step title="API: launch from your own code">
     Create a session from the agent's template and send a prompt. Every launch records `metadata.trigger` and `metadata.source`, so API runs show up in Runs next to the others.
 
-    {/* cli: runtm-api session create --template-id <template_id> --agent claude-code */}
-    {/* cli: runtm-api session prompt <session_id> "<prompt>" */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api session create --template-id <template_id> --agent claude-code
+    cli: runtm-api session prompt <session_id> "<prompt>"
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 
@@ -122,8 +164,14 @@ Create the agent first, then attach triggers. Triggers created from the New Agen
 - For Slack, mention the bot in a test channel and confirm a session appears under **Runs** with the thread reply.
 - For schedules, `runtm-api scheduled-agents run-now <id>` returns a session id, and `runtm-api scheduled-agents get <id>` shows `last_run_at` and `next_run_at` once enabled.
 
-{/* cli-verify: runtm-api agents get <agent_id> */}
-{/* cli-verify: runtm-api scheduled-agents get <scheduled_agent_id> */}
+<Visibility for="agents">
+
+```text
+cli-verify: runtm-api agents get <agent_id>
+cli-verify: runtm-api scheduled-agents get <scheduled_agent_id>
+```
+
+</Visibility>
 
 ## Agent-to-agent
 
