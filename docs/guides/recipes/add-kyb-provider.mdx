@@ -19,17 +19,36 @@ Sessions that run as the underwriting agent have the vendor's API key in the env
   <Step title="Define the provider">
     In **Settings > Context > Tools & MCP** click **New tool or MCP server**, choose **Tool**, and define a custom provider. Category `custom`, one static auth method with a secret field `api_key`, materialized as `MIDDESK_API_KEY`. Use the vendor's sandbox key while you build.
 
-    {/* cli: runtm-api tools providers create --slug middesk --name Middesk --category custom --tagline "Business identity and KYB verification" --auth-methods '[{"id":"api_credentials","display_name":"API key","kind":"static","fields":[{"id":"api_key","label":"API key","kind":"secret","required":true}],"materialization":{"env":{"MIDDESK_API_KEY":"{fields.api_key}"}}}]' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api tools providers create --slug middesk --name Middesk --category custom --tagline "Business identity and KYB verification" --auth-methods '[{"id":"api_credentials","display_name":"API key","kind":"static","fields":[{"id":"api_key","label":"API key","kind":"secret","required":true}],"materialization":{"env":{"MIDDESK_API_KEY":"{fields.api_key}"}}}]'
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Connect it to the agent only">
-    Open **Add a provider**, pick Middesk, paste the key, and choose the agent scope, then select the underwriting agent. An agent connection is used only by sessions that run as that agent and wins over any personal or org-wide connection for the same provider. The CLI creates only org and personal connections; the agent scope is set in the dashboard, or with `scope: "agent"` and `agent_id` on `POST /api/cloud/knowledge/integrations`.
+    Open **Add a provider**, pick Middesk, paste the key, and choose the agent scope, then select the underwriting agent. An agent connection is used only by sessions that run as that agent and wins over any personal or org-wide connection for the same provider. The key goes from the person straight to Runtime. An agent setting this up hands them a `/connect` link with `agent=<underwriting_agent_id>`, which opens the dialog already set to the agent scope.
 
-    {/* cli-verify: runtm-api tools list --provider middesk */}
+    <Visibility for="agents">
+
+    ```text
+    cli-handoff: https://app.runtm.com/connect?provider=middesk&agent=<underwriting_agent_id>&method=api_credentials
+    cli-verify: runtm-api tools list --provider middesk
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Require it from the skill">
     Add `middesk` to `requires.integrations` in the agent's runbook skill. Agent connections reach the agent's sessions even without this, but declaring it keeps the requirement visible and lets the same runbook work if you later switch to an org-wide connection.
 
-    {/* cli: runtm-api skills update <skill_id> --content '{"entry_md":"SKILL.md","files":[{"path":"SKILL.md","mode":"text","inline":"..."}],"requires":{"integrations":["middesk","postgres"]}}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api skills update <skill_id> --content '{"entry_md":"SKILL.md","files":[{"path":"SKILL.md","mode":"text","inline":"..."}],"requires":{"integrations":["middesk","postgres"]}}'
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Teach the runbook the endpoints">
     Put the calls the agent may make in the skill, for example `GET /v1/businesses/{id}` and `GET /v1/businesses/{id}/documents`, and state that the agent never creates or updates a business record. That prohibition becomes a deny rule in step 6 of Build once the agent has passed its seeded cases.
@@ -40,7 +59,13 @@ Sessions that run as the underwriting agent have the vendor's API key in the env
 
 Run the agent once from its trigger, or create a session with the agent's id, then read the environment and call the vendor.
 
-{/* cli-verify: runtm-api session exec <session_id> --json -- sh -c 'curl -s -u "$MIDDESK_API_KEY:" https://api.middesk.com/v1/businesses?limit=1 | head -c 300' */}
+<Visibility for="agents">
+
+```text
+cli-verify: runtm-api session exec <session_id> --json -- sh -c 'curl -s -u "$MIDDESK_API_KEY:" https://api.middesk.com/v1/businesses?limit=1 | head -c 300'
+```
+
+</Visibility>
 
 A session launched from the same template by a person, without the agent's identity, must not see `MIDDESK_API_KEY` at all. That is the agent scope working.
 

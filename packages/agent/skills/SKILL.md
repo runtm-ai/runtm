@@ -17,7 +17,7 @@ The documentation is the source of truth and is written to be read by you. Do no
 
 1. Fetch `https://docs.runtm.com/llms.txt`. It lists every page as `[Title](url.md): description`. The description says when to read the page and what you can do after; pick by description.
 2. Fetch the page as markdown by appending `.md` to its URL, for example `https://docs.runtm.com/build/give-it-tools.md`.
-3. Every dashboard step on a Build or Guides page carries its CLI equivalent as a hidden comment: `{/* cli: runtm-api ... */}` and `{/* cli-verify: ... */}`. Lift those commands; they are verified against the CLI source.
+3. Every dashboard step on a Build or Guides page carries its CLI equivalent in an agent-only block that appears only in the `.md` output: `cli: runtm-api ...` to run, `cli-verify: ...` to check it worked, and `cli-handoff: https://app.runtm.com/...` for a step only a person may do. For a handoff, fill in the placeholders, give the person the URL, and run the step's `cli-verify` once they say it is done.
 4. No fetch tool in this sandbox? `runtm-api docs` prints `llms.txt`, and `runtm-api docs <path>` prints one page (`runtm-api docs build/give-it-tools`).
 
 Where things are:
@@ -37,7 +37,7 @@ An agent is built in six steps and the order matters. Steps 1 to 4 give it conte
 
 1. **Define the job**: roster agent with description, system instructions, default template, coding agent.
 2. **Measure success**: evaluation categories (when to use, pass or fail criteria, tags, human cost and time), monthly budget (observe-only). Without a category nothing is graded.
-3. **Give it tools**: the template carries tool providers, MCP servers, secrets, repos. Credentials resolve agent, then personal, then org-wide.
+3. **Give it tools**: the template carries tool providers, MCP servers, secrets, repos. Credentials resolve agent, then personal, then org-wide; give every roster agent its own agent-scoped connection unless the job requires otherwise.
 4. **Define how it works**: a runbook skill, the instruction layers, a trigger pointed at a test channel or a disabled schedule.
 5. **Prove it works**: run seeded cases, read `session grade` and `agents scorecard`, tighten one thing at a time.
 6. **Add guardrails and approvals**: allow, ask, deny rules from observed commands, network rules, `runtm-approval` at the runbook step that must wait.
@@ -69,6 +69,7 @@ Create the template, attach skills and MCP servers, verify with `template get`, 
 - **Attached is not built.** Skills, MCP servers and guardrail rules attached after the last build are not in the snapshot. `template get | jq '{skills:[.skills[].name], stale:.attachments_changed_since_build}'` tells you; `template build` fixes it. `template create --skip-agent` implies `--build`, so attaching afterwards makes the template stale immediately.
 - **A roster agent without `--template` runs on a bare sandbox** with no tools, skills or secrets.
 - **A tool connection reaches a session only if an attached skill lists the provider in `requires.integrations`**, unless the connection is agent-scoped.
+- **Never take a credential yourself.** Do not ask a person to paste an API key, token or password into the conversation, and do not pass one to `tools create --credentials`. Send them `https://app.runtm.com/connect?provider=<slug>&agent=<agent_id>&method=<auth_method_id>` so the secret goes straight to Runtime (agent scope is the default; use `scope=personal` or `scope=org` instead of `agent=` only when the job requires it), then confirm with `tools list --provider <slug>`. A secret already pasted to you is leaked: tell them to rotate it.
 - **No evaluation categories means no grades**; the scorecard shows zeros.
 - **Always `--json` on `session exec` when parsing.** The default PTY stream merges stderr into stdout and carries shell startup noise.
 - **Scheduled agents: create `--disabled`, `run-now`, then `--enabled`.** `run-now` takes the identical path a cron tick takes. Cron is 5 fields in UTC with no per-agent time zone.

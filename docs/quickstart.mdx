@@ -44,7 +44,13 @@ If you prefer to see every piece, follow the manual path below. It creates the s
 
     On **Profile**, name the agent (for example `Payment Support`). On **Instructions**, write a one-line **Description** that states the job, and **System instructions** that say how to do it and what never to do. Skip **Triggers** for now and click **Create agent**.
 
-    {/* cli: runtm-api agents create --name "Payment Support" --description "Reconstructs disputed charges from a ticket and drafts a reply, never sends" --instructions "$(cat instructions.md)" */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents create --name "Payment Support" --description "Reconstructs disputed charges from a ticket and drafts a reply, never sends" --instructions "$(cat instructions.md)"
+    ```
+
+    </Visibility>
 
     A good first description names the input, the output, and the boundary: "Given a Zendesk ticket about a charge, reconstruct the payment timeline from Stripe and the ledger and draft a customer reply. Never send it." See [Define the job](/build/define-the-job).
   </Step>
@@ -52,9 +58,15 @@ If you prefer to see every piece, follow the manual path below. It creates the s
   <Step title="Give it a place to run">
     Open the agent (click its card) and set **Default template**. If you have no template yet, go to **Templates > New Template**, choose **Blank environment**, name it, and click **Create Template**. A blank template boots with your org's skills and tools and nothing cloned.
 
-    {/* cli: runtm-api template create --display-name "Payment Support" --github-repo <owner>/<repo> --skip-agent   # the CLI requires a repo; a blank environment is dashboard-only today */}
-    {/* cli: runtm-api agents update <agent_id> --template "payment-support" */}
-    {/* cli-verify: runtm-api template get <template_id> | jq -r .build_status   # wait for "ready" */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api template create --display-name "Payment Support" --github-repo <owner>/<repo> --skip-agent   # the CLI requires a repo; a blank environment is dashboard-only today
+    cli: runtm-api agents update <agent_id> --template "payment-support"
+    cli-verify: runtm-api template get <template_id> | jq -r .build_status   # wait for "ready"
+    ```
+
+    </Visibility>
 
     Tools, MCP servers and secrets attach to the template, not the agent. [Give it tools](/build/give-it-tools) covers connecting Zendesk, Stripe and a read-only database.
   </Step>
@@ -68,7 +80,13 @@ If you prefer to see every piece, follow the manual path below. It creates the s
 
     Fill in a category name (`duplicate-charge`), when to use it ("the customer reports being charged twice for one order"), and the success criteria ("the draft cites both charge IDs, states which one settled, and proposes the refund amount"). Add **Avg human cost (USD)** and **Avg human time (minutes)** so the scorecard can value each success. Click **Save profile**.
 
-    {/* cli: runtm-api agents update <agent_id> --evaluator-criteria '{"categories":[{"key":"duplicate-charge","description":"Customer reports two charges for one order","success_criteria":"Draft cites both charge IDs, states which settled, proposes the refund amount","tags":{},"human_cost_usd":18,"human_minutes":25}]}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents update <agent_id> --evaluator-criteria '{"categories":[{"key":"duplicate-charge","description":"Customer reports two charges for one order","success_criteria":"Draft cites both charge IDs, states which settled, proposes the refund amount","tags":{},"human_cost_usd":18,"human_minutes":25}]}'
+    ```
+
+    </Visibility>
 
     Without at least one category, runs are never graded and the scorecard shows zeros. See [Measure success](/build/measure-success).
   </Step>
@@ -79,8 +97,14 @@ If you prefer to see every piece, follow the manual path below. It creates the s
     - **Email** is the fastest: click **Create inbox** and Runtime mints an address like `acme-payment-support@agents.runtm.com`. Emails to it start a run; the reply comes back in the same thread.
     - **Slack** installs an app into your workspace so people can `@mention` the agent in a channel or DM it.
 
-    {/* cli: runtm-api agents create --type email --name payment-support --agent-id <agent_id> */}
-    {/* cli: runtm-api agents create --type slack --name "Payment Support"   # finishes in the browser */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents create --type email --name payment-support --agent-id <agent_id>
+    cli: runtm-api agents create --type slack --name "Payment Support"   # finishes in the browser
+    ```
+
+    </Visibility>
 
     Every trigger uses the agent's default template and instructions unless its own settings tab overrides them. See [Triggers](/build/how-it-works/triggers).
   </Step>
@@ -92,14 +116,26 @@ If you prefer to see every piece, follow the manual path below. It creates the s
 
     The run appears under **Sessions** (and under **Agents > Runs**). Open it to watch the agent work, or wait for the reply in the thread.
 
-    {/* cli: runtm-api session list */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api session list
+    ```
+
+    </Visibility>
   </Step>
 
   <Step title="Read the grade">
     A few minutes after the run finishes, open **Activity > Agents**. Your agent shows one graded run, whether it passed, and the value returned based on the human cost you entered.
 
-    {/* cli-verify: runtm-api session grade <session_id>       # {"graded": true, "success": ..., "reason": ..., "task": "duplicate-charge"} */}
-    {/* cli-verify: runtm-api agents scorecard --days 7 */}
+    <Visibility for="agents">
+
+    ```text
+    cli-verify: runtm-api session grade <session_id>       # {"graded": true, "success": ..., "reason": ..., "task": "duplicate-charge"}
+    cli-verify: runtm-api agents scorecard --days 7
+    ```
+
+    </Visibility>
 
     If the run failed the grade, the `reason` tells you why. Tighten the success criteria or the instructions and send the next case. See [Prove it works and iterate](/build/launch-and-iterate). Guardrails come after the agent passes its cases: [Add guardrails and approvals](/build/guardrails-and-approvals).
   </Step>
@@ -123,7 +159,7 @@ runtm-api agents create --type email --name payment-support --agent-id <agent_id
 runtm-api agents scorecard --days 7
 ```
 
-Every Build and Guides page carries the CLI equivalent of each dashboard step as a hidden comment in its markdown source, so an agent reading `https://docs.runtm.com/<page>.md` can lift the exact command. The full command table is on the [Agent CLI](/cloud-api/agent-cli) page.
+Every Build and Guides page carries the CLI equivalent of each dashboard step in an agent-only block (hidden on the website, present at the `.md` URL), so an agent reading `https://docs.runtm.com/<page>.md` can lift the exact command. Lines start with `cli:` (run it), `cli-verify:` (check it worked) or `cli-handoff:` (a URL to give a person, for steps like entering a credential that an agent must not do). The full command table is on the [Agent CLI](/cloud-api/agent-cli) page.
 
 ## Next steps
 

@@ -19,24 +19,48 @@ The schedule is enabled only after one manual run produced the session and the o
   <Step title="Create it disabled">
     On **Agents**, open the **Scheduled** tab and click **New scheduled agent**. Fill in **Name this scheduled agent** and the prompt ("Describe what the agent should do on each run..."). Choose **Agent** to run as a roster agent, or **Harness** to pick the coding agent and template yourself. Set the schedule, pick **Personal** or **Team**, and leave it off.
 
-    {/* cli: runtm-api scheduled-agents create --name "Nightly decline sweep" --cron "0 9 * * 1-5" --prompt "Review yesterday's declined payments and post a summary." --template <template_id> --agent claude-code --disabled */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api scheduled-agents create --name "Nightly decline sweep" --cron "0 9 * * 1-5" --prompt "Review yesterday's declined payments and post a summary." --template <template_id> --agent claude-code --disabled
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Run it once">
     Use the row's menu and choose **Run now**. This executes the identical code path a cron tick takes: same template resolution, same post target, same launch. A failure here is the failure you would otherwise get at the scheduled hour.
 
-    {/* cli: runtm-api scheduled-agents run-now <scheduled_agent_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api scheduled-agents run-now <scheduled_agent_id>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Read the session">
     The run appears under **Sessions**. Open it and read the transcript to the end: did it reach the tools, did it finish, did the post land where you meant? If the schedule runs as a roster agent, check the run's grade too.
 
-    {/* cli-verify: runtm-api session status <session_id> */}
-    {/* cli-verify: runtm-api session grade <session_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli-verify: runtm-api session status <session_id>
+    cli-verify: runtm-api session grade <session_id>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Enable">
     Toggle the schedule on. Then read `next_run_at`; it is the fastest liveness check and should be the UTC instant you intended.
 
-    {/* cli: runtm-api scheduled-agents update <scheduled_agent_id> --enabled */}
-    {/* cli-verify: runtm-api scheduled-agents get <scheduled_agent_id> | jq '{enabled, cron, next_run_at, last_run_at}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api scheduled-agents update <scheduled_agent_id> --enabled
+    cli-verify: runtm-api scheduled-agents get <scheduled_agent_id> | jq '{enabled, cron, next_run_at, last_run_at}'
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 

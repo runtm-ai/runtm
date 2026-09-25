@@ -154,9 +154,15 @@ flowchart LR
 
     Exit codes: `0` ok, `2` bad arguments, `3` the subagent never reached running, `4` the template was not applied (nothing was prompted), `5` create or prompt failed, `6` the session could not be made team-visible.
 
-    {/* cli: runtm-api skills create --name delegate-to-agent --display-name "Delegate to agent" --description "Hand work to another Runtime agent through the approval-gated delegate script. Never call session create or prompt directly." --md ./SKILL.md */}
-    {/* cli: runtm-api skills upload-file <skill_id> --file ./scripts/delegate.sh --path scripts/delegate.sh */}
-    {/* cli: runtm-api skills attach <skill_id> --template <parent_template_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api skills create --name delegate-to-agent --display-name "Delegate to agent" --description "Hand work to another Runtime agent through the approval-gated delegate script. Never call session create or prompt directly." --md ./SKILL.md
+    cli: runtm-api skills upload-file <skill_id> --file ./scripts/delegate.sh --path scripts/delegate.sh
+    cli: runtm-api skills attach <skill_id> --template <parent_template_id>
+    ```
+
+    </Visibility>
   </Step>
 
   <Step title="Write the SKILL.md so the agent always uses the two-line form">
@@ -261,23 +267,41 @@ flowchart LR
     esac
     ```
 
-    {/* cli: runtm-api template guardrails create <parent_template_id> --type hook --name hil-gates --content "$(python3 -c 'import json;print(json.dumps({"event":"PreToolUse","type":"command","matcher":"Bash","timeout":600,"script":open("hil-gates.sh").read()}))')" */}
-    {/* cli-verify: runtm-api template guardrails resolve <parent_template_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api template guardrails create <parent_template_id> --type hook --name hil-gates --content "$(python3 -c 'import json;print(json.dumps({"event":"PreToolUse","type":"command","matcher":"Bash","timeout":600,"script":open("hil-gates.sh").read()}))')"
+    cli-verify: runtm-api template guardrails resolve <parent_template_id>
+    ```
+
+    </Visibility>
   </Step>
 
   <Step title="Tell the parent when to delegate">
     The parent's template context (or its skill) names the trigger it reacts to, the exact two-line command per target, what to do with each reply, and what it never does: research or act itself, call the sessions API directly, retry a denied gate, or split the command to avoid the hook. See the [multi-agent example](/guides/payments/multi-agent-underwriting) for a complete orchestrator context.
 
-    {/* cli: runtm-api template context set <parent_template_id> --text "$(cat underwriting-context.md)" */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api template context set <parent_template_id> --text "$(cat underwriting-context.md)"
+    ```
+
+    </Visibility>
   </Step>
 
   <Step title="Rebuild the parent template, then prove one hop">
     Attach the skill and the hook, build once, then trigger the parent with a test case and resolve the approval on the Sessions board (or with the CLI). The parent's run shows a "Delegated work to subagent" card with an **Open subagent session** link; the child appears in Team mode as a run of the child agent.
 
-    {/* cli: runtm-api template build <parent_template_id> */}
-    {/* cli: runtm-api session approvals list <parent_session_id> */}
-    {/* cli: runtm-api session approvals resolve <parent_session_id> <approval_id> --approve --note "Test hop" */}
-    {/* cli-verify: runtm-api session search --team-mode --source agent-delegation */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api template build <parent_template_id>
+    cli: runtm-api session approvals list <parent_session_id>
+    cli: runtm-api session approvals resolve <parent_session_id> <approval_id> --approve --note "Test hop"
+    cli-verify: runtm-api session search --team-mode --source agent-delegation
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 
@@ -292,8 +316,14 @@ The card is drawn from the Bash command text, not from any server-side link. Its
 - The parent's transcript ends with the child's reply pasted into the parent's own output format.
 - A bare `delegate.sh` call (no comment line) is denied with the prepend instruction and no approval row is created.
 
-{/* cli-verify: runtm-api session get <child_session_id> | jq '{template, visibility, state}' */}
-{/* cli-verify: runtm-api agents scorecard --days 7 */}
+<Visibility for="agents">
+
+```text
+cli-verify: runtm-api session get <child_session_id> | jq '{template, visibility, state}'
+cli-verify: runtm-api agents scorecard --days 7
+```
+
+</Visibility>
 
 ## Gotchas
 

@@ -19,7 +19,13 @@ The agent's harness lists the MCP server's tools at session start, the token is 
   <Step title="Define the server without the secret">
     In **Settings > Context > Tools & MCP** click **New tool or MCP server** and choose **MCP server**. Give it the command and arguments only. Do not add the key as an environment variable here; anything in the directive is written verbatim into the snapshot.
 
-    {/* cli: runtm-api mcp create --name stripe-mcp --display-name "Stripe MCP" --description "Typed Stripe tools" --transport stdio --command npx --arg -y --arg @stripe/mcp --arg --tools=all */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api mcp create --name stripe-mcp --display-name "Stripe MCP" --description "Typed Stripe tools" --transport stdio --command npx --arg -y --arg @stripe/mcp --arg --tools=all
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Add a connection for the token">
     Open the new server and add a connection of kind `env` with `STRIPE_SECRET_KEY` set to a restricted read-only key. Choose the scope: org-wide for everyone, personal for yourself, or agent for one roster agent. Connections are created in the dashboard or through `POST /api/cloud/agent-directives/{id}/connections`; the CLI does not create them.
@@ -27,14 +33,26 @@ The agent's harness lists the MCP server's tools at session start, the token is 
   <Step title="Attach it to the template">
     Attach the server to the agent's template. Like a skill, an MCP server applies to nothing until it is attached.
 
-    {/* cli: runtm-api mcp attach <mcp_id> --template <template_id> */}
-    {/* cli-verify: runtm-api mcp attachments <mcp_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api mcp attach <mcp_id> --template <template_id>
+    cli-verify: runtm-api mcp attachments <mcp_id>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Rebuild">
     The server definition lands in the snapshot at build time. The connection is resolved at each session start, so rotating the token later needs no rebuild.
 
-    {/* cli: runtm-api template build <template_id> */}
-    {/* cli-verify: runtm-api template get <template_id> | jq '{build_status, stale: .attachments_changed_since_build, mcp: [.mcp_servers[].name]}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api template build <template_id>
+    cli-verify: runtm-api template get <template_id> | jq '{build_status, stale: .attachments_changed_since_build, mcp: [.mcp_servers[].name]}'
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 
@@ -42,8 +60,14 @@ The agent's harness lists the MCP server's tools at session start, the token is 
 
 Start a session from the template and ask the harness what tools it has. In Claude Code, `/mcp` lists connected servers and their tools; a prompt such as "list the Stripe MCP tools you can call" also works. If the server appears but every call fails with an authentication error, the connection is missing or has the wrong scope for this run.
 
-{/* cli: runtm-api session create --template-id <template_id> --agent claude-code */}
-{/* cli-verify: runtm-api session prompt <session_id> "List the tools exposed by the stripe-mcp server and call the one that lists the most recent charge." */}
+<Visibility for="agents">
+
+```text
+cli: runtm-api session create --template-id <template_id> --agent claude-code
+cli-verify: runtm-api session prompt <session_id> "List the tools exposed by the stripe-mcp server and call the one that lists the most recent charge."
+```
+
+</Visibility>
 
 ## Gotchas
 

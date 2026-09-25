@@ -56,7 +56,13 @@ Every finished run of the agent is routed to one evaluation category, graded pas
 
     Click **Save profile**.
 
-    {/* cli: runtm-api agents update <agent_id> --evaluator-criteria "$(cat rubric.json)" */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents update <agent_id> --evaluator-criteria "$(cat rubric.json)"
+    ```
+
+    </Visibility>
 
     The JSON the CLI takes has this shape; the server bumps `version` on every write:
 
@@ -81,7 +87,13 @@ Every finished run of the agent is routed to one evaluation category, graded pas
   <Step title="Set the monthly budget">
     At the top of the section, enter **Monthly budget** in dollars. Leave it empty for no cap. Click **Save profile**.
 
-    {/* cli: runtm-api agents update <agent_id> --economics '{"budget":{"monthly_usd_cap":400}}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents update <agent_id> --economics '{"budget":{"monthly_usd_cap":400}}'
+    ```
+
+    </Visibility>
 
     Spend is metered from each turn's token usage against the model's pricing, so it lags real spend by about one turn.
   </Step>
@@ -94,8 +106,14 @@ Run the agent once (see [Prove it works and iterate](/build/launch-and-iterate))
 - **Activity > Agents** shows the agent with one graded run, its hit rate and value.
 - `runtm-api session grade <session_id>` returns the verdict for that run.
 
-{/* cli-verify: runtm-api session grade <session_id>    # {"graded": true, "success": true, "reason": "...", "task": "duplicate-charge"} */}
-{/* cli-verify: runtm-api agents scorecard --days 7 */}
+<Visibility for="agents">
+
+```text
+cli-verify: runtm-api session grade <session_id>    # {"graded": true, "success": true, "reason": "...", "task": "duplicate-charge"}
+cli-verify: runtm-api agents scorecard --days 7
+```
+
+</Visibility>
 
 <Frame caption="Activity > Agents: the scorecard for every roster agent over the selected window.">
   <img src="/images/dashboard/activity-agents-scorecard.png" alt="Activity page, Agents tab showing per-agent graded runs, hit rate, spend and value" />

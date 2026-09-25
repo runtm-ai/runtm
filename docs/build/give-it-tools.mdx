@@ -1,6 +1,6 @@
 ---
 title: "3. Give it tools"
-description: "Attach tool providers, MCP servers, secrets and repos to the template an agent runs on, and understand which of them a session actually receives. Read before `runtm-api tools create`, `runtm-api mcp create` or `runtm-api template build`."
+description: "Attach tool providers, MCP servers, secrets and repos to the template an agent runs on, and understand which of them a session actually receives. Covers choosing CLI, then SDK, then API, then browser for reaching a vendor, and handing the person a /connect link so credentials go to Runtime and never to the agent. Read before `runtm-api tools providers create`, `runtm-api mcp create`, asking anyone for a credential, or `runtm-api template build`."
 ---
 
 ## Outcome
@@ -23,9 +23,22 @@ The agent never holds tools directly. It points at a template through `Default t
 - Bad: "Add both, the agent will figure it out."
 - Good: "Stripe as a provider because the runbook uses the Stripe CLI for timeline reconstruction. Notion as an MCP server because we only want `search` and `read_page`."
 
+**How should the agent reach the vendor?**
+
+Pick the first surface that covers everything the job needs, and design the provider around it:
+
+1. **CLI.** Use the vendor CLI if it covers the job. Declare it as a package on the provider and mise installs it into the snapshot. `npm:` and `github:` specs cover most vendors, including CLIs that only ship as GitHub release binaries. A CLI is documented, has `--help` for the agent to read, and returns structured output.
+2. **SDK.** If the CLI is missing or incomplete, use the vendor's SDK from a short script. Install it as a provider package when it ships one (for example an `npm:` spec), or from the repo's own dependencies.
+3. **API.** If there is no usable SDK, call the HTTP API directly with the credential the provider puts in the environment.
+4. **Browser.** Only as a last resort, when the vendor has no programmatic access at all, use a `browser` auth method. A person logs in once in a remote browser, the session is saved as Playwright storage state, and the agent drives the web UI with it. This path is the slowest and the most brittle, and it breaks whenever the vendor changes its UI or expires the session.
+
+- Bad: "Use the browser for Stripe, it's what the team does by hand."
+- Good: "Stripe CLI via `github:stripe/stripe-cli` for disputes and events, the Python SDK for the one report the CLI lacks, and no browser."
+
 **Who else in the org gets these credentials?**
 
-- An org-scoped connection is available to every template whose skills ask for it. A personal connection is available only to sessions that user launches. An agent-scoped connection is available only when a session runs as that agent.
+- Default to an **agent-scoped** connection: it is used only when a session runs as that agent, it skips the skill filter, and rotating it touches one agent. Use a personal connection only when the work must act as a person, and an org-wide one only when many agents genuinely share one read-only credential.
+- An org-scoped connection is available to every template whose skills ask for it. A personal connection is available only to that person's private sessions: their DMs with an agent and the sessions they open from the dashboard. An agent-scoped connection is available only when a session runs as that agent.
 - Bad: "Org-scoped Snowflake with the analytics service account, we already have it."
 - Good: "Agent-scoped Snowflake connection for the risk agent using a role that can read `fraud.alerts` and `fraud.attempts`."
 
@@ -56,11 +69,35 @@ Every integration is three separate objects, and only one of them ever holds a s
 | **Connection** | Credentials supplied against a definition, encrypted, with a status and a scope (org-wide, agent, or personal). One definition, many connections. | `Add connection` on the tool or MCP server, or `tools create` for providers |
 | **Attachment** | Where a skill or MCP server loads: a template, a repo, or every repo in the org. | `skills attach`, `mcp attach`, or the template's Context tab |
 
-A coding agent setting up an integration should build the definition and the attachment, then hand the person to the dashboard to create the connection so the secret never passes through the agent.
+### Credentials go to Runtime, never to an agent
 
-{/* cli: runtm-api tools providers list */}
-{/* cli: runtm-api tools providers create --slug <slug> --name "<Display name>" --category <category> --tagline "<one line>" --logo <https-url> --auth-methods '<json>' */}
-{/* cli: runtm-api mcp attach <mcp_id> --template <template_id> */}
+A connection is the only object that holds a secret, so it is the one step an agent must not do for a person. A coding agent (or a Runtime agent) setting up an integration builds the definition and the attachment, then hands the person a link to create the connection themselves. The secret goes from the person's browser straight to Runtime, where it is stored encrypted. It never appears in a chat, a prompt, a transcript, a shell history or a repo.
+
+- Bad: "Paste your Stripe key here and I'll run `runtm-api tools create` for you."
+- Good: "The Stripe provider is created and required by the `refund-investigation` skill. Open this link to add the key: `https://app.runtm.com/connect?provider=stripe&scope=agent&agent=<agent_id>`."
+
+The `/connect` link opens **Settings > Context > Tools & MCP** with the provider selected and its connect dialog open and filled in. If the provider is a catalog provider the org has not added yet, the link adds it first. If the person is signed out, they go back to the link after signing in.
+
+| Parameter | Required | Meaning |
+|---|---|---|
+| `provider` | yes | Provider slug, as in `runtm-api tools providers list` |
+| `scope` | no | `org` (alias `teams`), `personal` or `agent`. Defaults to personal for OAuth and browser methods and to org for static ones |
+| `agent` | no | Roster agent id for an agent-scoped connection. Passing it alone implies `scope=agent` |
+| `method` | no | Auth method id from the provider schema, for example `oauth` or `api_credentials`. Defaults to the first method |
+
+Pass `agent=<agent_id>` whenever the connection is for a roster agent, which should be almost always. Use `scope=personal` or `scope=org` only when the job requires it. The link opens in the person's active organization, so hand it to someone who is working in the right org. It only fills in the form. The person still picks the credential, confirms any sharing warning, and clicks connect. MCP server connections have no link yet: send the person to the server under **Tools & MCP** and ask them to click **Add connection**.
+
+`runtm-api tools create --credentials` exists for scripts a person runs themselves, such as CI or a bootstrap script reading from a secret manager. It is not for an agent relaying a secret it was handed.
+
+<Visibility for="agents">
+
+```text
+cli: runtm-api tools providers list
+cli: runtm-api tools providers create --slug <slug> --name "<Display name>" --category <category> --tagline "<one line>" --logo <https-url> --auth-methods '<json>'
+cli: runtm-api mcp attach <mcp_id> --template <template_id>
+```
+
+</Visibility>
 
 ## Who the agent acts as: the credential hierarchy
 
@@ -68,9 +105,11 @@ Every connection, whether it belongs to a tool provider or to an MCP server, liv
 
 | Scope | Who can use it | Typical credential |
 |---|---|---|
+| **Agent** (default) | only sessions that run as that roster agent | the agent's own identity: a Zendesk token for the bot user, a Stripe key with the scopes that one job needs |
+| **Personal** | only that person's private sessions: DMs with an agent and dashboard sessions, never a team-visible run | the person's own login, so their actions are attributed to them |
 | **Org-wide** | every session in the org whose template asks for the provider | a shared, least-privilege key: a restricted read-only Stripe key, a support mailbox token |
-| **Agent** | only sessions that run as that roster agent | the agent's own identity: a Zendesk token for the bot user, a Stripe key with the scopes that one job needs |
-| **Personal** | only sessions launched by, or on behalf of, that user | the person's own login, so their actions are attributed to them |
+
+Start every roster agent's tools at agent scope. Reach for personal when the work must be attributed to a person, and for org-wide only when a separate credential per agent is not practical.
 
 ```mermaid
 flowchart TD
@@ -99,21 +138,21 @@ flowchart TD
     class BEN1,ANA2 userNone
 ```
 
-Each level has its own colour: the organization is black, agents are violet, tools are green, people are amber. Solid nodes hold a credential. Dashed nodes hold none. The root holds the org-wide connections: a restricted read-only Stripe key and a read-only Snowflake role. For a run of an agent that touches a tool, start at that agent's tool node: if it is solid, the agent credential is used; otherwise if the user's leaf under it is solid, the personal credential is used; otherwise the org-wide credential at the root is the floor.
+Each level has its own colour: the organization is black, agents are violet, tools are green, people are amber. Solid nodes hold a credential. Dashed nodes hold none. The root holds the org-wide connections: a restricted read-only Stripe key and a read-only Snowflake role. For a run of an agent that touches a tool, start at that agent's tool node: if it is solid, the agent credential is used. Otherwise, only in a DM, if the person's leaf under it is solid, their personal credential is used. Otherwise the org-wide credential at the root is the floor.
 
 ### How a run picks a credential
 
 When a session starts, Runtime resolves one connection per provider, walking the tree from the most specific scope outward:
 
 1. **Agent.** If the run is attributed to a roster agent and that agent has its own connection for the provider, it wins. Agent connections are never used by runs that are not that agent's.
-2. **Personal.** Otherwise, if the run's effective user has a personal connection for the provider, that is used.
+2. **Personal, private sessions only.** Otherwise, if the session is private (a DM with the agent, or a dashboard session) and its person has a personal connection for the provider, that is used. Team-visible runs skip this step.
 3. **Org-wide.** Otherwise the org-wide connection is used.
 4. **Unmet.** If none exists, the provider shows up as an unmet requirement in the session manifest and the run starts without it.
 
-Two facts decide the outcome, and neither is "channel versus DM":
+Two facts decide the outcome:
 
 - **Which agent the run belongs to.** A Slack mention, a DM, an email, a Linear assignment or a cron tick all run as the agent behind that trigger. A session someone opens from the dashboard runs as no agent, so agent connections never apply to it.
-- **Who the effective user is.** For Slack, Runtime matches the Slack user to a Runtime account by email; a match becomes the effective user. If there is no match, the trigger's service user is the effective user, and that account normally has no personal connections. Email, WhatsApp and SMS runs do not match the sender at all: their effective user is always the trigger's service user, so personal connections never apply to them and they fall to the agent connection or the org-wide one.
+- **Whether the session is team-visible or private.** A run the agent does in a shared place (a Slack channel or group DM, an email, a Linear or GitHub trigger, a schedule) is team-visible and acts purely as the agent: agent connection, then org-wide, never anyone's personal credential. This is the same rule GitHub follows: tagged in a channel, an agent opens pull requests as its own GitHub App bot, and a reviewer agent reviews as its own account. A DM with the agent is private to the person in it, so their personal connections can fill in where the agent has none, and on GitHub their commits are authored as them with the agent as co-author. Slack matches the DM sender to a Runtime account by email; a sender with no account falls back to the trigger's service user, which has no personal connections.
 
 ### The example, run through
 
@@ -127,15 +166,28 @@ Northstar has two agents. Support Agent's runbook requires `zendesk` and `stripe
 | Ana opens a session from the Support template in the dashboard | no agent | Ana | Zendesk: **personal** token (agent credentials never apply) | Stripe: **org-wide** key |
 | A Slack user with no Runtime account mentions Support Agent | Support Agent | the trigger's service user | Zendesk: **agent** token | Stripe: **org-wide** key |
 
-Read the third row carefully: a person's own credential is used by an agent run when the agent has no connection of its own for that tool. If the agent must always act as itself, give it an agent connection for every provider it touches. Read the last row the same way: the org-wide credential is the floor everyone falls back to, so it should be the least privileged one in the tree.
+Read the first and third rows together: in `#support` Ana's personal Zendesk token is never considered, because the run is team-visible, but in his DM Ben's personal Snowflake role fills the gap the agent leaves. If the agent must act as itself even in DMs, give it an agent connection for every provider it touches. Read the last row the same way: the org-wide credential is the floor everyone falls back to, so it should be the least privileged one in the tree.
 
 ### Where each scope is set
 
 - **Org-wide and personal**: **Settings > Context > Tools & MCP**, connect the provider and pick **Teams** or **Personal**. Personal connections are visible only to their owner.
-  {/* cli: runtm-api tools create --provider <slug> --auth-method <method_id> --scope org --credentials '{"<field_id>":"<value>"}' */}
-  {/* cli: runtm-api tools create --provider <slug> --auth-method <method_id> --scope personal --credentials '{"<field_id>":"<value>"}' */}
-- **Agent**: in the same connect dialog choose the agent scope and pick the roster agent. Agent connections show the agent's avatar on the connection row. The CLI creates only org and personal connections today; agent scope is set in the dashboard or with `scope: "agent"` and `agent_id` on `POST /api/cloud/knowledge/integrations`.
-  {/* cli-verify: runtm-api tools list --provider <slug> --scope org */}
+  <Visibility for="agents">
+
+  ```text
+  cli-handoff: https://app.runtm.com/connect?provider=<slug>&scope=org&method=<method_id>
+  cli-handoff: https://app.runtm.com/connect?provider=<slug>&scope=personal&method=<method_id>
+  ```
+
+  </Visibility>
+- **Agent**: in the same connect dialog choose the agent scope and pick the roster agent. Agent connections show the agent's avatar on the connection row. A `/connect` link with `agent=<agent_id>` opens the dialog already on the agent scope with that agent selected.
+  <Visibility for="agents">
+
+  ```text
+  cli-handoff: https://app.runtm.com/connect?provider=<slug>&agent=<agent_id>&method=<method_id>
+  cli-verify: runtm-api tools list --provider <slug>
+  ```
+
+  </Visibility>
 - **MCP servers** follow the same three scopes on their connection rows, with the same agent, then personal, then org order.
 
 Agent connections are the one scope exempt from the skill filter: they reach the agent's sessions whether or not an attached skill lists the provider in `requires.integrations`. Org-wide and personal connections still need a skill to ask for them.
@@ -151,7 +203,13 @@ Agent connections are the one scope exempt from the skill filter: they reach the
     <Frame caption="Tools and MCP servers are configured differently, so the chooser separates them.">
       <img src="/images/dashboard/tools-add-chooser.png" alt="Dialog asking what to add, with Tool and MCP server options" />
     </Frame>
-    {/* cli: runtm-api tools providers list */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api tools providers list
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Pick a provider from the catalog">
     **Add a provider** lists the built-in providers your org has not added yet: BigQuery, Datadog, Google Cloud, Notion, Phone, PostHog, Slack, Trigify and Zendesk. Pick one and click through to the credentials form.
@@ -161,18 +219,36 @@ Agent connections are the one scope exempt from the skill filter: they reach the
     </Frame>
 
     If the vendor is not in the catalog, create a custom provider instead (next section) and it appears here for everyone in the org.
-    {/* cli: runtm-api tools providers get <provider_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api tools providers get <provider_id>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Enter credentials">
     Fill in the provider's auth method. Static methods take the fields the provider declares (an API key, a token and email, a service account file). OAuth methods open the vendor's consent screen. Pick the scope: **Personal** or **Teams**.
 
     Use the least privileged credential the vendor offers. For Stripe that is a restricted key with read permissions only. For Postgres it is a dedicated read-only role. The agent never needs write access to investigate.
-    {/* cli: runtm-api tools create --provider <slug> --auth-method <method_id> --scope org --display-name "<name>" --credentials '{"<field_id>":"<value>"}' */}
-    {/* cli-verify: runtm-api tools list --provider <slug> */}
+    <Visibility for="agents">
+
+    ```text
+    cli-handoff: https://app.runtm.com/connect?provider=<slug>&scope=org&method=<method_id>
+    cli-verify: runtm-api tools list --provider <slug>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Make a skill require it">
     Open the skill your agent uses (see [Skills and runbooks](/build/how-it-works/skills)) and declare the provider slug under `requires.integrations`. Without this the connection is never materialized for the template, unless the connection is agent-scoped.
-    {/* cli: runtm-api skills update <skill_id> --content '{"entry_md":"SKILL.md","files":[...],"requires":{"integrations":["<slug>"]}}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api skills update <skill_id> --content '{"entry_md":"SKILL.md","files":[...],"requires":{"integrations":["<slug>"]}}'
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 
@@ -183,7 +259,13 @@ Anything outside the catalog becomes a custom provider. Stripe, Postgres, Snowfl
 <Steps>
   <Step title="Describe the provider">
     In **Tools & MCP**, choose **Tool**, then skip the catalog and define a custom provider. Give it a display name, a category (documents, data, observability, project management, CRM, support, messaging, meetings, sales or custom), a description and a logo URL (`--logo` on the CLI; the dashboard card is blank without one).
-    {/* cli: runtm-api tools providers create --slug <slug> --name "<Display name>" --category <category> --tagline "<one line>" --auth-methods '<json>' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api tools providers create --slug <slug> --name "<Display name>" --category <category> --tagline "<one line>" --auth-methods '<json>'
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Declare the auth method and fields">
     Add one auth method. Kind `static` takes user-facing fields (`string`, `secret`, `multiline`, `file_contents`) and a materialization that maps them to environment variables, files or setup commands. Kind `oauth` takes authorize and token URLs. Kind `browser` takes a login URL for a browser-auth flow.
@@ -205,15 +287,34 @@ Anything outside the catalog becomes a custom provider. Stripe, Postgres, Snowfl
       ]
     }
     ```
-    {/* cli: runtm-api tools providers create --slug stripe --name Stripe --category sales --package stripe=github:stripe/stripe-cli --auth-methods '[{"id":"api_credentials","display_name":"Secret key","kind":"static","fields":[{"id":"secret_key","label":"Secret key","kind":"secret","required":true}],"materialization":{"env":{"STRIPE_SECRET_KEY":"{fields.secret_key}"}}}]' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api tools providers create --slug stripe --name Stripe --category sales --package stripe=github:stripe/stripe-cli --auth-methods '[{"id":"api_credentials","display_name":"Secret key","kind":"static","fields":[{"id":"secret_key","label":"Secret key","kind":"secret","required":true}],"materialization":{"env":{"STRIPE_SECRET_KEY":"{fields.secret_key}"}}}]'
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Optionally install a CLI">
-    Add binary dependencies to have mise install the vendor CLI into the snapshot. Specs are `latest`, `npm:pkg`, `github:owner/repo`, `cargo:crate` or `ubi:owner/repo`.
-    {/* cli: runtm-api tools providers update <provider_id> --package <name>=<spec> */}
+    Add binary dependencies to have mise install the vendor CLI into the snapshot. Specs are `latest`, `npm:pkg`, `github:owner/repo`, `cargo:crate` or `ubi:owner/repo`. Prefer a CLI whenever it covers the job (see [How should the agent reach the vendor?](#decide)). `github:` works for vendors that only publish release binaries.
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api tools providers update <provider_id> --package <name>=<spec>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Connect it">
     The provider now appears in **Add a provider**. Connect it with credentials exactly like a built-in one, then require it from a skill.
-    {/* cli: runtm-api tools create --provider <slug> --auth-method api_credentials --scope org --credentials '{"secret_key":"<value>"}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli-handoff: https://app.runtm.com/connect?provider=<slug>&scope=org&method=api_credentials
+    cli-verify: runtm-api tools list --provider <slug> --scope org
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 
@@ -222,16 +323,28 @@ Anything outside the catalog becomes a custom provider. Stripe, Postgres, Snowfl
 <Steps>
   <Step title="Define the server">
     In **Tools & MCP**, choose **MCP server**. For a local server give a command, ordered arguments and environment variables. For a remote server give the URL and headers, with transport `http` or `sse`. The definition is written verbatim into the harness's MCP configuration at session start.
-    {/* cli: runtm-api mcp create --name <slug> --display-name "<Name>" --transport stdio --command npx --arg -y --arg <package> */}
-    {/* cli: runtm-api mcp create --name <slug> --display-name "<Name>" --transport http --url https://<host>/mcp */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api mcp create --name <slug> --display-name "<Name>" --transport stdio --command npx --arg -y --arg <package>
+    cli: runtm-api mcp create --name <slug> --display-name "<Name>" --transport http --url https://<host>/mcp
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Add a connection for its credentials">
     Open the server and add a connection. Static kinds are `api_token`, `headers` and `env`. For servers that publish OAuth metadata, use the OAuth flow and the platform discovers the endpoints. Scope the connection to the org, yourself, or one agent. Credentials on a connection are injected at session start and never baked into the template snapshot. Connections are managed in the dashboard and through the `/api/agent-directives/{id}/connections` endpoints; the CLI does not create them today.
   </Step>
   <Step title="Attach it to the template">
     Attach the server to the agent's template, to a repo, or org-wide. Then rebuild the template.
-    {/* cli: runtm-api mcp attach <mcp_id> --template <template_id> */}
-    {/* cli-verify: runtm-api template mcp <template_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api mcp attach <mcp_id> --template <template_id>
+    cli-verify: runtm-api template mcp <template_id>
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 
@@ -244,11 +357,23 @@ Anything outside the catalog becomes a custom provider. Stripe, Postgres, Snowfl
 <Steps>
   <Step title="Open the template's Secrets tab">
     Go to **Templates**, open the agent's template and pick **Secrets**. This tab is admin-only: **Secrets are admin-only**. Members never see the values.
-    {/* cli: runtm-api template secrets list <template_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api template secrets list <template_id>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Add variables the environment needs">
     Add names and values, or paste a `.env`. Prefer provider connections for anything that identifies a vendor account, and keep template secrets for build-time and environment configuration such as private registry tokens or a base URL.
-    {/* cli: runtm-api template secrets set <template_id> <NAME> <value> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api template secrets set <template_id> <NAME> <value>
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 
@@ -264,15 +389,27 @@ Anything outside the catalog becomes a custom provider. Stripe, Postgres, Snowfl
 
 A template is created **From a repository** or as a **Blank environment**. Repository access comes from the org's GitHub App installation, so install the app on the repos first under **Settings > Integrations > GitHub**. Linked repos are cloned alongside the primary repo. Repo-scoped skill and MCP attachments follow the repo into any template that includes it.
 
-{/* cli: runtm-api github installations */}
-{/* cli: runtm-api template create --display-name "<Name>" --github-repo <owner/repo> --github-branch main --tier basic */}
+<Visibility for="agents">
+
+```text
+cli: runtm-api github installations
+cli: runtm-api template create --display-name "<Name>" --github-repo <owner/repo> --github-branch main --tier basic
+```
+
+</Visibility>
 
 ### Build
 
 Every attachment above lands in the snapshot only at build time. After attaching, build once, and rebuild whenever `attachments_changed_since_build` is true.
 
-{/* cli: runtm-api template build <template_id> */}
-{/* cli-verify: runtm-api template get <template_id> | jq '{build_status, attachments_changed_since_build, skills: [.skills[].name], mcp: [.mcp_servers[].name]}' */}
+<Visibility for="agents">
+
+```text
+cli: runtm-api template build <template_id>
+cli-verify: runtm-api template get <template_id> | jq '{build_status, attachments_changed_since_build, skills: [.skills[].name], mcp: [.mcp_servers[].name]}'
+```
+
+</Visibility>
 
 ## Verify
 
@@ -290,7 +427,8 @@ If step 4 fails while steps 1 to 3 pass, the connection was filtered out. Check 
 - **Personal key on an org resource.** `runtm-api tools`, `mcp` and `template` commands need an org-scoped API key. `--org` cannot substitute for one. A personal key returns 403 or lists an empty set.
 - **MCP server without a connection.** The server definition is attached and appears in the harness configuration, but every call fails with an auth error because no connection was added. Add one and check it with the connection's test action.
 - **Write-capable credentials.** Nothing in the platform downgrades a credential. If you connect a full-access Stripe key, the agent has full access. Use the vendor's restricted keys and database roles, then add allowlist rules for defense in depth (see [Guardrails and approvals](/build/guardrails-and-approvals)).
-- **OAuth providers need the dashboard.** `runtm-api tools create` handles static credentials. OAuth connections are completed in the dashboard because they need a browser.
+- **OAuth providers need the dashboard.** `runtm-api tools create` handles static credentials. OAuth connections are completed in the dashboard because they need a browser. Send the person a `/connect?provider=<slug>&method=<oauth_method_id>` link (see [Credentials go to Runtime, never to an agent](#credentials-go-to-runtime-never-to-an-agent)).
+- **A secret pasted to an agent is already leaked.** It is now in the transcript, the session history and possibly the model provider's logs. Rotate it, then have the person connect the new one through a `/connect` link.
 - **`template create --skip-agent` implies `--build`.** The clone-only fast path builds immediately, so anything attached afterwards needs a rebuild. Create without `--build` when you plan to attach first, then build once.
 - **Attach merges; `--replace` overwrites.** `skills attach` and `mcp attach` add to the existing set. `skills import` can attach in the same call (`--attach-template`, `--attach-repo`, `--attach-all`); `skills create` cannot, so create-then-attach is two steps.
 - **Templates are not only for coding agents.** A support agent's template may clone no repo at all; it exists to carry skills, MCP servers, credentials and guardrails.

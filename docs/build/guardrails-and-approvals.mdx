@@ -48,9 +48,15 @@ Org limits are separate from guardrail content. Under **Guardrails → Limits** 
   <Step title="Write the allowlist rules">
     Open **Settings → Guardrails → Allowlists** and click **New allowlist rule**. Pick the **Type** (Allowed, Ask first, Denied), enter the pattern ("e.g. git push --force or rm -rf *") and a purpose ("Why this rule exists"). For a payments agent, create the deny rules first.
 
-    {/* cli: runtm-api guardrails rules create --name deny-stripe-refunds --kind deny --pattern "stripe refunds create*" --purpose "Refunds are issued by a human" */}
-    {/* cli: runtm-api guardrails rules create --name deny-stripe-post --kind deny --pattern "curl*-X POST*api.stripe.com*" --purpose "No writes to Stripe from the agent" */}
-    {/* cli: runtm-api guardrails rules create --name allow-stripe-reads --kind allow --pattern "stripe * list*" --purpose "Read-only investigation" */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api guardrails rules create --name deny-stripe-refunds --kind deny --pattern "stripe refunds create*" --purpose "Refunds are issued by a human"
+    cli: runtm-api guardrails rules create --name deny-stripe-post --kind deny --pattern "curl*-X POST*api.stripe.com*" --purpose "No writes to Stripe from the agent"
+    cli: runtm-api guardrails rules create --name allow-stripe-reads --kind allow --pattern "stripe * list*" --purpose "Read-only investigation"
+    ```
+
+    </Visibility>
   </Step>
 
   <Step title="Set the default policy to ask">
@@ -58,35 +64,65 @@ Org limits are separate from guardrail content. Under **Guardrails → Limits** 
 
     The CLI does not expose the default command policy (`runtm-api guardrails allowlist` manages the repo allowlist, a different setting). Set it with `PUT /api/cloud/organizations/<org_id>/allowlist-policy` and a body of `{"default_policy": "ask"}`, or on the Allowlists tab.
 
-    {/* cli-verify: runtm-api template guardrails resolve <template_id> | jq .allowlist_default_policy */}
+    <Visibility for="agents">
+
+    ```text
+    cli-verify: runtm-api template guardrails resolve <template_id> | jq .allowlist_default_policy
+    ```
+
+    </Visibility>
   </Step>
 
   <Step title="Add a hook if a pattern is not enough">
     Open **Hooks** and click the add button. Choose the **Event**, the **Type** (`command` runs a script, `prompt` injects text), an optional matcher ("Bash|Edit|Write"), the **Script** or **Prompt**, and a **Timeout (sec)**. A `PreToolUse` command hook that exits with a JSON `permissionDecision` of `deny` blocks the call and gives the agent your `permissionDecisionReason`.
 
-    {/* cli: runtm-api guardrails hooks create --name block-ledger-writes --event PreToolUse --hook-type command --matcher Bash --script "$(cat block-ledger-writes.sh)" --timeout 10 */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api guardrails hooks create --name block-ledger-writes --event PreToolUse --hook-type command --matcher Bash --script "$(cat block-ledger-writes.sh)" --timeout 10
+    ```
+
+    </Visibility>
   </Step>
 
   <Step title="Pin the network">
     Open **Network** and add one rule per host or CIDR ("api.anthropic.com or 10.0.0.0/8") with a purpose ("Why agents need this"). As soon as one rule exists, the sandbox can reach only what is listed. Include the tool hosts, `app.runtm.com`, `docs.runtm.com`, and whatever your skills' `mise` tooling downloads from.
 
-    {/* cli: runtm-api guardrails network create --name stripe-api --kind host --value api.stripe.com --purpose "Stripe reads" */}
-    {/* cli: runtm-api guardrails network create --name runtm-docs --kind host --value docs.runtm.com --purpose "Agent reads the docs" */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api guardrails network create --name stripe-api --kind host --value api.stripe.com --purpose "Stripe reads"
+    cli: runtm-api guardrails network create --name runtm-docs --kind host --value docs.runtm.com --purpose "Agent reads the docs"
+    ```
+
+    </Visibility>
   </Step>
 
   <Step title="Attach the rules to the template">
     Org-wide rules apply to nothing until attached. Attach each rule to the agent's template (or to every repo in the org with `--all`). Alternatively create the rule directly on the template's **Guardrails** tab, where inherited org rules show as read-only "Enforced" rows above the template's own list.
 
-    {/* cli: runtm-api guardrails rules attach <rule_id> --template <template_id> */}
-    {/* cli: runtm-api template guardrails create <template_id> --type allowlist --name deny-refunds --content '{"kind":"deny","pattern":"stripe refunds create*","purpose":"Refunds are issued by a human"}' */}
-    {/* cli-verify: runtm-api template guardrails resolve <template_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api guardrails rules attach <rule_id> --template <template_id>
+    cli: runtm-api template guardrails create <template_id> --type allowlist --name deny-refunds --content '{"kind":"deny","pattern":"stripe refunds create*","purpose":"Refunds are issued by a human"}'
+    cli-verify: runtm-api template guardrails resolve <template_id>
+    ```
+
+    </Visibility>
   </Step>
 
   <Step title="Rebuild the template">
     Allowlist rules and hooks are materialized into the snapshot. Attaching after the last build leaves the template stale until you build again. Network rules are resolved at session creation and do not need a rebuild.
 
-    {/* cli: runtm-api template build <template_id> */}
-    {/* cli-verify: runtm-api template get <template_id> | jq .attachments_changed_since_build */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api template build <template_id>
+    cli-verify: runtm-api template get <template_id> | jq .attachments_changed_since_build
+    ```
+
+    </Visibility>
   </Step>
 
   <Step title="Put approvals in the runbook">
@@ -109,9 +145,15 @@ Org limits are separate from guardrail content. Under **Guardrails → Limits** 
   <Step title="Resolve approvals from the Sessions board">
     A pending request flips the session to `awaiting_approval` and shows **Approve** and **Reject** inline on the session card, with the request message in the tooltip. Sessions waiting on a person sit in their own Kanban column. Approvals are not delivered to Slack; the person approving needs the dashboard or the CLI.
 
-    {/* cli: runtm-api session approvals list <session_id> */}
-    {/* cli: runtm-api session approvals resolve <session_id> <approval_id> --approve --note "Checked the ledger entry" */}
-    {/* cli: runtm-api session approvals resolve <session_id> <approval_id> --reject --note "Wrong customer, re-run with the account id" */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api session approvals list <session_id>
+    cli: runtm-api session approvals resolve <session_id> <approval_id> --approve --note "Checked the ledger entry"
+    cli: runtm-api session approvals resolve <session_id> <approval_id> --reject --note "Wrong customer, re-run with the account id"
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 
@@ -138,8 +180,14 @@ Org limits are separate from guardrail content. Under **Guardrails → Limits** 
 - From the session terminal, run `curl -sI https://example.com`. With network rules in place it must fail, and `curl -sI https://api.stripe.com` must succeed.
 - Trigger the approval step in a test run. The session card shows **Approve** and **Reject**, and `runtm-api session approvals list <session_id>` returns the pending request with its `kind`, `message` and `required_role`.
 
-{/* cli-verify: runtm-api template guardrails resolve <template_id> */}
-{/* cli-verify: runtm-api session approvals list <session_id> */}
+<Visibility for="agents">
+
+```text
+cli-verify: runtm-api template guardrails resolve <template_id>
+cli-verify: runtm-api session approvals list <session_id>
+```
+
+</Visibility>
 
 ## Gotchas
 

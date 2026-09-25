@@ -61,13 +61,25 @@ Read [Define the job](/build/define-the-job) first. The job here has a clear inp
 
     Skip **Triggers** for now and click **Create agent**.
 
-    {/* cli: runtm-api agents create --name "Risk Agent" --description "Sweeps new Stripe Radar reviews and velocity alerts, assembles a review packet with related attempts, linked accounts and prior cases, and recommends clear, monitor or block. Never enforces." --instructions "$(cat risk-agent-instructions.md)" */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents create --name "Risk Agent" --description "Sweeps new Stripe Radar reviews and velocity alerts, assembles a review packet with related attempts, linked accounts and prior cases, and recommends clear, monitor or block. Never enforces." --instructions "$(cat risk-agent-instructions.md)"
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Point it at a template">
     Open the agent's card. Under **Default template** pick **Risk Review** (created in step 3; come back and set it if the template does not exist yet). Leave **Coding agent** on Claude Code. Click **Save profile**.
 
-    {/* cli: runtm-api agents update <agent_id> --template "Risk Review" --agent claude-code */}
-    {/* cli-verify: runtm-api agents get <agent_id> | jq '{name, default_template, default_agent}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents update <agent_id> --template "Risk Review" --agent claude-code
+    cli-verify: runtm-api agents get <agent_id> | jq '{name, default_template, default_agent}'
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 
@@ -94,8 +106,14 @@ Read [Measure success](/build/measure-success). The grader routes each run to on
   <Step title="Set the monthly budget">
     Under **Monthly budget** enter `600`. This is a flag on the scorecard and an audit event when spend passes it. It does not stop runs; the hard cap lives in org limits, covered in step 6. Click **Save profile**.
 
-    {/* cli: runtm-api agents update <agent_id> --evaluator-criteria "$(cat rubric.json)" --economics '{"tasks":{"card-testing":{"value_usd":45,"minutes":40},"velocity-spike":{"value_usd":45,"minutes":40},"merchant-linkage":{"value_usd":45,"minutes":40}},"budget":{"monthly_usd_cap":600}}' */}
-    {/* cli-verify: runtm-api agents get <agent_id> | jq '.evaluator_criteria.categories[].key' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents update <agent_id> --evaluator-criteria "$(cat rubric.json)" --economics '{"tasks":{"card-testing":{"value_usd":45,"minutes":40},"velocity-spike":{"value_usd":45,"minutes":40},"merchant-linkage":{"value_usd":45,"minutes":40}},"budget":{"monthly_usd_cap":600}}'
+    cli-verify: runtm-api agents get <agent_id> | jq '.evaluator_criteria.categories[].key'
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 
@@ -107,30 +125,57 @@ Read [Give it tools](/build/give-it-tools), especially [the credential hierarchy
   <Step title="Create the Risk Review template">
     Go to **Templates**, click **New Template**, choose **Blank environment**, name it `Risk Review`, keep **Basic** and click **Create Template**. Nothing is cloned; the template exists to carry connections and the skill.
 
-    {/* cli: runtm-api template list */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api template list
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Stripe, as an agent-scoped connection">
     Stripe is not in the built-in catalog, but it has a ready-made static schema (one field, `STRIPE_SECRET_KEY`). If your org has not created it yet, define it once under **Settings > Context > Tools & MCP**, **New tool or MCP server**, **Tool**, then define a custom provider named `stripe` with a single secret field materialized as `STRIPE_SECRET_KEY`.
 
     In the Stripe dashboard create a **restricted key** with read permission on Charges, Payment Intents, Customers, Reviews and Radar early fraud warnings, and nothing else. Back in Runtime, connect the provider and choose the **agent** scope, picking **Risk Agent**. An agent-scoped connection is used only by runs attributed to Risk Agent and beats any personal or org-wide Stripe key. It also skips the skill filter, so the support team's org-wide Stripe key stays theirs and this key stays the risk team's.
 
-    The CLI creates only org and personal connections. Agent scope is set in the dashboard, or with `scope: "agent"` and `agent_id` on `POST /api/cloud/knowledge/integrations`.
+    The key goes from the person straight to Runtime, never through an agent. An agent building this hands the person a `/connect` link with `agent=<risk_agent_id>`, which opens the connect dialog already set to the agent scope.
 
-    {/* cli: runtm-api tools providers create --slug stripe --name Stripe --category sales --tagline "Payments and billing data" --auth-methods '[{"id":"api_credentials","display_name":"Secret key","kind":"static","fields":[{"id":"secret_key","label":"Secret key","kind":"secret","required":true}],"materialization":{"env":{"STRIPE_SECRET_KEY":"{fields.secret_key}"}}}]' */}
-    {/* cli-verify: runtm-api tools list --provider stripe */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api tools providers create --slug stripe --name Stripe --category sales --tagline "Payments and billing data" --auth-methods '[{"id":"api_credentials","display_name":"Secret key","kind":"static","fields":[{"id":"secret_key","label":"Secret key","kind":"secret","required":true}],"materialization":{"env":{"STRIPE_SECRET_KEY":"{fields.secret_key}"}}}]'
+    cli-handoff: https://app.runtm.com/connect?provider=stripe&agent=<risk_agent_id>&method=api_credentials
+    cli-verify: runtm-api tools list --provider stripe
+    ```
+
+    </Visibility>
   </Step>
   <Step title="BigQuery, org-wide, one dataset">
     BigQuery is a built-in provider. Pick it from **Add a provider**, choose the **Service account JSON** method, and paste a service account key whose IAM grant is `BigQuery Data Viewer` on the `fraud` dataset only plus `BigQuery Job User` on the project. Scope: **Team**. The provider installs `gcloud` and `bq` into the snapshot and activates the service account at session start.
 
     BigQuery is used here because it is a built-in and the fraud warehouse in this example lives in it. If your warehouse is Snowflake, define it as a custom provider with account, user and a read-only role, exactly as Stripe above.
 
-    {/* cli: runtm-api tools create --provider bigquery --auth-method service_account_json --scope org --display-name "Fraud warehouse" --credentials '{"service_account_json":"<contents of key.json>"}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli-handoff: https://app.runtm.com/connect?provider=bigquery&scope=org&method=service_account_json
+    cli-verify: runtm-api tools list --provider bigquery --scope org
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Postgres, org-wide, read-only role">
     Postgres also has a ready-made static schema (one field, a connection string). Create the provider if it does not exist, then connect it with a connection string for a role that can only `SELECT` from `prior_cases` and the account views. Scope: **Team**.
 
-    {/* cli: runtm-api tools providers create --slug postgres --name Postgres --category data --tagline "Read-only access to your database" --auth-methods '[{"id":"api_credentials","display_name":"Connection string","kind":"static","fields":[{"id":"connection_string","label":"Connection string (read-only)","kind":"secret","required":true}],"materialization":{"env":{"POSTGRES_CONNECTION_STRING":"{fields.connection_string}"}}}]' */}
-    {/* cli: runtm-api tools create --provider postgres --auth-method api_credentials --scope org --display-name "Risk account context" --credentials '{"connection_string":"postgresql://risk_readonly:<password>@<host>:5432/payments"}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api tools providers create --slug postgres --name Postgres --category data --tagline "Read-only access to your database" --auth-methods '[{"id":"api_credentials","display_name":"Connection string","kind":"static","fields":[{"id":"connection_string","label":"Connection string (read-only)","kind":"secret","required":true}],"materialization":{"env":{"POSTGRES_CONNECTION_STRING":"{fields.connection_string}"}}}]'
+    cli-handoff: https://app.runtm.com/connect?provider=postgres&scope=org&method=api_credentials
+    cli-verify: runtm-api tools list --provider postgres --scope org
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 
@@ -201,16 +246,28 @@ Read [Define how it works](/build/how-it-works/overview). The runbook is a skill
 
     Set **Requires integrations** to `stripe`, `bigquery`, `postgres`. Then attach the skill to the **Risk Review** template.
 
-    {/* cli: runtm-api skills create --name fraud-review-packet --display-name "Fraud review packet" --description "Assemble a review packet for a Radar review or velocity alert" --md ./SKILL.md */}
-    {/* cli: runtm-api skills upload-file <skill_id> --file ./references/packet-template.md --path references/packet-template.md */}
-    {/* cli: runtm-api skills update <skill_id> --content "$(jq -n --rawfile md SKILL.md '{entry_md:"SKILL.md",files:[{path:"SKILL.md",mode:"text",inline:$md}],requires:{integrations:["stripe","bigquery","postgres"]}}')" */}
-    {/* cli: runtm-api skills attach <skill_id> --template <template_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api skills create --name fraud-review-packet --display-name "Fraud review packet" --description "Assemble a review packet for a Radar review or velocity alert" --md ./SKILL.md
+    cli: runtm-api skills upload-file <skill_id> --file ./references/packet-template.md --path references/packet-template.md
+    cli: runtm-api skills update <skill_id> --content "$(jq -n --rawfile md SKILL.md '{entry_md:"SKILL.md",files:[{path:"SKILL.md",mode:"text",inline:$md}],requires:{integrations:["stripe","bigquery","postgres"]}}')"
+    cli: runtm-api skills attach <skill_id> --template <template_id>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Build the template once">
     On **Templates**, open **Risk Review** and click **Build** on the **Build** tab. Wait for `ready`.
 
-    {/* cli: runtm-api template build <template_id> */}
-    {/* cli-verify: runtm-api template get <template_id> | jq '{build_status, skills: [.skills[].name], stale: .attachments_changed_since_build}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api template build <template_id>
+    cli-verify: runtm-api template get <template_id> | jq '{build_status, skills: [.skills[].name], stale: .attachments_changed_since_build}'
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Create the schedule, disabled">
     On **Agents**, open the **Scheduled** tab and click **New scheduled agent**. Fill **Name this scheduled agent** with `Risk sweep`. For the prompt, write:
@@ -225,9 +282,15 @@ Read [Define how it works](/build/how-it-works/overview). The runbook is a skill
 
     The cron expression Runtime stores is five fields in UTC. Every 30 minutes is written as minute zero and minute thirty of every hour, not with a slash-step, because the slash form cannot appear inside this page's hidden CLI comments. The CLI can create the schedule with a harness and template but cannot set run-as **Agent**; set that in the dialog.
 
-    {/* cli: runtm-api agents create --type slack --name "Risk Agent" --agent-id <agent_id> */}
-    {/* cli: runtm-api scheduled-agents create --name "Risk sweep" --cron "0,30 * * * *" --prompt "Run the fraud-review-packet skill for every Radar review, early fraud warning and fraud.alerts row created since the last run. Post one packet per alert. If there are none, say so." --template <template_id> --agent claude-code --disabled --slack-integration <slack_integration_id> --slack-channel <channel_id> */}
-    {/* cli-verify: runtm-api scheduled-agents get <scheduled_agent_id> | jq '{enabled, cron, next_run_at, slack_channel_id}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents create --type slack --name "Risk Agent" --agent-id <agent_id>
+    cli: runtm-api scheduled-agents create --name "Risk sweep" --cron "0,30 * * * *" --prompt "Run the fraud-review-packet skill for every Radar review, early fraud warning and fraud.alerts row created since the last run. Post one packet per alert. If there are none, say so." --template <template_id> --agent claude-code --disabled --slack-integration <slack_integration_id> --slack-channel <channel_id>
+    cli-verify: runtm-api scheduled-agents get <scheduled_agent_id> | jq '{enabled, cron, next_run_at, slack_channel_id}'
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Optional: a Slack mention for ad hoc alerts">
     Analysts sometimes want "look at this one now". In the agent's sheet add a **Slack** trigger so `@Risk Agent <review id>` in `#risk-review` runs the same skill on one alert. The mention runs as Risk Agent too, so the same credentials and grading apply.
@@ -257,15 +320,27 @@ Read [Prove it works and iterate](/build/launch-and-iterate). No guardrail exist
 
     For cases A and D the session will stop in `awaiting_approval`. Open **Sessions**, find the run, and click **Approve** or **Reject** on its card. Try both across the two cases to see the packet change.
 
-    {/* cli: runtm-api scheduled-agents update <scheduled_agent_id> --prompt "Run the fraud-review-packet skill for Radar review <review_id> only." */}
-    {/* cli: runtm-api scheduled-agents run-now <scheduled_agent_id> */}
-    {/* cli: runtm-api session approvals list <session_id> */}
-    {/* cli: runtm-api session approvals resolve <session_id> <approval_id> --approve --note "Confirmed 38 distinct cards from one IP" */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api scheduled-agents update <scheduled_agent_id> --prompt "Run the fraud-review-packet skill for Radar review <review_id> only."
+    cli: runtm-api scheduled-agents run-now <scheduled_agent_id>
+    cli: runtm-api session approvals list <session_id>
+    cli: runtm-api session approvals resolve <session_id> <approval_id> --approve --note "Confirmed 38 distinct cards from one IP"
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Read the grade and the packet">
     Open each run under **Agents > Runs**. Read the packet against the template: every attempt with a Stripe id, the shared attribute named, prior cases cited. Then read the grade.
 
-    {/* cli-verify: runtm-api session grade <session_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli-verify: runtm-api session grade <session_id>
+    ```
+
+    </Visibility>
 
     A typical failure on the first pass:
 
@@ -283,14 +358,26 @@ Read [Prove it works and iterate](/build/launch-and-iterate). No guardrail exist
       <img src="/images/dashboard/activity-agents-scorecard.png" alt="Activity page, Agents tab, showing per-agent performance and budget" />
     </Frame>
 
-    {/* cli-verify: runtm-api agents scorecard --days 7 */}
+    <Visibility for="agents">
+
+    ```text
+    cli-verify: runtm-api agents scorecard --days 7
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Tighten one thing, then re-run">
     Change one input per iteration. If the grader passed a packet you would reject, tighten the success criteria. If the agent skipped a step, add it to the skill. If it could not find data, the credential or the dataset grant is too narrow. Re-run the affected case after every change; grades are not recomputed retroactively.
 
     Write down the exact commands and hosts the five passing runs used. That list is the input to step 6. Restore the sweep prompt before moving on.
 
-    {/* cli: runtm-api scheduled-agents update <scheduled_agent_id> --prompt "Run the fraud-review-packet skill for every Radar review, early fraud warning and fraud.alerts row created since the last run. Post one packet per alert. If there are none, say so." */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api scheduled-agents update <scheduled_agent_id> --prompt "Run the fraud-review-packet skill for every Radar review, early fraud warning and fraud.alerts row created since the last run. Post one packet per alert. If there are none, say so."
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 
@@ -317,13 +404,19 @@ Read [Add guardrails and approvals](/build/guardrails-and-approvals). This agent
 
     Then set the **Default policy** to **Ask**, so any command outside these patterns pauses the run instead of running.
 
-    {/* cli: runtm-api guardrails rules create --name deny-stripe-post --kind deny --pattern "curl*-X POST*api.stripe.com*" --purpose "No Stripe writes from the agent" */}
-    {/* cli: runtm-api guardrails rules create --name deny-stripe-delete --kind deny --pattern "curl*-X DELETE*api.stripe.com*" --purpose "No Stripe deletes" */}
-    {/* cli: runtm-api guardrails rules create --name deny-stripe-refunds --kind deny --pattern "stripe refunds*" --purpose "Refunds are issued by a human" */}
-    {/* cli: runtm-api guardrails rules create --name deny-bq-delete --kind deny --pattern "bq query*DELETE*" --purpose "No warehouse deletes" */}
-    {/* cli: runtm-api guardrails rules create --name allow-stripe-reads --kind allow --pattern "curl*api.stripe.com/v1/*" --purpose "Stripe reads" */}
-    {/* cli: runtm-api guardrails rules create --name allow-bq-select --kind allow --pattern "bq query*SELECT*" --purpose "Warehouse reads" */}
-    {/* cli: runtm-api guardrails rules attach <rule_id> --template <template_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api guardrails rules create --name deny-stripe-post --kind deny --pattern "curl*-X POST*api.stripe.com*" --purpose "No Stripe writes from the agent"
+    cli: runtm-api guardrails rules create --name deny-stripe-delete --kind deny --pattern "curl*-X DELETE*api.stripe.com*" --purpose "No Stripe deletes"
+    cli: runtm-api guardrails rules create --name deny-stripe-refunds --kind deny --pattern "stripe refunds*" --purpose "Refunds are issued by a human"
+    cli: runtm-api guardrails rules create --name deny-bq-delete --kind deny --pattern "bq query*DELETE*" --purpose "No warehouse deletes"
+    cli: runtm-api guardrails rules create --name allow-stripe-reads --kind allow --pattern "curl*api.stripe.com/v1/*" --purpose "Stripe reads"
+    cli: runtm-api guardrails rules create --name allow-bq-select --kind allow --pattern "bq query*SELECT*" --purpose "Warehouse reads"
+    cli: runtm-api guardrails rules attach <rule_id> --template <template_id>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Pin the network">
     Under **Network**, add one rule per host. As soon as one rule exists, egress is deny-all plus this list. Slack posting is done by Runtime after the run, not by the sandbox, so `hooks.slack.com` is not needed.
@@ -341,31 +434,55 @@ Read [Add guardrails and approvals](/build/guardrails-and-approvals). This agent
     | `app.runtm.com` | The runtm CLI and `runtm-approval` inside the sandbox |
     | `docs.runtm.com` | The agent reads Runtime docs when it needs to |
 
-    {/* cli: runtm-api guardrails network create --name stripe-api --kind host --value api.stripe.com --purpose "Stripe reads" */}
-    {/* cli: runtm-api guardrails network create --name bigquery-api --kind host --value bigquery.googleapis.com --purpose "BigQuery queries" */}
-    {/* cli: runtm-api guardrails network create --name google-oauth --kind host --value oauth2.googleapis.com --purpose "Service account token exchange" */}
-    {/* cli: runtm-api guardrails network create --name risk-postgres --kind host --value <postgres_host> --purpose "Case reads" */}
-    {/* cli: runtm-api guardrails network create --name runtm-app --kind host --value app.runtm.com --purpose "runtm CLI and approvals" */}
-    {/* cli: runtm-api guardrails network create --name runtm-docs --kind host --value docs.runtm.com --purpose "Agent reads the docs" */}
-    {/* cli: runtm-api guardrails network attach <rule_id> --template <template_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api guardrails network create --name stripe-api --kind host --value api.stripe.com --purpose "Stripe reads"
+    cli: runtm-api guardrails network create --name bigquery-api --kind host --value bigquery.googleapis.com --purpose "BigQuery queries"
+    cli: runtm-api guardrails network create --name google-oauth --kind host --value oauth2.googleapis.com --purpose "Service account token exchange"
+    cli: runtm-api guardrails network create --name risk-postgres --kind host --value <postgres_host> --purpose "Case reads"
+    cli: runtm-api guardrails network create --name runtm-app --kind host --value app.runtm.com --purpose "runtm CLI and approvals"
+    cli: runtm-api guardrails network create --name runtm-docs --kind host --value docs.runtm.com --purpose "Agent reads the docs"
+    cli: runtm-api guardrails network attach <rule_id> --template <template_id>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Rebuild, then re-run one case per category">
     Allowlist rules are materialized into the snapshot, so rebuild the template. Network rules apply at session creation without a rebuild. Then **Run now** cases A, C and D again. If a case that passed in step 5 now stalls on an `ask` or fails, the last rule you added is the cause: remove it, re-run, and write it narrower.
 
-    {/* cli: runtm-api template build <template_id> */}
-    {/* cli-verify: runtm-api template guardrails resolve <template_id> */}
-    {/* cli: runtm-api scheduled-agents run-now <scheduled_agent_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api template build <template_id>
+    cli-verify: runtm-api template guardrails resolve <template_id>
+    cli: runtm-api scheduled-agents run-now <scheduled_agent_id>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Set the org hard cap">
     Under **Guardrails > Limits**, set the org monthly budget and maximum concurrent sessions. These are enforced at session creation, unlike the agent's `$600` budget, which only flags.
 
-    {/* cli: runtm-api guardrails limits set --monthly-budget-usd <amount> --max-concurrent-sessions <n> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api guardrails limits set --monthly-budget-usd <amount> --max-concurrent-sessions <n>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Enable the schedule">
     Flip the toggle on the `Risk sweep` row. Check `next_run_at` is in the future. After the first tick, confirm a packet (or "No new alerts") landed in `#risk-review` and a graded run appears under **Runs**.
 
-    {/* cli: runtm-api scheduled-agents update <scheduled_agent_id> --enabled */}
-    {/* cli-verify: runtm-api scheduled-agents get <scheduled_agent_id> | jq '{enabled, next_run_at, last_run_at, last_session_id}' */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api scheduled-agents update <scheduled_agent_id> --enabled
+    cli-verify: runtm-api scheduled-agents get <scheduled_agent_id> | jq '{enabled, next_run_at, last_run_at, last_session_id}'
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 

@@ -37,8 +37,10 @@ description of when to read it. With a path it prints that page:
   runtm-api docs build/overview         # one page (".md" is appended for you)
   runtm-api docs guides/payments/support-agent.md
 
-Build and Guides pages carry the CLI equivalent of each dashboard step as a
-hidden comment ({/* cli: runtm-api ... */}); those are visible in this output.
+Build and Guides pages carry the CLI equivalent of each dashboard step in
+agent-only blocks that appear only in this markdown output: "cli:" lines to
+run, "cli-verify:" lines to check, and "cli-handoff:" URLs to give a person
+(for example to enter a credential, which an agent must never do itself).
 
 Override the base URL with --base or RUNTM_DOCS_URL.`,
 		Args: cobra.MaximumNArgs(1),

@@ -53,26 +53,56 @@ A trigger's own settings can also carry `system_instructions`. When an agent is 
 <Steps>
   <Step title="Write the agent persona">
     Open **Agents**, pick the agent, and edit **System instructions** on the **Profile** tab. State the job, the boundaries and the output shape. Keep procedures out of here; those belong in a skill.
-    {/* cli: runtm-api agents update <agent_id> --instructions "$(cat persona.md)" */}
-    {/* cli-verify: runtm-api agents get <agent_id> | jq .system_instructions */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents update <agent_id> --instructions "$(cat persona.md)"
+    cli-verify: runtm-api agents get <agent_id> | jq .system_instructions
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Set organization policy">
     Go to **Settings > Context > Instructions**, switch to **Team**, and write the rules every agent must follow. Requires an org admin and an org-scoped key on the CLI.
-    {/* cli: runtm-api instructions set --org-scope --text "$(cat org-policy.md)" */}
-    {/* cli-verify: runtm-api instructions get --org-scope */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api instructions set --org-scope --text "$(cat org-policy.md)"
+    cli-verify: runtm-api instructions get --org-scope
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Describe the environment on the template">
     Open the template, pick **Context**, and write the template block under **Instructions**. This is the only writable Context sub-tab on a template; skills, MCP, docs and knowledge are inherited from the org there.
-    {/* cli: runtm-api template context set <template_id> --text "$(cat template-context.md)" */}
-    {/* cli-verify: runtm-api template context resolve <template_id> */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api template context set <template_id> --text "$(cat template-context.md)"
+    cli-verify: runtm-api template context resolve <template_id>
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Add personal preferences">
     Back in **Settings > Context > Instructions**, the **Personal** tab applies to every session you start, regardless of agent or template.
-    {/* cli: runtm-api instructions set --text "Answer in bullet points. Show SQL, not ORM code." */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api instructions set --text "Answer in bullet points. Show SQL, not ORM code."
+    ```
+
+    </Visibility>
   </Step>
   <Step title="Override for one session">
     Inside a session, open the **Instructions** panel to add rules for that session only. They are gone when the session is destroyed.
-    {/* cli: runtm-api session instructions set <session_id> --text "Only look at account acct_123 today." */}
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api session instructions set <session_id> --text "Only look at account acct_123 today."
+    ```
+
+    </Visibility>
   </Step>
 </Steps>
 
