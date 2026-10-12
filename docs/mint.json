@@ -56,6 +56,11 @@
       "name": "Open Source",
       "url": "open-source",
       "icon": "box-open"
+    },
+    {
+      "name": "Release notes",
+      "url": "release-notes",
+      "icon": "sparkles"
     }
   ],
   "anchors": [
@@ -657,6 +662,12 @@
       "group": "User",
       "pages": [
         "open-source/api/user/me"
+      ]
+    },
+    {
+      "group": "Release notes",
+      "pages": [
+        "release-notes"
       ]
     }
   ],
