@@ -66,6 +66,7 @@ from runtm_cli.commands import (
     approve_command,
     deploy_command,
     destroy_command,
+    doctor_command,
     domain_add_command,
     domain_remove_command,
     domain_status_command,
@@ -795,116 +796,24 @@ def config_reset(
 
 
 @app.command("doctor")
-def doctor() -> None:
+def doctor(
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON for AI agents"),
+) -> None:
     """Check CLI setup and diagnose issues.
 
-    Displays version, configuration, authentication status,
-    and API connectivity. Useful for troubleshooting.
+    Displays version, configuration, authentication status, and API
+    connectivity. When the sandbox extras are installed (runtm-dev),
+    also checks sandbox dependencies. When run from inside the runtm
+    repository, also validates the local dev environment (Python
+    version, .env, FLY_API_TOKEN, Docker, local services).
 
-    Example:
-        runtm doctor
+    Exits with code 1 if any check fails, so it can gate scripts.
+
+    Examples:
+        runtm doctor           # Human-readable report
+        runtm doctor --json    # Machine-readable report for agents
     """
-    import time
-
-    import httpx
-
-    from runtm_cli import __version__
-    from runtm_cli.auth import (
-        check_credentials_permissions,
-        get_keyring_key,
-        get_token,
-        get_token_source,
-    )
-    from runtm_cli.config import get_api_url
-
-    console.print()
-    console.print(f"[bold]runtm[/bold] v{__version__}")
-    console.print()
-
-    # API URL
-    api_url = get_api_url()
-    console.print(f"  API URL:      {api_url}")
-
-    # Auth storage source
-    source = get_token_source()
-    if source == "env":
-        console.print("  Auth storage: env (RUNTM_API_KEY)")
-    elif source == "keychain":
-        key = get_keyring_key()
-        console.print(f"  Auth storage: keychain ({key})")
-    elif source == "file":
-        console.print("  Auth storage: file (~/.runtm/credentials)")
-    else:
-        console.print("  Auth storage: [yellow]none[/yellow]")
-
-    # Auth status - try to validate token via /v1/me if we have one
-    token = get_token()
-    if token:
-        try:
-            start = time.time()
-            response = httpx.get(
-                f"{api_url}/v1/me",
-                headers={"Authorization": f"Bearer {token}"},
-                timeout=5.0,
-            )
-            latency_ms = int((time.time() - start) * 1000)
-
-            if response.status_code == 200:
-                data = response.json()
-                email = data.get("email", "unknown")
-                console.print(f"  Auth status:  [green]✓[/green] Authenticated as {email}")
-            elif response.status_code == 401:
-                console.print("  Auth status:  [red]✗[/red] Token invalid or expired")
-            elif response.status_code == 404:
-                # /v1/me endpoint doesn't exist yet, fall back to showing token is configured
-                console.print("  Auth status:  [green]✓[/green] Token configured")
-            else:
-                console.print(
-                    f"  Auth status:  [yellow]?[/yellow] Could not verify (HTTP {response.status_code})"
-                )
-        except httpx.TimeoutException:
-            console.print("  Auth status:  [yellow]?[/yellow] Verification timed out")
-        except Exception as e:
-            console.print(f"  Auth status:  [yellow]?[/yellow] Could not verify: {e}")
-    else:
-        console.print("  Auth status:  [red]✗[/red] Not authenticated")
-
-    # Credentials file permissions (only if using file storage)
-    if source == "file":
-        perm_ok, perm_msg = check_credentials_permissions()
-        if perm_ok:
-            console.print(f"  Credentials:  [green]✓[/green] {perm_msg}")
-        else:
-            console.print(f"  Credentials:  {perm_msg}")
-
-    # Connectivity check (unauthenticated ping)
-    try:
-        start = time.time()
-        response = httpx.get(f"{api_url}/health", timeout=5.0)
-        latency_ms = int((time.time() - start) * 1000)
-
-        if response.status_code == 200:
-            console.print(f"  Connectivity: [green]✓[/green] API reachable ({latency_ms}ms)")
-        else:
-            console.print(
-                f"  Connectivity: [yellow]?[/yellow] API returned HTTP {response.status_code}"
-            )
-    except httpx.TimeoutException:
-        console.print("  Connectivity: [red]✗[/red] API request timed out")
-    except httpx.ConnectError:
-        console.print("  Connectivity: [red]✗[/red] Could not connect to API")
-    except Exception as e:
-        console.print(f"  Connectivity: [red]✗[/red] {e}")
-
-    console.print()
-
-    # Suggested next step
-    if not token:
-        console.print("  Get started: [cyan]runtm login[/cyan]")
-    else:
-        console.print("  Ready to deploy! Run: [cyan]runtm init backend-service[/cyan]")
-
-    console.print()
+    doctor_command(json_output=json_output)
 
 
 @app.command("login")
