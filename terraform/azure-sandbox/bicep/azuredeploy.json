@@ -1,0 +1,731 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.48.1.52935",
+      "templateHash": "6185875502738722151"
+    }
+  },
+  "parameters": {
+    "organizationId": {
+      "type": "string",
+      "maxLength": 64,
+      "metadata": {
+        "description": "Runtm organization id (pre-filled by Runtm; used for tagging)."
+      }
+    },
+    "tenantSlug": {
+      "type": "string",
+      "minLength": 12,
+      "maxLength": 12,
+      "metadata": {
+        "description": "Per-organization resource slug (pre-filled by Runtm: the first 12 hex chars of sha256(organization id)). ARM cannot hash, so it is passed in."
+      }
+    },
+    "googleSubject": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 30,
+      "metadata": {
+        "description": "Numeric unique id of your organization's Runtm Google service account (pre-filled by Runtm). REQUIRED: Entra matches the token subject exactly; there is no email condition as on AWS."
+      }
+    },
+    "audience": {
+      "type": "string",
+      "defaultValue": "api://AzureADTokenExchange",
+      "minLength": 8,
+      "metadata": {
+        "description": "Audience of the Google token Runtm mints for this subscription (pre-filled by Runtm; Entra's recommended value)."
+      }
+    },
+    "googleIssuer": {
+      "type": "string",
+      "defaultValue": "https://accounts.google.com",
+      "metadata": {
+        "description": "Issuer of the tokens Runtm presents. Do not change."
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[deployment().location]",
+      "metadata": {
+        "description": "Azure region for every resource; must offer Container Apps Sandboxes (e.g. westus2)."
+      }
+    },
+    "suffix": {
+      "type": "string",
+      "defaultValue": "",
+      "maxLength": 10,
+      "metadata": {
+        "description": "Optional label for this stack's resource names, e.g. pci or ops (1-10 lowercase letters, digits or hyphens, the same cap as the AWS stack; the sandbox group name rtm-<suffix>-<slug> stays at 27 of Azure's 32 chars). Enter the same value in the Runtm dialog."
+      }
+    },
+    "storageAccountName": {
+      "type": "string",
+      "defaultValue": "[format('rtm{0}{1}', parameters('tenantSlug'), take(uniqueString(parameters('organizationId'), parameters('suffix'), parameters('location')), 9))]",
+      "minLength": 3,
+      "maxLength": 24,
+      "metadata": {
+        "description": "Storage account name (3-24 lowercase alphanumerics, globally unique). Pre-filled by Runtm as rtm<slug><sha256(org|suffix|region)[:9]>, which is what the Terraform module computes; the fallback default below uses uniqueString() and differs from it."
+      }
+    },
+    "registryName": {
+      "type": "string",
+      "defaultValue": "[format('rtmacr{0}{1}', parameters('tenantSlug'), take(uniqueString(parameters('organizationId'), parameters('suffix'), parameters('location')), 9))]",
+      "minLength": 5,
+      "maxLength": 50,
+      "metadata": {
+        "description": "Container registry name (5-50 alphanumerics, globally unique). Pre-filled by Runtm as rtmacr<slug><sha256(org|suffix|region)[:9]>; same fallback caveat."
+      }
+    },
+    "sessionArtifactRetentionDays": {
+      "type": "int",
+      "defaultValue": 90,
+      "minValue": 1,
+      "metadata": {
+        "description": "Days to keep paused-session workspace layers (sessions/ prefix). Matches Runtm's paused-session retention."
+      }
+    },
+    "templateVersionRetentionDays": {
+      "type": "int",
+      "defaultValue": 30,
+      "minValue": 1,
+      "metadata": {
+        "description": "Template goldens (templates/) never expire; superseded versions are purged this many days after creation (Azure has no keep-newest-N rule)."
+      }
+    },
+    "storageSharedKeyAccess": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Allow Shared Key (account key) authorization on the storage account. Runtm never uses keys."
+      }
+    },
+    "createVnet": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Create a VNet with a subnet delegated to Microsoft.App/environments and connect the sandbox group to it."
+      }
+    },
+    "vnetCidr": {
+      "type": "string",
+      "defaultValue": "10.77.0.0/16",
+      "metadata": {
+        "description": "VNet address space."
+      }
+    },
+    "subnetCidr": {
+      "type": "string",
+      "defaultValue": "10.77.0.0/23",
+      "metadata": {
+        "description": "Delegated subnet inside vnetCidr (keep at least a /23)."
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Extra tags for every resource."
+      }
+    }
+  },
+  "variables": {
+    "label": "[if(empty(parameters('suffix')), parameters('tenantSlug'), format('{0}-{1}', parameters('suffix'), parameters('tenantSlug')))]",
+    "resourceGroupName": "[format('runtm-sandbox-{0}-{1}', variables('label'), parameters('location'))]",
+    "allTags": "[union(parameters('tags'), createObject('runtm:organization', parameters('organizationId'), 'runtm:label', variables('label')))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/resourceGroups",
+      "apiVersion": "2024-03-01",
+      "name": "[variables('resourceGroupName')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('allTags')]"
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('runtm-sandbox-{0}', variables('label'))]",
+      "resourceGroup": "[variables('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "label": {
+            "value": "[variables('label')]"
+          },
+          "googleSubject": {
+            "value": "[parameters('googleSubject')]"
+          },
+          "googleIssuer": {
+            "value": "[parameters('googleIssuer')]"
+          },
+          "audience": {
+            "value": "[parameters('audience')]"
+          },
+          "storageAccountName": {
+            "value": "[parameters('storageAccountName')]"
+          },
+          "registryName": {
+            "value": "[parameters('registryName')]"
+          },
+          "sessionArtifactRetentionDays": {
+            "value": "[parameters('sessionArtifactRetentionDays')]"
+          },
+          "templateVersionRetentionDays": {
+            "value": "[parameters('templateVersionRetentionDays')]"
+          },
+          "storageSharedKeyAccess": {
+            "value": "[parameters('storageSharedKeyAccess')]"
+          },
+          "createVnet": {
+            "value": "[parameters('createVnet')]"
+          },
+          "vnetCidr": {
+            "value": "[parameters('vnetCidr')]"
+          },
+          "subnetCidr": {
+            "value": "[parameters('subnetCidr')]"
+          },
+          "tags": {
+            "value": "[variables('allTags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.48.1.52935",
+              "templateHash": "5085216543611188509"
+            }
+          },
+          "parameters": {
+            "label": {
+              "type": "string",
+              "metadata": {
+                "description": "<suffix>-<slug> or <slug>: the per-organization part of every resource name (computed in main.bicep)."
+              }
+            },
+            "googleSubject": {
+              "type": "string",
+              "metadata": {
+                "description": "Numeric unique id of the organization's Runtm Google service account; the federated credential's subject."
+              }
+            },
+            "googleIssuer": {
+              "type": "string",
+              "metadata": {
+                "description": "Issuer of the tokens Runtm presents."
+              }
+            },
+            "audience": {
+              "type": "string",
+              "metadata": {
+                "description": "Audience of the Google token Runtm mints for this subscription."
+              }
+            },
+            "storageAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage account name (3-24 lowercase alphanumerics)."
+              }
+            },
+            "registryName": {
+              "type": "string",
+              "metadata": {
+                "description": "Container registry name (5-50 alphanumerics)."
+              }
+            },
+            "sessionArtifactRetentionDays": {
+              "type": "int",
+              "metadata": {
+                "description": "Days to keep paused-session workspace layers (sessions/)."
+              }
+            },
+            "templateVersionRetentionDays": {
+              "type": "int",
+              "metadata": {
+                "description": "Days a superseded template golden version (templates/) is kept."
+              }
+            },
+            "storageSharedKeyAccess": {
+              "type": "bool",
+              "metadata": {
+                "description": "Allow Shared Key authorization on the storage account."
+              }
+            },
+            "createVnet": {
+              "type": "bool",
+              "metadata": {
+                "description": "Create a VNet with a delegated subnet and connect the sandbox group to it."
+              }
+            },
+            "vnetCidr": {
+              "type": "string",
+              "metadata": {
+                "description": "VNet address space."
+              }
+            },
+            "subnetCidr": {
+              "type": "string",
+              "metadata": {
+                "description": "Delegated subnet (inside vnetCidr) sandboxes attach to."
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Tags for every resource."
+              }
+            }
+          },
+          "variables": {
+            "location": "[resourceGroup().location]",
+            "brokerIdentityName": "[format('runtm-sandbox-broker-{0}', parameters('label'))]",
+            "sandboxGroupName": "[format('rtm-{0}', parameters('label'))]",
+            "vnetName": "[format('runtm-sandbox-egress-{0}', parameters('label'))]",
+            "subnetName": "sandboxes",
+            "vnetConnectionName": "default",
+            "containerName": "layers",
+            "federatedCredentialName": "google-runtm-org",
+            "roleContributor": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')]",
+            "roleSandboxDataOwner": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'c24cf47c-5077-412d-a19c-45202126392c')]",
+            "roleAcrPull": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')]",
+            "roleBlobContributor": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2023-01-31",
+              "name": "[variables('brokerIdentityName')]",
+              "location": "[variables('location')]",
+              "tags": "[union(parameters('tags'), createObject('runtm:component', 'broker-identity'))]"
+            },
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials",
+              "apiVersion": "2023-01-31",
+              "name": "[format('{0}/{1}', variables('brokerIdentityName'), variables('federatedCredentialName'))]",
+              "properties": {
+                "issuer": "[parameters('googleIssuer')]",
+                "subject": "[parameters('googleSubject')]",
+                "audiences": [
+                  "[parameters('audience')]"
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('brokerIdentityName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.App/sandboxGroups",
+              "apiVersion": "2026-07-01",
+              "name": "[variables('sandboxGroupName')]",
+              "location": "[variables('location')]",
+              "tags": "[union(parameters('tags'), createObject('runtm:component', 'sandbox-group'))]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('brokerIdentityName')))]": {}
+                }
+              },
+              "properties": {},
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('brokerIdentityName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.ContainerRegistry/registries",
+              "apiVersion": "2023-07-01",
+              "name": "[parameters('registryName')]",
+              "location": "[variables('location')]",
+              "sku": {
+                "name": "Basic"
+              },
+              "tags": "[union(parameters('tags'), createObject('runtm:component', 'sandbox-images'))]",
+              "properties": {
+                "adminUserEnabled": false
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2024-01-01",
+              "name": "[parameters('storageAccountName')]",
+              "location": "[variables('location')]",
+              "kind": "StorageV2",
+              "sku": {
+                "name": "Standard_LRS"
+              },
+              "tags": "[union(parameters('tags'), createObject('runtm:component', 'sandbox-artifacts'))]",
+              "properties": {
+                "minimumTlsVersion": "TLS1_2",
+                "supportsHttpsTrafficOnly": true,
+                "allowBlobPublicAccess": false,
+                "allowSharedKeyAccess": "[parameters('storageSharedKeyAccess')]",
+                "defaultToOAuthAuthentication": true,
+                "accessTier": "Hot"
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices",
+              "apiVersion": "2024-01-01",
+              "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
+              "properties": {
+                "isVersioningEnabled": true
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "2024-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', variables('containerName'))]",
+              "properties": {
+                "publicAccess": "None"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/managementPolicies",
+              "apiVersion": "2024-01-01",
+              "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
+              "properties": {
+                "policy": {
+                  "rules": [
+                    {
+                      "name": "expire-session-layers",
+                      "enabled": true,
+                      "type": "Lifecycle",
+                      "definition": {
+                        "filters": {
+                          "blobTypes": [
+                            "blockBlob"
+                          ],
+                          "prefixMatch": [
+                            "[format('{0}/sessions/', variables('containerName'))]"
+                          ]
+                        },
+                        "actions": {
+                          "baseBlob": {
+                            "delete": {
+                              "daysAfterModificationGreaterThan": "[parameters('sessionArtifactRetentionDays')]"
+                            }
+                          },
+                          "version": {
+                            "delete": {
+                              "daysAfterCreationGreaterThan": 1
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "name": "retain-template-goldens",
+                      "enabled": true,
+                      "type": "Lifecycle",
+                      "definition": {
+                        "filters": {
+                          "blobTypes": [
+                            "blockBlob"
+                          ],
+                          "prefixMatch": [
+                            "[format('{0}/templates/', variables('containerName'))]"
+                          ]
+                        },
+                        "actions": {
+                          "version": {
+                            "delete": {
+                              "daysAfterCreationGreaterThan": "[parameters('templateVersionRetentionDays')]"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices/containers', parameters('storageAccountName'), 'default', variables('containerName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Authorization/locks",
+              "apiVersion": "2020-05-01",
+              "scope": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]",
+              "name": "runtm-sandbox-layers-retain",
+              "properties": {
+                "level": "CanNotDelete",
+                "notes": "Runtm sandbox workspace layers and template goldens. Remove this lock before deleting the storage account."
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "name": "[guid(resourceGroup().id, resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('brokerIdentityName')), variables('roleContributor'))]",
+              "properties": {
+                "roleDefinitionId": "[variables('roleContributor')]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('brokerIdentityName')), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('brokerIdentityName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.App/sandboxGroups', variables('sandboxGroupName'))]",
+              "name": "[guid(resourceId('Microsoft.App/sandboxGroups', variables('sandboxGroupName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('brokerIdentityName')), variables('roleSandboxDataOwner'))]",
+              "properties": {
+                "roleDefinitionId": "[variables('roleSandboxDataOwner')]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('brokerIdentityName')), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('brokerIdentityName'))]",
+                "[resourceId('Microsoft.App/sandboxGroups', variables('sandboxGroupName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.ContainerRegistry/registries', parameters('registryName'))]",
+              "name": "[guid(resourceId('Microsoft.ContainerRegistry/registries', parameters('registryName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('brokerIdentityName')), variables('roleAcrPull'))]",
+              "properties": {
+                "roleDefinitionId": "[variables('roleAcrPull')]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('brokerIdentityName')), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('brokerIdentityName'))]",
+                "[resourceId('Microsoft.ContainerRegistry/registries', parameters('registryName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]",
+              "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('brokerIdentityName')), variables('roleBlobContributor'))]",
+              "properties": {
+                "roleDefinitionId": "[variables('roleBlobContributor')]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('brokerIdentityName')), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('brokerIdentityName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+              ]
+            },
+            {
+              "condition": "[parameters('createVnet')]",
+              "type": "Microsoft.Network/virtualNetworks",
+              "apiVersion": "2024-05-01",
+              "name": "[variables('vnetName')]",
+              "location": "[variables('location')]",
+              "tags": "[union(parameters('tags'), createObject('runtm:component', 'sandbox-vnet'))]",
+              "properties": {
+                "addressSpace": {
+                  "addressPrefixes": [
+                    "[parameters('vnetCidr')]"
+                  ]
+                },
+                "subnets": [
+                  {
+                    "name": "[variables('subnetName')]",
+                    "properties": {
+                      "addressPrefix": "[parameters('subnetCidr')]",
+                      "delegations": [
+                        {
+                          "name": "sandboxes",
+                          "properties": {
+                            "serviceName": "Microsoft.App/environments"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "condition": "[parameters('createVnet')]",
+              "type": "Microsoft.App/sandboxGroups/vnetConnections",
+              "apiVersion": "2026-07-01",
+              "name": "[format('{0}/{1}', variables('sandboxGroupName'), variables('vnetConnectionName'))]",
+              "properties": {
+                "subnetId": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnetName'))]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.App/sandboxGroups', variables('sandboxGroupName'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "brokerClientId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('brokerIdentityName')), '2023-01-31').clientId]"
+            },
+            "brokerPrincipalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('brokerIdentityName')), '2023-01-31').principalId]"
+            },
+            "brokerIdentityId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('brokerIdentityName'))]"
+            },
+            "sandboxGroupName": {
+              "type": "string",
+              "value": "[variables('sandboxGroupName')]"
+            },
+            "sandboxGroupId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.App/sandboxGroups', variables('sandboxGroupName'))]"
+            },
+            "acrLoginServer": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ContainerRegistry/registries', parameters('registryName')), '2023-07-01').loginServer]"
+            },
+            "storageAccount": {
+              "type": "string",
+              "value": "[parameters('storageAccountName')]"
+            },
+            "container": {
+              "type": "string",
+              "value": "[variables('containerName')]"
+            },
+            "vnetId": {
+              "type": "string",
+              "value": "[if(parameters('createVnet'), resourceId('Microsoft.Network/virtualNetworks', variables('vnetName')), '')]"
+            },
+            "subnetId": {
+              "type": "string",
+              "value": "[if(parameters('createVnet'), resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnetName')), '')]"
+            },
+            "vnetConnectionName": {
+              "type": "string",
+              "value": "[if(parameters('createVnet'), variables('vnetConnectionName'), '')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('resourceGroupName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "brokerClientId": {
+      "type": "string",
+      "metadata": {
+        "description": "Paste into Runtm (Integrations -> Azure Sandboxes): client id of the broker identity."
+      },
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', format('runtm-sandbox-{0}', variables('label'))), '2025-04-01').outputs.brokerClientId.value]"
+    },
+    "brokerPrincipalId": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', format('runtm-sandbox-{0}', variables('label'))), '2025-04-01').outputs.brokerPrincipalId.value]"
+    },
+    "brokerIdentityId": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', format('runtm-sandbox-{0}', variables('label'))), '2025-04-01').outputs.brokerIdentityId.value]"
+    },
+    "tenantId": {
+      "type": "string",
+      "value": "[tenant().tenantId]"
+    },
+    "subscriptionId": {
+      "type": "string",
+      "value": "[subscription().subscriptionId]"
+    },
+    "resourceGroup": {
+      "type": "string",
+      "value": "[variables('resourceGroupName')]"
+    },
+    "location": {
+      "type": "string",
+      "value": "[parameters('location')]"
+    },
+    "sandboxGroup": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', format('runtm-sandbox-{0}', variables('label'))), '2025-04-01').outputs.sandboxGroupName.value]"
+    },
+    "sandboxGroupId": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', format('runtm-sandbox-{0}', variables('label'))), '2025-04-01').outputs.sandboxGroupId.value]"
+    },
+    "acrLoginServer": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', format('runtm-sandbox-{0}', variables('label'))), '2025-04-01').outputs.acrLoginServer.value]"
+    },
+    "storageAccount": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', format('runtm-sandbox-{0}', variables('label'))), '2025-04-01').outputs.storageAccount.value]"
+    },
+    "container": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', format('runtm-sandbox-{0}', variables('label'))), '2025-04-01').outputs.container.value]"
+    },
+    "vnetId": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', format('runtm-sandbox-{0}', variables('label'))), '2025-04-01').outputs.vnetId.value]"
+    },
+    "subnetId": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', format('runtm-sandbox-{0}', variables('label'))), '2025-04-01').outputs.subnetId.value]"
+    },
+    "vnetConnection": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', format('runtm-sandbox-{0}', variables('label'))), '2025-04-01').outputs.vnetConnectionName.value]"
+    },
+    "resourceLabel": {
+      "type": "string",
+      "value": "[variables('label')]"
+    },
+    "googleSubject": {
+      "type": "string",
+      "value": "[parameters('googleSubject')]"
+    },
+    "audience": {
+      "type": "string",
+      "value": "[parameters('audience')]"
+    },
+    "runtmConnection": {
+      "type": "object",
+      "metadata": {
+        "description": "Everything the Runtm connect dialog asks for, in one object (paste the JSON). Same keys as the Terraform module's runtm_connection output."
+      },
+      "value": {
+        "identity": "google_oidc",
+        "tenant_id": "[tenant().tenantId]",
+        "subscription_id": "[subscription().subscriptionId]",
+        "resource_group": "[variables('resourceGroupName')]",
+        "location": "[parameters('location')]",
+        "broker_client_id": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', format('runtm-sandbox-{0}', variables('label'))), '2025-04-01').outputs.brokerClientId.value]",
+        "broker_principal_id": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', format('runtm-sandbox-{0}', variables('label'))), '2025-04-01').outputs.brokerPrincipalId.value]",
+        "broker_identity_id": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', format('runtm-sandbox-{0}', variables('label'))), '2025-04-01').outputs.brokerIdentityId.value]",
+        "sandbox_group": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', format('runtm-sandbox-{0}', variables('label'))), '2025-04-01').outputs.sandboxGroupName.value]",
+        "acr_login_server": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', format('runtm-sandbox-{0}', variables('label'))), '2025-04-01').outputs.acrLoginServer.value]",
+        "storage_account": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', format('runtm-sandbox-{0}', variables('label'))), '2025-04-01').outputs.storageAccount.value]",
+        "container": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', format('runtm-sandbox-{0}', variables('label'))), '2025-04-01').outputs.container.value]",
+        "vnet_connection": "[if(parameters('createVnet'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', format('runtm-sandbox-{0}', variables('label'))), '2025-04-01').outputs.vnetConnectionName.value, null())]",
+        "google_subject": "[parameters('googleSubject')]",
+        "google_issuer": "[parameters('googleIssuer')]",
+        "audience": "[parameters('audience')]"
+      }
+    }
+  }
+}

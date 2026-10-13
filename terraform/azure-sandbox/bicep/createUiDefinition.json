@@ -1,0 +1,202 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/0.1.2-preview/CreateUIDefinition.MultiVm.json#",
+  "handler": "Microsoft.Azure.CreateUIDef",
+  "version": "0.1.2-preview",
+  "parameters": {
+    "config": {
+      "isWizard": true,
+      "basics": {
+        "description": "Creates, in **your** subscription, what Runtm needs to run sandboxes there: a resource group, a broker managed identity that trusts your organization's Runtm Google identity (no secret), a sandbox group, a container registry, a storage account for workspace layers, and the role assignments between them. Nothing grants Runtm access outside that resource group. The **Runtm** values below are pre-filled when you arrive from the Runtm dialog; do not edit them. You need **Owner** (or Contributor + User Access Administrator) on the subscription.",
+        "subscription": {
+          "constraints": {
+            "validations": [
+              {
+                "permission": "Microsoft.Authorization/roleAssignments/write",
+                "message": "You need Owner, or Contributor plus User Access Administrator, on the subscription: the template creates role assignments and a resource lock."
+              },
+              {
+                "permission": "Microsoft.Resources/subscriptions/resourceGroups/write",
+                "message": "You need permission to create a resource group in this subscription."
+              }
+            ]
+          },
+          "resourceProviders": [
+            "Microsoft.App",
+            "Microsoft.ManagedIdentity",
+            "Microsoft.ContainerRegistry",
+            "Microsoft.Storage",
+            "Microsoft.Network"
+          ]
+        },
+        "location": {
+          "label": "Region",
+          "toolTip": "Every resource is created here. Only regions that offer Container Apps Sandboxes are listed. One deployment per region.",
+          "resourceTypes": [
+            "Microsoft.App/sandboxGroups"
+          ],
+          "visible": true
+        }
+      }
+    },
+    "basics": [
+      {
+        "name": "runtmSection",
+        "type": "Microsoft.Common.Section",
+        "label": "Runtm (pre-filled, do not edit)",
+        "elements": [
+          {
+            "name": "organizationId",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Runtm organization id",
+            "defaultValue": "",
+            "toolTip": "Shown in Runtm under Integrations -> Azure Sandboxes. Used for tagging.",
+            "constraints": {
+              "required": true,
+              "regex": "^.{1,64}$",
+              "validationMessage": "1-64 characters."
+            },
+            "visible": true
+          },
+          {
+            "name": "tenantSlug",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Resource slug",
+            "defaultValue": "",
+            "toolTip": "First 12 hex characters of sha256(organization id); every resource name carries it. Pre-filled by Runtm.",
+            "constraints": {
+              "required": true,
+              "regex": "^[a-f0-9]{12}$",
+              "validationMessage": "Exactly 12 lowercase hex characters."
+            },
+            "visible": true
+          },
+          {
+            "name": "googleSubject",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Runtm identity (Google subject)",
+            "defaultValue": "",
+            "toolTip": "Numeric unique id of your organization's Runtm Google service account. The broker identity trusts exactly this subject.",
+            "constraints": {
+              "required": true,
+              "regex": "^[0-9]{10,30}$",
+              "validationMessage": "10-30 digits."
+            },
+            "visible": true
+          },
+          {
+            "name": "audience",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Token audience",
+            "defaultValue": "api://AzureADTokenExchange",
+            "toolTip": "Audience of the Google token Runtm mints for this subscription (Entra's recommended value).",
+            "constraints": {
+              "required": true,
+              "regex": "^[A-Za-z0-9:/._-]{8,600}$",
+              "validationMessage": "8-600 characters of letters, digits, : / . _ -"
+            },
+            "visible": true
+          }
+        ],
+        "visible": true
+      }
+    ],
+    "steps": [
+      {
+        "name": "naming",
+        "label": "Names and retention",
+        "elements": [
+          {
+            "name": "suffix",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Suffix (optional label)",
+            "defaultValue": "",
+            "toolTip": "Human-readable label in front of the slug, e.g. pci or ops: resource group runtm-sandbox-pci-<slug>-<region>, sandbox group rtm-pci-<slug>. 1-10 lowercase letters, digits or hyphens (the same cap as the AWS stack). Enter the same value in the Runtm dialog.",
+            "constraints": {
+              "required": false,
+              "regex": "^([a-z0-9]([a-z0-9-]{0,8}[a-z0-9])?)?$",
+              "validationMessage": "1-10 lowercase letters, digits or hyphens, starting and ending with a letter or digit."
+            },
+            "visible": true
+          },
+          {
+            "name": "sessionArtifactRetentionDays",
+            "type": "Microsoft.Common.Slider",
+            "label": "Paused-session layer retention (days)",
+            "defaultValue": 90,
+            "min": 1,
+            "max": 365,
+            "showSubLabels": true,
+            "subLabel": { "min": "1", "max": "365" },
+            "toolTip": "Days to keep paused-session workspace layers (sessions/). Matches Runtm's paused-session retention.",
+            "visible": true
+          },
+          {
+            "name": "templateVersionRetentionDays",
+            "type": "Microsoft.Common.Slider",
+            "label": "Superseded template golden retention (days)",
+            "defaultValue": 30,
+            "min": 1,
+            "max": 365,
+            "showSubLabels": true,
+            "subLabel": { "min": "1", "max": "365" },
+            "toolTip": "Template goldens never expire; previous versions are purged after this many days.",
+            "visible": true
+          }
+        ]
+      },
+      {
+        "name": "network",
+        "label": "Network (optional)",
+        "elements": [
+          {
+            "name": "createVnet",
+            "type": "Microsoft.Common.CheckBox",
+            "label": "Create a VNet and connect the sandbox group to it (sandboxes can then reach private databases on your network)",
+            "toolTip": "Creates a VNet with one subnet delegated to Microsoft.App/environments and a vnetConnections child on the sandbox group. The subnet cannot be changed afterwards.",
+            "constraints": { "required": false },
+            "visible": true
+          },
+          {
+            "name": "vnetCidr",
+            "type": "Microsoft.Common.TextBox",
+            "label": "VNet address space",
+            "defaultValue": "10.77.0.0/16",
+            "toolTip": "CIDR of the VNet.",
+            "constraints": {
+              "required": true,
+              "regex": "^([0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]{1,2}$",
+              "validationMessage": "A CIDR, e.g. 10.77.0.0/16."
+            },
+            "visible": "[steps('network').createVnet]"
+          },
+          {
+            "name": "subnetCidr",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Delegated subnet",
+            "defaultValue": "10.77.0.0/23",
+            "toolTip": "Subnet inside the VNet that sandboxes attach to. Keep at least a /23.",
+            "constraints": {
+              "required": true,
+              "regex": "^([0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]{1,2}$",
+              "validationMessage": "A CIDR, e.g. 10.77.0.0/23."
+            },
+            "visible": "[steps('network').createVnet]"
+          }
+        ]
+      }
+    ],
+    "outputs": {
+      "location": "[location()]",
+      "organizationId": "[basics('runtmSection').organizationId]",
+      "tenantSlug": "[basics('runtmSection').tenantSlug]",
+      "googleSubject": "[basics('runtmSection').googleSubject]",
+      "audience": "[basics('runtmSection').audience]",
+      "suffix": "[steps('naming').suffix]",
+      "sessionArtifactRetentionDays": "[steps('naming').sessionArtifactRetentionDays]",
+      "templateVersionRetentionDays": "[steps('naming').templateVersionRetentionDays]",
+      "createVnet": "[steps('network').createVnet]",
+      "vnetCidr": "[steps('network').vnetCidr]",
+      "subnetCidr": "[steps('network').subnetCidr]"
+    }
+  }
+}
