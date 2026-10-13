@@ -265,8 +265,15 @@ class APIClient:
         if response.status_code == 401:
             raise InvalidTokenError()
         elif response.status_code == 429:
+            # Retry-After may be either a number of seconds OR an HTTP-date
+            # (RFC 9110 §10.2.3). int() would raise ValueError on the date form,
+            # turning a clean 429 into an unhandled traceback, so only convert
+            # the integer-seconds form and fall back to None otherwise.
             retry_after = response.headers.get("Retry-After")
-            raise RateLimitError(retry_after_seconds=int(retry_after) if retry_after else None)
+            retry_seconds = (
+                int(retry_after) if retry_after and retry_after.strip().isdigit() else None
+            )
+            raise RateLimitError(retry_after_seconds=retry_seconds)
         elif response.status_code == 404:
             # Try to extract deployment ID from URL
             path = str(response.url.path)
@@ -308,17 +315,21 @@ class APIClient:
                     recovery = None
                 raise RuntmError(error_msg, recovery_hint=recovery)
             except (ValueError, TypeError):
-                # JSON parsing failed, try to read text response
+                # JSON parsing failed - surface the raw text body if present so
+                # the user sees the server's actual error. Only the response.text
+                # access is guarded (it can raise on a decode error); the raise
+                # must happen OUTSIDE that guard, otherwise the detailed error is
+                # swallowed and the generic fallback always wins.
                 try:
                     text = response.text
-                    if text:
-                        raise RuntmError(
-                            f"Request failed: {response.status_code}",
-                            recovery_hint=f"Server response: {text[:200]}",
-                        )
                 except Exception:
-                    pass
-                # Fallback to generic error
+                    text = ""
+                if text:
+                    raise RuntmError(
+                        f"Request failed: {response.status_code}",
+                        recovery_hint=f"Server response: {text[:200]}",
+                    )
+                # No readable body - fall back to a generic error.
                 raise RuntmError(
                     f"Request failed: {response.status_code}",
                     recovery_hint="Check your request format and try again. If the problem persists, check the API logs.",
