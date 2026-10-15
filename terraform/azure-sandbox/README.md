@@ -34,9 +34,12 @@ output "runtm_connection" {
 ```
 
 Your organization id and the Google subject are in Runtm under
-**Integrations → Azure Sandboxes**. Apply, then paste
-`terraform output -json runtm_connection` into that dialog and press
-**Test connection**.
+**Integrations → Azure Sandboxes**. Apply, then give that dialog the two
+values it asks for — `terraform output subscription_id` and
+`terraform output broker_client_id` — and press **Test connection**. Runtm
+derives every other name from the convention below (and reads the identity
+with its own token); the whole `terraform output -json runtm_connection`
+object can still be pasted under *Advanced* if your stack renamed anything.
 
 ### Why `runtm_google_subject` is required here and optional on AWS
 
@@ -149,7 +152,9 @@ link, so Runtm serves a per-organization copy of `azuredeploy.json` with your
 `storageAccountName` and `registryName` baked in as defaults; everything else
 is byte-identical to the committed file. Pick the subscription and region,
 review, create. When the deployment finishes, open **Outputs**, copy
-`runtmConnection`, paste it into the dialog, and press **Test connection**.
+`subscriptionId` and `brokerClientId` into the dialog's two fields, and press
+**Test connection** (the whole `runtmConnection` object is accepted under
+*Advanced*).
 
 **Azure CLI.** From a terminal, with the values the dialog shows:
 
@@ -161,8 +166,9 @@ az deployment sub create --location westus2 --name runtm-sandbox \
 az deployment sub show -n runtm-sandbox --query properties.outputs.runtmConnection.value
 ```
 
-(`--template-file bicep/main.bicep` works too from a checkout.) Paste the
-output into the dialog.
+(`--template-file bicep/main.bicep` works too from a checkout.) Enter the
+output's `subscription_id` and `broker_client_id` in the dialog, or paste the
+whole object under *Advanced*.
 
 **Terraform.** The module above.
 
