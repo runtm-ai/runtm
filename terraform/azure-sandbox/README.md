@@ -41,6 +41,15 @@ derives every other name from the convention below (and reads the identity
 with its own token); the whole `terraform output -json runtm_connection`
 object can still be pasted under *Advanced* if your stack renamed anything.
 
+### The dialog's snippet is shorter than this
+
+Runtm serves each organization its own thin wrapper of this module
+(`source = "https://app.runtm.com/api/cloud/azure/templates/<id>/runtm-sandbox.zip"`),
+with `runtm_organization_id` and `runtm_google_subject` baked in as variable
+defaults, so the block Runtm shows names only `location` and `suffix`. The
+wrapper re-exports every output and passes every variable through. Use this
+public module directly when you want to pin a version or read the code.
+
 ### Why `runtm_google_subject` is required here and optional on AWS
 
 Both clouds trust the same thing: a Google service account Runtm mints per
