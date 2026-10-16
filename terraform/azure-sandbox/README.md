@@ -98,7 +98,7 @@ One module instance per region. Pin `ref=` to a tag for reproducible applies.
 |---|---|---|
 | Resource group | `runtm-sandbox-<label>-<region>` | Everything lives here; every grant is scoped inside it. |
 | User-assigned managed identity | `runtm-sandbox-broker-<label>` | The identity Runtm acts as. |
-| Federated identity credential | `google-runtm-org` | issuer `https://accounts.google.com`, subject = your Google subject, audience `api://AzureADTokenExchange`. |
+| Federated identity credential | `google-runtm-org` | issuer `https://accounts.google.com`, subject = Runtm's shared Google identity, audience `runtm-sandbox:<organization id>` (this organization's only). |
 | Sandbox group (`Microsoft.App/sandboxGroups@2026-07-01`) | `rtm-<label>` | Broker identity attached (PUT envelope + a PATCH, see below). |
 | Container registry (Basic) | `rtmacr<slug><disc>` | Sandbox images; the service pulls with the group identity. |
 | Storage account + container `layers` | `rtm<slug><disc>` | Versioned, TLS 1.2, HTTPS only, no public access, no account keys; lifecycle on `sessions/` and `templates/`. |
@@ -246,7 +246,7 @@ reports the identity missing and the command above repairs it.
 | `runtm_organization_id` | — | Your Runtm organization id. |
 | `runtm_google_subject` | — | **Required.** Numeric unique id of your organization's Runtm Google identity (shown in the dialog). |
 | `location` | — | Azure region offering Container Apps Sandboxes. |
-| `runtm_audience` | `api://AzureADTokenExchange` | Token audience the federated credential accepts. |
+| `runtm_audience` | `""` = `runtm-sandbox:<runtm_organization_id>` | Token audience the federated credential accepts; the per-organization isolation boundary. Leave empty. |
 | `runtm_google_issuer` | `https://accounts.google.com` | Leave unset. |
 | `suffix` | `""` | Optional label in front of the org slug (`pci`, `ops`); 1-10 lowercase chars. |
 | `session_artifact_retention_days` | `90` | Lifetime of paused-session workspace layers. |

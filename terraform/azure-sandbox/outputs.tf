@@ -106,6 +106,6 @@ output "runtm_connection" {
     vnet_connection     = var.create_vnet ? azapi_resource.vnet_connection[0].name : null
     google_subject      = var.runtm_google_subject
     google_issuer       = var.runtm_google_issuer
-    audience            = var.runtm_audience
+    audience            = local.audience
   }
 }
