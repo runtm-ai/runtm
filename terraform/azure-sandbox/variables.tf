@@ -68,13 +68,13 @@ variable "location" {
 }
 
 variable "suffix" {
-  description = "Optional human-readable label put in front of the per-organization slug in resource names, e.g. \"pci\" or \"ops\": runtm-sandbox-pci-<slug>-<region>, sandbox group rtm-pci-<slug>. 1-15 lowercase letters, digits or hyphens: 15 is the most that keeps the sandbox group name rtm-<suffix>-<slug> within Azure's 32-character limit (4 + 15 + 1 + 12 = 32). Enter the same value in the Runtm dialog so its pre-filled names match."
+  description = "Optional human-readable label put in front of the per-organization slug in resource names, e.g. \"pci\" or \"ops\": runtm-sandbox-pci-<slug>-<region>, sandbox group rtm-pci-<slug>. 1-10 lowercase letters, digits or hyphens, starting and ending with a letter or digit — the same rule the Runtm dialog, the Deploy-to-Azure wizard and the AWS module enforce, so one value works everywhere. Enter the same value in the Runtm dialog so its pre-filled names match."
   type        = string
   default     = ""
 
   validation {
-    condition     = var.suffix == "" || can(regex("^[a-z0-9]([a-z0-9-]{0,13}[a-z0-9])?$", var.suffix))
-    error_message = "suffix must be 1-15 lowercase letters, digits or hyphens, starting and ending with a letter or digit."
+    condition     = var.suffix == "" || can(regex("^[a-z0-9]([a-z0-9-]{0,8}[a-z0-9])?$", var.suffix))
+    error_message = "suffix must be 1-10 lowercase letters, digits or hyphens, starting and ending with a letter or digit (the Runtm dialog's rule)."
   }
 }
 
