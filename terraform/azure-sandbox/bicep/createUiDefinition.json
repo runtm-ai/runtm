@@ -6,7 +6,7 @@
     "config": {
       "isWizard": true,
       "basics": {
-        "description": "Creates, in **your** subscription, what Runtm needs to run sandboxes there: a resource group, a broker managed identity that trusts your organization's Runtm Google identity (no secret), a sandbox group, a container registry, a storage account for workspace layers, and the role assignments between them. Nothing grants Runtm access outside that resource group. The **Runtm** values below are pre-filled when you arrive from the Runtm dialog; do not edit them. You need **Owner** (or Contributor + User Access Administrator) on the subscription.",
+        "description": "Creates, in **your** subscription, what Runtm needs to run sandboxes there: a resource group, a broker managed identity that trusts your organization's Runtm Google identity (no secret), a sandbox group, a container registry, a storage account for workspace layers, and the role assignments between them. Nothing grants Runtm access outside that resource group. The **Runtm** values below are pre-filled when you arrive from the Runtm dialog; by hand, copy them from the dialog. You need **Owner** (or Contributor + User Access Administrator) on the subscription.",
         "subscription": {
           "constraints": {
             "validations": [
@@ -42,14 +42,14 @@
       {
         "name": "runtmSection",
         "type": "Microsoft.Common.Section",
-        "label": "Runtm (pre-filled, do not edit)",
+        "label": "Runtm",
         "elements": [
           {
             "name": "organizationId",
             "type": "Microsoft.Common.TextBox",
             "label": "Runtm organization id",
             "defaultValue": "",
-            "toolTip": "Shown in Runtm under Integrations -> Azure Sandboxes. Used for tagging.",
+            "toolTip": "Shown in Runtm under Integrations -> Azure Sandboxes (copy it from there). Every resource name and the token audience derive from it.",
             "constraints": {
               "required": true,
               "regex": "^.{1,64}$",
@@ -58,41 +58,15 @@
             "visible": true
           },
           {
-            "name": "tenantSlug",
-            "type": "Microsoft.Common.TextBox",
-            "label": "Resource slug",
-            "defaultValue": "",
-            "toolTip": "First 12 hex characters of sha256(organization id); every resource name carries it. Pre-filled by Runtm.",
-            "constraints": {
-              "required": true,
-              "regex": "^[a-f0-9]{12}$",
-              "validationMessage": "Exactly 12 lowercase hex characters."
-            },
-            "visible": true
-          },
-          {
             "name": "googleSubject",
             "type": "Microsoft.Common.TextBox",
             "label": "Runtm identity (Google subject)",
             "defaultValue": "",
-            "toolTip": "Numeric unique id of your organization's Runtm Google service account. The broker identity trusts exactly this subject.",
+            "toolTip": "Numeric id of the one Google account Runtm presents to every tenant (shown in the Runtm dialog). The same for every organization.",
             "constraints": {
               "required": true,
               "regex": "^[0-9]{10,30}$",
               "validationMessage": "10-30 digits."
-            },
-            "visible": true
-          },
-          {
-            "name": "audience",
-            "type": "Microsoft.Common.TextBox",
-            "label": "Token audience",
-            "defaultValue": "api://AzureADTokenExchange",
-            "toolTip": "Audience of the Google token Runtm mints for this subscription (Entra's recommended value).",
-            "constraints": {
-              "required": true,
-              "regex": "^[A-Za-z0-9:/._-]{8,600}$",
-              "validationMessage": "8-600 characters of letters, digits, : / . _ -"
             },
             "visible": true
           }
@@ -126,7 +100,10 @@
             "min": 1,
             "max": 365,
             "showSubLabels": true,
-            "subLabel": { "min": "1", "max": "365" },
+            "subLabel": {
+              "min": "1",
+              "max": "365"
+            },
             "toolTip": "Days to keep paused-session workspace layers (sessions/). Matches Runtm's paused-session retention.",
             "visible": true
           },
@@ -138,7 +115,10 @@
             "min": 1,
             "max": 365,
             "showSubLabels": true,
-            "subLabel": { "min": "1", "max": "365" },
+            "subLabel": {
+              "min": "1",
+              "max": "365"
+            },
             "toolTip": "Template goldens never expire; previous versions are purged after this many days.",
             "visible": true
           }
@@ -153,7 +133,9 @@
             "type": "Microsoft.Common.CheckBox",
             "label": "Create a VNet and connect the sandbox group to it (sandboxes can then reach private databases on your network)",
             "toolTip": "Creates a VNet with one subnet delegated to Microsoft.App/environments and a vnetConnections child on the sandbox group. The subnet cannot be changed afterwards.",
-            "constraints": { "required": false },
+            "constraints": {
+              "required": false
+            },
             "visible": true
           },
           {
@@ -188,9 +170,9 @@
     "outputs": {
       "location": "[location()]",
       "organizationId": "[basics('runtmSection').organizationId]",
-      "tenantSlug": "[basics('runtmSection').tenantSlug]",
+      "tenantSlug": "[toLower(substring(basics('runtmSection').organizationId, 0, 12))]",
       "googleSubject": "[basics('runtmSection').googleSubject]",
-      "audience": "[basics('runtmSection').audience]",
+      "audience": "[concat('runtm-sandbox:', basics('runtmSection').organizationId)]",
       "suffix": "[steps('naming').suffix]",
       "sessionArtifactRetentionDays": "[steps('naming').sessionArtifactRetentionDays]",
       "templateVersionRetentionDays": "[steps('naming').templateVersionRetentionDays]",

@@ -19,16 +19,13 @@ locals {
   tenant_id       = data.azurerm_client_config.current.tenant_id
 
   # The Runtm organization is the tenant. Every fixed-name resource below
-  # carries a slug DERIVED from the org id — the first 12 hex chars of the same
-  # sha256 the org's Google service account is named from — so two orgs (two
-  # teams, PCI and non-PCI, Runtm staging and a developer) can share one
-  # subscription and region without a single name collision. `suffix` is an
-  # optional human-readable label (pci, ops, revenue) in front of the slug.
-  # cloud-api computes the same names; the Bicep twin takes the slug as
-  # tenantSlug and the two hyphen-less names as parameters, because ARM has no
-  # sha256 function.
-  slug  = substr(sha256(var.runtm_organization_id), 0, 12)
-  label = var.suffix != "" ? "${var.suffix}-${local.slug}" : local.slug
+  # The first 12 characters of the org id, lower-cased: what an ARM template can
+  # compute from the org id alone, so the public template needs nothing but the
+  # org id and a label (not the AWS module's sha256 slug). Runtm derives the
+  # same names.
+  slug     = lower(substr(var.runtm_organization_id, 0, 12))
+  audience = var.runtm_audience != "" ? var.runtm_audience : "runtm-sandbox:${var.runtm_organization_id}"
+  label    = var.suffix != "" ? "${var.suffix}-${local.slug}" : local.slug
 
   # Storage accounts (3-24 lowercase alphanumerics) and registries (5-50
   # alphanumerics) are globally unique and take no hyphens, so the readable
@@ -97,7 +94,7 @@ resource "azurerm_federated_identity_credential" "google" {
   parent_id           = azurerm_user_assigned_identity.broker.id
   issuer              = var.runtm_google_issuer
   subject             = var.runtm_google_subject
-  audience            = [var.runtm_audience]
+  audience            = [local.audience]
 }
 
 # ---------------------------------------------------------------------------

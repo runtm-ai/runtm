@@ -17,19 +17,19 @@ targetScope = 'subscription'
 @maxLength(64)
 param organizationId string
 
-@description('Per-organization resource slug (pre-filled by Runtm: the first 12 hex chars of sha256(organization id)). ARM cannot hash, so it is passed in.')
+@description('Per-organization resource slug: the first 12 characters of the organization id, lower-cased (what Runtm, the Terraform module and this template all compute). Leave the default.')
 @minLength(12)
 @maxLength(12)
-param tenantSlug string
+param tenantSlug string = toLower(substring(organizationId, 0, 12))
 
-@description('Numeric unique id of your organization\'s Runtm Google service account (pre-filled by Runtm). REQUIRED: Entra matches the token subject exactly; there is no email condition as on AWS.')
+@description('Numeric unique id of the ONE Google service account Runtm presents to every tenant (Entra matches the token subject exactly). Pre-filled by Runtm; the same for every organization, so the audience below is what keeps stacks apart.')
 @minLength(10)
 @maxLength(30)
 param googleSubject string
 
-@description('Audience of the Google token Runtm mints for this subscription (pre-filled by Runtm; Entra\'s recommended value).')
+@description('Audience of the Google token Runtm mints for THIS organization: runtm-sandbox:<organization id>. The federated credential accepts only it, so a token minted for another organization is refused. Leave the default.')
 @minLength(8)
-param audience string = 'api://AzureADTokenExchange'
+param audience string = 'runtm-sandbox:${organizationId}'
 
 @description('Issuer of the tokens Runtm presents. Do not change.')
 param googleIssuer string = 'https://accounts.google.com'

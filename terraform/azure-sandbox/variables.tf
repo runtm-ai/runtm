@@ -22,7 +22,7 @@ variable "runtm_organization_id" {
 }
 
 variable "runtm_google_subject" {
-  description = "REQUIRED: the numeric unique id of your organization's Runtm Google service account (shown in the Runtm dialog). Entra federated credentials match the token's `sub` exactly; there is no email condition as on AWS. If Runtm ever recreates the account, re-apply with the new id."
+  description = "Numeric unique id of the ONE Google service account Runtm presents to every tenant (shown in the Runtm dialog; the same for every organization — the audience is what keeps stacks apart). Entra federated credentials match the token's `sub` exactly; there is no email condition as on AWS."
   type        = string
 
   validation {
@@ -43,13 +43,13 @@ variable "runtm_google_issuer" {
 }
 
 variable "runtm_audience" {
-  description = "Audience of the Google token Runtm mints for this subscription. Entra's recommended value for workload identity federation is api://AzureADTokenExchange (a token minted for any other audience, e.g. the AWS one, is refused with AADSTS700212). Only change it if your Runtm deployment is configured differently."
+  description = "Audience of the Google token Runtm mints for THIS organization. Empty (the default) = runtm-sandbox:<runtm_organization_id>, which is what Runtm mints; the federated credential accepts only it, so a token minted for another organization is refused (AADSTS700212). Only set it if your Runtm deployment is configured with a different audience prefix."
   type        = string
-  default     = "api://AzureADTokenExchange"
+  default     = ""
 
   validation {
-    condition     = can(regex("^[A-Za-z0-9:/._-]{8,600}$", var.runtm_audience))
-    error_message = "runtm_audience must be 8-600 characters of [A-Za-z0-9:/._-]."
+    condition     = var.runtm_audience == "" || can(regex("^[A-Za-z0-9:/._-]{8,600}$", var.runtm_audience))
+    error_message = "runtm_audience must be empty or 8-600 characters of [A-Za-z0-9:/._-]."
   }
 }
 

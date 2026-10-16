@@ -27,7 +27,7 @@ module "runtm_sandbox" {
   source = "git::https://github.com/runtm-ai/runtm.git//terraform/azure-sandbox?ref=main"
 
   runtm_organization_id = "<org id>"
-  runtm_google_subject  = "<numeric id shown in the dialog>"
+  runtm_google_subject  = "<Runtm's identity id, shown in the dialog>"
   location              = "westus2"
 }
 
@@ -53,18 +53,22 @@ defaults, so the block Runtm shows names only `location` and `suffix`. The
 wrapper re-exports every output and passes every variable through. Use this
 public module directly when you want to pin a version or read the code.
 
-### Why `runtm_google_subject` is required here and optional on AWS
+### One Runtm identity, per-organization audience
 
-Both clouds trust the same thing: a Google service account Runtm mints per
-organization. AWS lets a role trust it by **email**
-(`accounts.google.com:email`), and the email is derived from the organization
-id, so the id alone was enough. Entra workload identity federation has no email
-condition: a federated credential matches the token's **issuer**
-(`https://accounts.google.com`), **subject** and **audience**
-(`api://AzureADTokenExchange`) exactly, and the subject is the account's
-numeric unique id, which is assigned by Google and cannot be derived. So the
-dialog shows it and you pass it in. If Runtm ever recreates the account,
-re-apply with the new id.
+Both clouds trust a Google service account Runtm operates. AWS lets a role
+trust it by **email**, so the AWS module derives a per-organization account
+from the org id. Entra workload identity federation has no email condition:
+a federated credential matches the token's **issuer**
+(`https://accounts.google.com`), **subject** (the account's numeric id,
+assigned by Google) and **audience** exactly. A per-organization account would
+make the subject a per-customer value no public template could carry, so on
+Azure Runtm presents **one** account to every tenant: `runtm_google_subject`
+is the same number for every organization (the dialog shows it), and the
+**audience** `runtm-sandbox:<organization id>` is what keeps stacks apart — a
+token Runtm mints for organization A is refused by organization B's broker
+(`AADSTS700212`). Every name derives from the organization id (slug = its
+first 12 characters, lower-cased), so a stack needs the org id and an optional
+label and nothing else.
 
 There is no Runtm Entra application and no secret anywhere: the broker is a
 managed identity in **your** tenant, and nothing in the stack needs tenant-admin
@@ -102,10 +106,13 @@ One module instance per region. Pin `ref=` to a tag for reproducible applies.
 | Role assignments for the broker | Contributor (resource group), Container Apps SandboxGroup Data Owner (sandbox group), AcrPull (registry), Storage Blob Data Contributor (storage) | Each scoped to the one resource it is needed on. |
 | Optional VNet + delegated subnet + `vnetConnections` | `runtm-sandbox-egress-<label>` / `sandboxes` / `default` | `create_vnet = true`. |
 
-`<label>` is `<suffix>-<slug>` or `<slug>`; `<slug>` is the first 12 hex
-characters of `sha256(organization id)`; `<disc>` is the first 9 of
+`<label>` is `<suffix>-<slug>` or `<slug>`; `<slug>` is the first 12
+characters of the organization id, lower-cased (so an ARM template can derive
+it); `<disc>` is the first 9 hex characters of
 `sha256("<org>|<suffix>|<region>")`, needed because storage and registry names
-are globally unique, take no hyphens and cap at 24 characters.
+are globally unique, take no hyphens and cap at 24 characters (the Bicep
+template's own default uses `uniqueString()` for `<disc>` instead; Runtm reads
+the names a portal deployment actually produced from its outputs).
 
 ## Name lengths
 
@@ -251,9 +258,10 @@ reports the identity missing and the command above repairs it.
 | `tags` | `{}` | Extra tags. |
 
 See `variables.tf` for the full list. The Bicep template takes the same
-values in camelCase (`organizationId`, `googleSubject`, `suffix`, ...) plus
-`tenantSlug`, `storageAccountName` and `registryName`, because ARM has no
-sha256 function and Runtm pre-fills them.
+values in camelCase (`organizationId`, `googleSubject`, `suffix`, ...);
+`tenantSlug` and `audience` default to the same derivations from the org id,
+and `storageAccountName` / `registryName` default to `uniqueString()`-based
+names (Runtm pre-fills the sha256 ones when you arrive from the dialog).
 
 ## Outputs
 
