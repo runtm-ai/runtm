@@ -14,6 +14,9 @@ The same stack ships as a Bicep/ARM "Deploy to Azure" template in `bicep/`
 provider "azurerm" {
   features {}
   subscription_id = "<subscription id>"
+  # The stack disables storage account keys; without this the provider polls
+  # blob storage with a key after creating the account and fails with 403.
+  storage_use_azuread = true
 }
 
 provider "azapi" {
@@ -241,7 +244,7 @@ reports the identity missing and the command above repairs it.
 | `suffix` | `""` | Optional label in front of the org slug (`pci`, `ops`); 1-10 lowercase chars. |
 | `session_artifact_retention_days` | `90` | Lifetime of paused-session workspace layers. |
 | `template_version_retention_days` | `30` | Lifetime of superseded template golden versions (current never expires). |
-| `storage_shared_key_access` | `false` | Allow account-key auth on the storage account. |
+| `storage_shared_key_access` | `false` | Allow account-key auth on the storage account. With the default (`false`) your `azurerm` provider block needs `storage_use_azuread = true`, or the provider's post-create blob poll fails with 403 `KeyBasedAuthenticationNotPermitted`. |
 | `attach_identity_by_patch` | `true` | Also PATCH the identity onto the sandbox group after creation. |
 | `create_vnet` / `vnet_cidr` / `subnet_cidr` | `false` / `10.77.0.0/16` / `10.77.0.0/23` | Optional VNet. |
 | `storage_account_name` / `registry_name` | derived | Override only when the derived name is taken. |
