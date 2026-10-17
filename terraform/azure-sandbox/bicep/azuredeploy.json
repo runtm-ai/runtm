@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.48.1.52935",
-      "templateHash": "2324703810650708510"
+      "templateHash": "10017156808401060064"
     }
   },
   "parameters": {
@@ -27,10 +27,11 @@
     },
     "googleSubject": {
       "type": "string",
+      "defaultValue": "115475383003204837105",
       "minLength": 10,
       "maxLength": 30,
       "metadata": {
-        "description": "Numeric unique id of the ONE Google service account Runtm presents to every tenant (Entra matches the token subject exactly). Pre-filled by Runtm; the same for every organization, so the audience below is what keeps stacks apart."
+        "description": "Numeric unique id of the ONE Google service account Runtm presents to every tenant (Entra matches the token subject exactly). The default is Runtm production's identity; the same for every organization, so the audience below is what keeps stacks apart. Only Runtm staff pointing a test stack at Runtm staging override it."
       }
     },
     "audience": {
