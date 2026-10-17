@@ -44,15 +44,6 @@ derives every other name from the convention below (and reads the identity
 with its own token); the whole `terraform output -json runtm_connection`
 object can still be pasted under *Advanced* if your stack renamed anything.
 
-### The dialog's snippet is shorter than this
-
-Runtm serves each organization its own thin wrapper of this module
-(`source = "https://app.runtm.com/api/cloud/azure/templates/<id>/runtm-sandbox.zip"`),
-with `runtm_organization_id` and `runtm_google_subject` baked in as variable
-defaults, so the block Runtm shows names only `location` and `suffix`. The
-wrapper re-exports every output and passes every variable through. Use this
-public module directly when you want to pin a version or read the code.
-
 ### One Runtm identity, per-organization audience
 
 Both clouds trust a Google service account Runtm operates. AWS lets a role
@@ -164,13 +155,15 @@ All three paths produce the same resources with the same names, so a stack
 created from the template can be adopted by Terraform later with `import`
 blocks.
 
-**Deploy to Azure button.** The Runtm dialog offers a pre-filled one-click
-link into the Azure portal. The portal cannot take parameter values from the
-link, so Runtm serves a per-organization copy of `azuredeploy.json` with your
-`organizationId`, `tenantSlug`, `googleSubject`, `audience`, `suffix`,
-`storageAccountName` and `registryName` baked in as defaults; everything else
-is byte-identical to the committed file. Pick the subscription and region,
-review, create. When the deployment finishes, open **Outputs**, copy
+**Deploy to Azure button.** The Runtm dialog's button opens this committed
+template in the Azure portal (nothing is served by Runtm, as with the AWS
+quick-create). The portal cannot take parameter values from a link, so its
+wizard asks for the **Runtm organization id** (and the Runtm identity's
+numeric id until it is the committed default) on the first page and an
+optional label on the next; the dialog shows those values with copy
+buttons. Everything else — resource slug, token audience, every name — is
+derived from the organization id. Pick the subscription and region, review,
+create. When the deployment finishes, open **Outputs**, copy
 `subscriptionId` and `brokerClientId` into the dialog's two fields, and press
 **Test connection** (the whole `runtmConnection` object is accepted under
 *Advanced*).
