@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.48.1.52935",
-      "templateHash": "10017156808401060064"
+      "templateHash": "8694199291993167355"
     }
   },
   "parameters": {
@@ -18,11 +18,10 @@
     },
     "tenantSlug": {
       "type": "string",
-      "defaultValue": "[toLower(substring(parameters('organizationId'), 0, 12))]",
       "minLength": 12,
       "maxLength": 12,
       "metadata": {
-        "description": "Per-organization resource slug: the first 12 characters of the organization id, lower-cased (what Runtm, the Terraform module and this template all compute). Leave the default."
+        "description": "Per-organization resource slug: the first 12 hex characters of sha256(organization id), the same slug the organization has on AWS. ARM cannot hash, so copy it from the Runtm dialog next to the organization id."
       }
     },
     "googleSubject": {

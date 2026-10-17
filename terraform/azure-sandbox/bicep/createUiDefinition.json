@@ -6,7 +6,7 @@
     "config": {
       "isWizard": true,
       "basics": {
-        "description": "Creates, in **your** subscription, what Runtm needs to run sandboxes there: a resource group, a broker managed identity that trusts your organization's Runtm Google identity (no secret), a sandbox group, a container registry, a storage account for workspace layers, and the role assignments between them. Nothing grants Runtm access outside that resource group. Copy the **Runtm organization id** below from the Runtm dialog; everything else derives from it. You need **Owner** (or Contributor + User Access Administrator) on the subscription.",
+        "description": "Creates, in **your** subscription, what Runtm needs to run sandboxes there: a resource group, a broker managed identity that trusts your organization's Runtm Google identity (no secret), a sandbox group, a container registry, a storage account for workspace layers, and the role assignments between them. Nothing grants Runtm access outside that resource group. Copy the **Runtm organization id** and **Resource slug** below from the Runtm dialog; everything else derives from them. You need **Owner** (or Contributor + User Access Administrator) on the subscription.",
         "subscription": {
           "constraints": {
             "validations": [
@@ -54,6 +54,19 @@
               "required": true,
               "regex": "^.{1,64}$",
               "validationMessage": "1-64 characters."
+            },
+            "visible": true
+          },
+          {
+            "name": "tenantSlug",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Resource slug",
+            "defaultValue": "",
+            "toolTip": "First 12 hex characters of sha256(organization id); every resource name carries it, the same as on AWS. Copy it from the Runtm dialog.",
+            "constraints": {
+              "required": true,
+              "regex": "^[a-f0-9]{12}$",
+              "validationMessage": "Exactly 12 lowercase hex characters."
             },
             "visible": true
           }
@@ -157,7 +170,7 @@
     "outputs": {
       "location": "[location()]",
       "organizationId": "[basics('runtmSection').organizationId]",
-      "tenantSlug": "[toLower(substring(basics('runtmSection').organizationId, 0, 12))]",
+      "tenantSlug": "[basics('runtmSection').tenantSlug]",
       "googleSubject": "115475383003204837105",
       "audience": "[concat('runtm-sandbox:', basics('runtmSection').organizationId)]",
       "suffix": "[steps('naming').suffix]",

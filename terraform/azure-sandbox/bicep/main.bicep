@@ -17,10 +17,10 @@ targetScope = 'subscription'
 @maxLength(64)
 param organizationId string
 
-@description('Per-organization resource slug: the first 12 characters of the organization id, lower-cased (what Runtm, the Terraform module and this template all compute). Leave the default.')
+@description('Per-organization resource slug: the first 12 hex characters of sha256(organization id), the same slug the organization has on AWS. ARM cannot hash, so copy it from the Runtm dialog next to the organization id.')
 @minLength(12)
 @maxLength(12)
-param tenantSlug string = toLower(substring(organizationId, 0, 12))
+param tenantSlug string
 
 @description('Numeric unique id of the ONE Google service account Runtm presents to every tenant (Entra matches the token subject exactly). The default is Runtm production\'s identity; the same for every organization, so the audience below is what keeps stacks apart. Only Runtm staff pointing a test stack at Runtm staging override it.')
 @minLength(10)
