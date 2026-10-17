@@ -22,10 +22,10 @@ param organizationId string
 @maxLength(12)
 param tenantSlug string = toLower(substring(organizationId, 0, 12))
 
-@description('Numeric unique id of the ONE Google service account Runtm presents to every tenant (Entra matches the token subject exactly). Pre-filled by Runtm; the same for every organization, so the audience below is what keeps stacks apart.')
+@description('Numeric unique id of the ONE Google service account Runtm presents to every tenant (Entra matches the token subject exactly). The default is Runtm production\'s identity; the same for every organization, so the audience below is what keeps stacks apart. Only Runtm staff pointing a test stack at Runtm staging override it.')
 @minLength(10)
 @maxLength(30)
-param googleSubject string
+param googleSubject string = '115475383003204837105'
 
 @description('Audience of the Google token Runtm mints for THIS organization: runtm-sandbox:<organization id>. The federated credential accepts only it, so a token minted for another organization is refused. Leave the default.')
 @minLength(8)
