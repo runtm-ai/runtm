@@ -27,7 +27,6 @@ module "runtm_sandbox" {
   source = "git::https://github.com/runtm-ai/runtm.git//terraform/azure-sandbox?ref=main"
 
   runtm_organization_id = "<org id>"
-  runtm_google_subject  = "<Runtm's identity id, shown in the dialog>"
   location              = "westus2"
 }
 
@@ -54,7 +53,7 @@ a federated credential matches the token's **issuer**
 assigned by Google) and **audience** exactly. A per-organization account would
 make the subject a per-customer value no public template could carry, so on
 Azure Runtm presents **one** account to every tenant: `runtm_google_subject`
-is the same number for every organization (the dialog shows it), and the
+is the same number for every organization (the module's default), and the
 **audience** `runtm-sandbox:<organization id>` is what keeps stacks apart — a
 token Runtm mints for organization A is refused by organization B's broker
 (`AADSTS700212`). Every name derives from the organization id (slug = its
@@ -158,8 +157,7 @@ blocks.
 **Deploy to Azure button.** The Runtm dialog's button opens this committed
 template in the Azure portal (nothing is served by Runtm, as with the AWS
 quick-create). The portal cannot take parameter values from a link, so its
-wizard asks for the **Runtm organization id** (and the Runtm identity's
-numeric id until it is the committed default) on the first page and an
+wizard asks for the **Runtm organization id** on the first page and an
 optional label on the next; the dialog shows those values with copy
 buttons. Everything else — resource slug, token audience, every name — is
 derived from the organization id. Pick the subscription and region, review,
@@ -173,7 +171,7 @@ create. When the deployment finishes, open **Outputs**, copy
 ```sh
 az deployment sub create --location westus2 --name runtm-sandbox \
   --template-uri https://raw.githubusercontent.com/runtm-ai/runtm/main/terraform/azure-sandbox/bicep/azuredeploy.json \
-  --parameters organizationId=<org id> tenantSlug=<slug> googleSubject=<numeric id> \
+  --parameters organizationId=<org id> \
                storageAccountName=<shown in the dialog> registryName=<shown in the dialog>
 az deployment sub show -n runtm-sandbox --query properties.outputs.runtmConnection.value
 ```
@@ -237,7 +235,7 @@ reports the identity missing and the command above repairs it.
 | Name | Default | Description |
 |---|---|---|
 | `runtm_organization_id` | — | Your Runtm organization id. |
-| `runtm_google_subject` | — | **Required.** Numeric unique id of your organization's Runtm Google identity (shown in the dialog). |
+| `runtm_google_subject` | Runtm production's identity | Numeric unique id of the one Google identity Runtm presents to every tenant. Override only for a test stack against Runtm staging. |
 | `location` | — | Azure region offering Container Apps Sandboxes. |
 | `runtm_audience` | `""` = `runtm-sandbox:<runtm_organization_id>` | Token audience the federated credential accepts; the per-organization isolation boundary. Leave empty. |
 | `runtm_google_issuer` | `https://accounts.google.com` | Leave unset. |

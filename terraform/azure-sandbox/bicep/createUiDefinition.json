@@ -6,7 +6,7 @@
     "config": {
       "isWizard": true,
       "basics": {
-        "description": "Creates, in **your** subscription, what Runtm needs to run sandboxes there: a resource group, a broker managed identity that trusts your organization's Runtm Google identity (no secret), a sandbox group, a container registry, a storage account for workspace layers, and the role assignments between them. Nothing grants Runtm access outside that resource group. The **Runtm** values below are pre-filled when you arrive from the Runtm dialog; by hand, copy them from the dialog. You need **Owner** (or Contributor + User Access Administrator) on the subscription.",
+        "description": "Creates, in **your** subscription, what Runtm needs to run sandboxes there: a resource group, a broker managed identity that trusts your organization's Runtm Google identity (no secret), a sandbox group, a container registry, a storage account for workspace layers, and the role assignments between them. Nothing grants Runtm access outside that resource group. Copy the **Runtm organization id** below from the Runtm dialog; everything else derives from it. You need **Owner** (or Contributor + User Access Administrator) on the subscription.",
         "subscription": {
           "constraints": {
             "validations": [
@@ -54,19 +54,6 @@
               "required": true,
               "regex": "^.{1,64}$",
               "validationMessage": "1-64 characters."
-            },
-            "visible": true
-          },
-          {
-            "name": "googleSubject",
-            "type": "Microsoft.Common.TextBox",
-            "label": "Runtm identity (Google subject)",
-            "defaultValue": "",
-            "toolTip": "Numeric id of the one Google account Runtm presents to every tenant (shown in the Runtm dialog). The same for every organization.",
-            "constraints": {
-              "required": true,
-              "regex": "^[0-9]{10,30}$",
-              "validationMessage": "10-30 digits."
             },
             "visible": true
           }
@@ -171,7 +158,7 @@
       "location": "[location()]",
       "organizationId": "[basics('runtmSection').organizationId]",
       "tenantSlug": "[toLower(substring(basics('runtmSection').organizationId, 0, 12))]",
-      "googleSubject": "[basics('runtmSection').googleSubject]",
+      "googleSubject": "115475383003204837105",
       "audience": "[concat('runtm-sandbox:', basics('runtmSection').organizationId)]",
       "suffix": "[steps('naming').suffix]",
       "sessionArtifactRetentionDays": "[steps('naming').sessionArtifactRetentionDays]",
