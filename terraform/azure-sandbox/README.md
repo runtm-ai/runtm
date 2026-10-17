@@ -56,9 +56,9 @@ Azure Runtm presents **one** account to every tenant: `runtm_google_subject`
 is the same number for every organization (the module's default), and the
 **audience** `runtm-sandbox:<organization id>` is what keeps stacks apart — a
 token Runtm mints for organization A is refused by organization B's broker
-(`AADSTS700212`). Every name derives from the organization id (slug = its
-first 12 characters, lower-cased), so a stack needs the org id and an optional
-label and nothing else.
+(`AADSTS700212`). Every name derives from the organization id (slug =
+`sha256(org id)[:12]`, as on AWS), so a stack needs the org id, that slug (the
+template cannot hash) and an optional label, nothing else.
 
 There is no Runtm Entra application and no secret anywhere: the broker is a
 managed identity in **your** tenant, and nothing in the stack needs tenant-admin
@@ -96,9 +96,10 @@ One module instance per region. Pin `ref=` to a tag for reproducible applies.
 | Role assignments for the broker | Contributor (resource group), Container Apps SandboxGroup Data Owner (sandbox group), AcrPull (registry), Storage Blob Data Contributor (storage) | Each scoped to the one resource it is needed on. |
 | Optional VNet + delegated subnet + `vnetConnections` | `runtm-sandbox-egress-<label>` / `sandboxes` / `default` | `create_vnet = true`. |
 
-`<label>` is `<suffix>-<slug>` or `<slug>`; `<slug>` is the first 12
-characters of the organization id, lower-cased (so an ARM template can derive
-it); `<disc>` is the first 9 hex characters of
+`<label>` is `<suffix>-<slug>` or `<slug>`; `<slug>` is the first 12 hex
+characters of `sha256(organization id)` (the organization's slug on AWS too;
+ARM cannot hash, so the template takes it as a value copied from the Runtm
+dialog); `<disc>` is the first 9 hex characters of
 `sha256("<org>|<suffix>|<region>")`, needed because storage and registry names
 are globally unique, take no hyphens and cap at 24 characters (the Bicep
 template's own default uses `uniqueString()` for `<disc>` instead; Runtm reads
@@ -157,8 +158,8 @@ blocks.
 **Deploy to Azure button.** The Runtm dialog's button opens this committed
 template in the Azure portal (nothing is served by Runtm, as with the AWS
 quick-create). The portal cannot take parameter values from a link, so its
-wizard asks for the **Runtm organization id** on the first page and an
-optional label on the next; the dialog shows those values with copy
+wizard asks for the **Runtm organization id** and **Resource slug** on the
+first page and an optional label on the next; the dialog shows those values with copy
 buttons. Everything else — resource slug, token audience, every name — is
 derived from the organization id. Pick the subscription and region, review,
 create. When the deployment finishes, open **Outputs**, copy
@@ -171,7 +172,7 @@ create. When the deployment finishes, open **Outputs**, copy
 ```sh
 az deployment sub create --location westus2 --name runtm-sandbox \
   --template-uri https://raw.githubusercontent.com/runtm-ai/runtm/main/terraform/azure-sandbox/bicep/azuredeploy.json \
-  --parameters organizationId=<org id> \
+  --parameters organizationId=<org id> tenantSlug=<slug shown in the dialog> \
                storageAccountName=<shown in the dialog> registryName=<shown in the dialog>
 az deployment sub show -n runtm-sandbox --query properties.outputs.runtmConnection.value
 ```
@@ -250,8 +251,9 @@ reports the identity missing and the command above repairs it.
 
 See `variables.tf` for the full list. The Bicep template takes the same
 values in camelCase (`organizationId`, `googleSubject`, `suffix`, ...);
-`tenantSlug` and `audience` default to the same derivations from the org id,
-and `storageAccountName` / `registryName` default to `uniqueString()`-based
+`tenantSlug` is copied from the dialog (ARM cannot hash), `audience` defaults
+to the derivation from the org id, and `storageAccountName` / `registryName`
+default to `uniqueString()`-based
 names (Runtm pre-fills the sha256 ones when you arrive from the dialog).
 
 ## Outputs

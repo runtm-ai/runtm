@@ -19,11 +19,10 @@ locals {
   tenant_id       = data.azurerm_client_config.current.tenant_id
 
   # The Runtm organization is the tenant. Every fixed-name resource below
-  # The first 12 characters of the org id, lower-cased: what an ARM template can
-  # compute from the org id alone, so the public template needs nothing but the
-  # org id and a label (not the AWS module's sha256 slug). Runtm derives the
-  # same names.
-  slug     = lower(substr(var.runtm_organization_id, 0, 12))
+  # The shared sha256 slug (the same the organization has on AWS). cloud-api
+  # computes the same names; the Bicep twin takes the slug as a parameter the
+  # customer copies from the Runtm dialog, since ARM cannot hash.
+  slug     = substr(sha256(var.runtm_organization_id), 0, 12)
   audience = var.runtm_audience != "" ? var.runtm_audience : "runtm-sandbox:${var.runtm_organization_id}"
   label    = var.suffix != "" ? "${var.suffix}-${local.slug}" : local.slug
 
