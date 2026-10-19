@@ -24,7 +24,7 @@ variable "runtm_organization_id" {
 variable "runtm_google_subject" {
   description = "Numeric unique id of the ONE Google service account Runtm presents to every tenant (the same for every organization — the audience is what keeps stacks apart). Defaults to Runtm production's identity; override only for a test stack against Runtm staging. Entra federated credentials match the token's `sub` exactly; there is no email condition as on AWS."
   type        = string
-  default     = "115475383003204837105"
+  default     = "114825111276785143863"
 
   validation {
     condition     = can(regex("^[0-9]{10,30}$", var.runtm_google_subject))
