@@ -88,6 +88,8 @@ runtm-api auth status | jq '{authenticated, scopes, organization_id}'
 
 Org-scoped work (templates, agents, skills, MCP, tools, guardrails, team secrets) needs an **org-scoped key**. The org is bound when the key is created and cannot be changed at call time: `--org` or `RUNTM_ORG_ID` can only restate the key's binding. `organization_id: null` from `auth status` means a personal key, and the fix is a new org-scoped key, not an env var.
 
+Inside a session, a missing scope is final. The injected key never carries `integrations:write`, `guardrails:write` or `api_keys:write`, and a roster agent's key is read-only apart from launching agents that list it as a caller. Check `auth status` before an org-wide write. If the scope is missing, do not retry or look for another route: say so up front, give the person the exact dashboard setting or command to run, and verify with a read once they say it is done.
+
 ## Resolving inputs
 
 1. Use what is in context (prior output, conversation, env vars).
