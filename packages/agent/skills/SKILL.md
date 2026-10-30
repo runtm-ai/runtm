@@ -1,8 +1,8 @@
 ---
 name: runtm
-description: "Runtm (Runtime) Cloud, the platform where operations teams create and run AI agents, and its CLI runtm-api. Use for anything about runtm, runtime, runtm cloud, sessions, cloud sandboxes, templates, the agent roster, evaluation rubrics and scorecards, scheduled agents and cron, triggers (Slack, Linear, GitHub, Email, WhatsApp, SMS), skills, MCP servers, tool providers and integrations, guardrails, approvals, deployments, or when asked to build, create, or fix an agent (support agent, risk agent, underwriting agent). The method and every recipe live in the docs at https://docs.runtm.com/llms.txt; this file tells you how to read them and the few rules that fail silently."
+description: "Runtm (Runtime) Cloud, the platform where operations teams create and run AI agents, and its CLI runtm-api. Use for anything about runtm, runtime, runtm cloud, sessions, cloud sandboxes, templates, the agent roster, evaluation rubrics and scorecards, scheduled agents and cron, triggers (Slack, Linear, GitHub, Email, WhatsApp, SMS), skills, MCP servers, tool providers and integrations, guardrails, approvals, deployments, files in object storage (PDFs, images, videos), or when asked to build, create, or fix an agent (support agent, risk agent, underwriting agent). The method and every recipe live in the docs at https://docs.runtm.com/llms.txt; this file tells you how to read them and the few rules that fail silently."
 metadata:
-  version: "0.12.0"
+  version: "0.13.0"
   repository: https://github.com/runtm-ai/runtm
   tags: runtm,runtime,cli,agents,sandboxes
 ---
@@ -74,7 +74,8 @@ Create the template, attach skills and MCP servers, verify with `template get`, 
 - **Always `--json` on `session exec` when parsing.** The default PTY stream merges stderr into stdout and carries shell startup noise.
 - **Scheduled agents: create `--disabled`, `run-now`, then `--enabled`.** `run-now` takes the identical path a cron tick takes. Cron is 5 fields in UTC with no per-agent time zone.
 - **Delete an agent's triggers before the agent.**
-- **Approvals are runbook steps, not settings.** They appear on the session card and in `session approvals list`, never in Slack.
+- **Approvals are runbook steps, not settings.** They appear on the session card, in `session approvals list`, and in the Slack, Teams or Linear thread the session came from.
+- **Heavy files go to object storage, never git.** `runtm-api assets upload <file>` stores a PDF, image, video or audio file privately and returns `url`, which signed-in org members can open. To make it public, `runtm-api assets publish <asset_id> --note "<why>"` opens an approval: end your turn, and once a person approves, `runtm-api assets get <asset_id>` has the `public_url`. Orgs without files enabled get `403 FEATURE_NOT_ENABLED`.
 - **Budget caps do not pause anything.** They flag on the scorecard and write an audit event.
 - **Subagents are ordinary agents.** Delegate with `session launch --agent-id <uuid>` (or `session create --agent-id`), plus a `PreToolUse` gate hook when a human has to see it first; pass `--approval-id` when the callee's caller edge demands an approval. The callee's caller list decides who may launch it — naming any caller closes it to everyone else — and chains cap at 3 hops. Build and prove each child alone before wiring the orchestrator; children never delegate.
 
@@ -88,7 +89,7 @@ runtm-api auth status | jq '{authenticated, scopes, organization_id}'
 
 Org-scoped work (templates, agents, skills, MCP, tools, guardrails, team secrets) needs an **org-scoped key**. The org is bound when the key is created and cannot be changed at call time: `--org` or `RUNTM_ORG_ID` can only restate the key's binding. `organization_id: null` from `auth status` means a personal key, and the fix is a new org-scoped key, not an env var.
 
-Inside a session, a missing scope is final. The injected key never carries `integrations:write`, `guardrails:write` or `api_keys:write`, and a roster agent's key is read-only apart from launching agents that list it as a caller. Check `auth status` before an org-wide write. If the scope is missing, do not retry or look for another route: say so up front, give the person the exact dashboard setting or command to run, and verify with a read once they say it is done.
+Inside a session, a missing scope is final. The injected key never carries `integrations:write`, `guardrails:write`, `api_keys:write` or `assets:write`, and a roster agent's key is read-only apart from launching agents that list it as a caller. Check `auth status` before an org-wide write. If the scope is missing, do not retry or look for another route: say so up front, give the person the exact dashboard setting or command to run, and verify with a read once they say it is done.
 
 ## Resolving inputs
 
@@ -108,6 +109,6 @@ Inside a session, a missing scope is final. The injected key never carries `inte
 
 `runtm-api <area> --help` lists subcommands; nested trees exist (`session deploy --help`, `template guardrails --help`).
 
-`auth`, `session`, `template`, `agents` (roster; `--type slack|github|linear|email` for triggers), `scheduled-agents`, `skills`, `mcp`, `tools`, `guardrails` (`rules|hooks|network` content plus `limits|allowlist` settings), `secrets`, `instructions`, `providers` (LLM keys), `groups`, `deployments`, `github`, `activity`, `docs`.
+`auth`, `session`, `template`, `agents` (roster; `--type slack|github|linear|email` for triggers), `scheduled-agents`, `skills`, `mcp`, `tools`, `guardrails` (`rules|hooks|network` content plus `limits|allowlist` settings), `secrets`, `instructions`, `providers` (LLM keys), `groups`, `deployments`, `assets` (files in object storage), `github`, `activity`, `docs`.
 
 The full command table with flags is `cloud-api/agent-cli.md`.

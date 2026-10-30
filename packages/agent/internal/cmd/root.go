@@ -65,6 +65,7 @@ Docs: https://docs.runtm.com`,
 		NewScheduledAgentsCommand(rt),
 		NewGroupsCommand(rt),
 		NewDeploymentsCommand(rt),
+		NewAssetsCommand(rt),
 		NewGithubCommand(rt),
 		NewDocsCommand(),
 	)

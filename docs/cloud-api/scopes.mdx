@@ -29,6 +29,8 @@ Every API key carries a set of **scopes** that determine which endpoints it can 
 | `guardrails:read` | View org guardrails |
 | `guardrails:write` | Update org guardrails |
 | `activity:read` | View telemetry and usage |
+| `assets:read` | List and open org files (PDFs, images, videos). Org keys only |
+| `assets:write` | Upload, publish, unpublish, and delete org files. Org keys only; a session's key never carries it |
 
 ## Scopes by CLI operation
 
@@ -95,6 +97,10 @@ The same mapping, keyed by `runtm-api` command. Role gates are noted where a sco
 | `github add-repo` | `integrations:write` |
 | `deployments list\|get\|logs` | `deployments:read` |
 | `deployments destroy` | `deployments:delete` |
+| `assets list\|get` in a session | `sessions:read` |
+| `assets upload\|publish` in a session (`publish` opens an approval) | `sessions:write` |
+| `assets list\|get` outside a session | `assets:read` |
+| `assets upload\|publish\|unpublish\|delete` outside a session | `assets:write` (a person, not an agent) |
 
 ## Scope presets
 
