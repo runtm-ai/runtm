@@ -101,6 +101,7 @@ The same API key works for both this CLI and the pip CLI.
 | `runtm-api groups usage <team_id>` | What an owning group owns. |
 | `runtm-api github installations\|repos\|add-repo` | GitHub App installations and repo access. |
 | `runtm-api deployments list\|get\|logs\|destroy` | The deployments sessions ship (alias: `deploy`). |
+| `runtm-api assets upload\|list\|get\|publish\|unpublish\|delete` | PDFs, images, videos and audio in the org's object storage instead of git. |
 | `runtm-api skills install` | Install the agent skill (`SKILL.md`) into `~/.claude/skills/runtm/` and/or `~/.cursor/skills/runtm/`. |
 
 Run `runtm-api --help` or `runtm-api <command> --help` for full flag reference.
@@ -169,6 +170,8 @@ Everything goes to the Cloud API at `https://app.runtm.com/api/cloud`. Three del
 | `session prompt` | `POST /api/v0/sessions/{id}/prompt` | Synchronous SSE stream; the canonical route splits into a 202 plus an events feed |
 
 `deployments list|get|logs|destroy` also proxies `/api/v0/deployments*`, so a deployment a session shipped can be tracked and torn down without the pip CLI.
+
+`assets` keeps heavy files out of git. Inside a sandbox it acts on the sandbox's session (`RUNTM_SESSION_ID`): `upload` streams the file to a signed URL and returns it private, with a `url` that signed-in org members can open; `publish` opens an approval, and the file gets a `public_url` only once a person approves. Outside a sandbox, a person's org key with `assets:write` uploads, publishes, unpublishes and deletes directly. Orgs without files enabled get `403 FEATURE_NOT_ENABLED`.
 
 ## Error recovery
 
@@ -281,7 +284,7 @@ Aliases: `scheduled-agents` also answers to `schedules` and `cron`; `run-now` al
 
 ```bash
 runtm-api --help
-runtm-api <area> --help    # auth, session, template, agents, scheduled-agents, guardrails, skills, mcp, tools, groups, deployments, github, activity, secrets, instructions, providers
+runtm-api <area> --help    # auth, session, template, agents, scheduled-agents, guardrails, skills, mcp, tools, groups, deployments, assets, github, activity, secrets, instructions, providers
 runtm-api session deploy --help
 runtm-api template fix-session --help
 ```
