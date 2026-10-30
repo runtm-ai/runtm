@@ -1,0 +1,169 @@
+---
+title: "Give an agent persistent memory in Notion or Confluence"
+sidebarTitle: "Persistent memory in Notion or Confluence"
+description: "Connect Notion or Confluence to one agent and make a playbook page and a memory page its source of truth, so every run reads what earlier runs learned and writes back what it learned. Read when an agent should remember across sessions, or when your team already keeps playbooks in a wiki."
+keywords: ["memory", "persistent memory", "notion", "confluence", "playbook", "knowledge", "wiki", "across sessions"]
+---
+
+## Outcome
+
+Each run of the agent starts by reading two pages: a **playbook** your team owns and a **memory** page the agent maintains. Before it finishes, the agent appends a dated entry to the memory page. The next run, from any trigger and in any fresh session, starts with what the previous runs learned.
+
+This is the recommended way to give an agent memory. Sessions are disposable and every run boots from a clean template snapshot, so anything written only inside the sandbox is gone when the session ends. A wiki page keeps that memory outside the sandbox. People can read and correct it in the tool they already use, and it is versioned there, without a PR or a template rebuild. If the memory has to live in git, see [Agent that opens a PR on your GitHub repo](/guides/recipes/repo-agent-opens-prs).
+
+## Before you start
+
+- You are an org admin.
+- The agent exists on the roster and has a default template. See [Create the agent](/build/define-the-job).
+- You can create an integration in Notion, or an API token in Atlassian, for the account the agent should act as.
+- Two pages exist: a playbook (for example "Support playbook") and an empty memory page (for example "Support agent memory"). Copy their URLs or ids.
+
+## Do it
+
+<Tabs>
+  <Tab title="Notion">
+    <Steps>
+      <Step title="Create a Notion integration and share the pages">
+        In Notion, create an internal integration under **Settings > Connections > Develop or manage integrations** and copy its secret. Open the playbook page and the memory page and add the integration under **Connections**. The token can read and write only the pages shared with it.
+
+        Give it **Read content**, **Update content** and **Insert content**. It needs nothing else.
+      </Step>
+      <Step title="Connect Notion to the agent only">
+        Notion is a built-in provider. In **Settings > Context > Tools & MCP**, click **New tool or MCP server**, choose **Tool**, and pick **Notion** from the catalog.
+
+        <Frame caption="Notion is in the built-in catalog.">
+          <img src="/images/dashboard/tools-catalog.png" alt="Add a provider dialog showing the built-in provider catalog, including Notion" />
+        </Frame>
+
+        On the Notion page, click **Add connection**. Choose **API key**, set **Scope** to **Agent**, pick the agent, and paste the integration secret into **Add a personal API token**. Click **Connect**. Sessions that run as that agent get the token as `NOTION_API_TOKEN`. No other agent or person receives it.
+
+        <Frame caption="An agent-scoped connection is used only in that agent's sessions.">
+          <img src="/images/dashboard/tools-connect-notion-agent.png" alt="Connect Notion dialog with API key authentication, Agent scope selected and an agent picker" />
+        </Frame>
+
+        <Visibility for="agents">
+
+        ```text
+        cli-handoff: https://app.runtm.com/connect?provider=notion&agent=<agent_id>&method=static
+        cli-verify: runtm-api tools list --provider notion
+        ```
+
+        </Visibility>
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Confluence">
+    <Steps>
+      <Step title="Create an Atlassian API token">
+        Sign in as the account the agent should act as, ideally a dedicated bot user, and create an API token at `id.atlassian.com/manage-profile/security/api-tokens`. Give that user view and edit rights only on the space that holds the playbook and memory pages.
+      </Step>
+      <Step title="Define Confluence as a custom provider">
+        Confluence is not in the built-in catalog, so define it once as a custom provider. In **Settings > Context > Tools & MCP**, click **New tool or MCP server**, choose **Tool**, and add one static auth method with three fields: the site URL, the bot user's email and the API token.
+
+        <Visibility for="agents">
+
+        ```text
+        cli: runtm-api tools providers create --slug confluence --name Confluence --category custom --tagline "Playbooks and agent memory in Confluence" --auth-methods '[{"id":"api_token","display_name":"API token","kind":"static","fields":[{"id":"base_url","label":"Site URL (https://<site>.atlassian.net)","kind":"string","required":true},{"id":"email","label":"Bot user email","kind":"string","required":true},{"id":"api_token","label":"API token","kind":"secret","required":true}],"materialization":{"env":{"CONFLUENCE_BASE_URL":"{fields.base_url}","CONFLUENCE_EMAIL":"{fields.email}","CONFLUENCE_API_TOKEN":"{fields.api_token}"}}}]'
+        ```
+
+        </Visibility>
+      </Step>
+      <Step title="Connect Confluence to the agent only">
+        Pick **Confluence** from the catalog, click **Add connection**, fill in the three fields, set **Scope** to **Agent** and pick the agent. The dialog is the same one shown for Notion. Sessions that run as the agent get `CONFLUENCE_BASE_URL`, `CONFLUENCE_EMAIL` and `CONFLUENCE_API_TOKEN`.
+
+        <Visibility for="agents">
+
+        ```text
+        cli-handoff: https://app.runtm.com/connect?provider=confluence&agent=<agent_id>&method=api_token
+        cli-verify: runtm-api tools list --provider confluence
+        ```
+
+        </Visibility>
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+<Steps>
+  <Step title="Write the memory skill">
+    The skill tells the agent where its memory lives and when to read and write it. Create it in **Settings > Context > Skills** with this `SKILL.md`, using your page ids. List the provider slug (`notion` or `confluence`) under `requires.integrations`.
+
+    ```markdown
+    # Memory
+
+    Your playbook and your memory live outside this sandbox. Sessions are
+    deleted after each run, so anything you only write locally is lost.
+
+    - Playbook (read-only, owned by the team): <playbook page id>
+    - Memory (yours, append-only): <memory page id>
+
+    At the start of every run, read both pages before doing anything else.
+    Follow the playbook. Use the memory for context, never to override it.
+
+    Before your final answer, append one entry to the memory page:
+    `YYYY-MM-DD: <what happened, what you learned, what to do next time>`.
+    Keep it under five lines. Never edit or delete earlier entries, and never
+    write to the playbook. Suggest playbook changes in your answer instead.
+
+    Notion: send `Authorization: Bearer $NOTION_API_TOKEN` and
+    `Notion-Version: 2022-06-28` to https://api.notion.com. Read with
+    `GET /v1/blocks/<page id>/children`, append with
+    `PATCH /v1/blocks/<memory page id>/children`.
+
+    Confluence: authenticate with `$CONFLUENCE_EMAIL:$CONFLUENCE_API_TOKEN`
+    against $CONFLUENCE_BASE_URL. Read with
+    `GET /wiki/api/v2/pages/<id>?body-format=storage`, append by sending the
+    existing body plus the new entry to `PUT /wiki/api/v2/pages/<id>`
+    with `version.number` set to the current version + 1.
+    ```
+
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api skills create --name agent-memory --display-name "Agent memory" --content '{"entry_md":"SKILL.md","files":[{"path":"SKILL.md","mode":"text","inline":"..."}],"requires":{"integrations":["notion"]}}'
+    ```
+
+    </Visibility>
+  </Step>
+  <Step title="Attach it to the agent's template and rebuild">
+    Attach the skill to the agent's default template, then build. Like any skill, it is not in sessions until the template builds.
+
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api skills attach <skill_id> --template <template_id>
+    cli: runtm-api template build <template_id>
+    cli-verify: runtm-api template get <template_id> | jq '{build_status, stale: .attachments_changed_since_build, skills: [.skills[].name]}'
+    ```
+
+    </Visibility>
+  </Step>
+  <Step title="Edit the playbook, not the template">
+    From now on, change how the agent works by editing the playbook page. The next run reads the new version. Template context and skills still need a rebuild or a new session to change. The playbook page does not.
+  </Step>
+</Steps>
+
+## Verify
+
+Run the agent twice, each time in a new session. Ask the first run to note something specific ("remember that refunds over $500 need a second reviewer"). Ask the second run what it knows about refunds over $500. The second run should quote the memory entry, and the memory page should show one new dated entry per run.
+
+<Visibility for="agents">
+
+```text
+cli: runtm-api session create --template-id <template_id> --agent-id <agent_id> --agent claude-code
+cli-verify: runtm-api session prompt <session_id> "Read your playbook and memory, then tell me the last three memory entries."
+```
+
+</Visibility>
+
+## Gotchas
+
+- **Notion returns 404 for pages it can see in the UI.** The integration has to be added under **Connections** on each page, or on a parent page. A valid token with no shared pages finds nothing.
+- **Dashboard sessions don't get agent connections.** A session you open from the dashboard runs as no agent, so it has no `NOTION_API_TOKEN` unless you add a personal connection. Test through the agent's trigger, or with `--agent-id`.
+- **Keep the playbook read-only to the agent.** In Confluence, use page restrictions so the bot user can edit only the memory page. In Notion, an integration has the same capabilities on every page shared with it. The skill's rule and Notion's page history are your guardrail, or you can use a second read-only integration for the playbook.
+- **Memory grows.** Have someone prune or summarize the memory page now and then, or tell the agent to read only the latest 50 entries. A long page costs tokens on every run.
+- **Confluence updates need the version number.** A `PUT` with a stale `version.number` returns 409. The agent should read the page, then write right away.
+
+<Card title="Tools and connections" icon="plug" href="/concepts/tools">
+  Providers, connections and scopes, and which connection a run uses.
+</Card>

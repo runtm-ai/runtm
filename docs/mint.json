@@ -558,7 +558,9 @@
         "guides/recipes/route-linear-team-to-template",
         "guides/recipes/test-scheduled-agent-before-enabling",
         "guides/recipes/request-approval-from-a-run",
-        "guides/recipes/delegate-to-another-agent"
+        "guides/recipes/delegate-to-another-agent",
+        "guides/recipes/agent-memory-in-notion-or-confluence",
+        "guides/recipes/repo-agent-opens-prs"
       ]
     },
     {
