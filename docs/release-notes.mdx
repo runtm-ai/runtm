@@ -6,6 +6,84 @@ rss: true
 
 Every entry below is live in production. The date is when it became available, in Pacific Time. Setup notes say what an admin needs to do before people can use it.
 
+<Update label="Oct 27, 2026" tags={["Governance", "Compliance"]}>
+  ## Compliance (beta): risk management, audit log and evidence reports
+
+  Org admins and owners get a **Compliance** section in the sidebar. **Risk management** scores each agent's risks before and after your controls on a likelihood by impact matrix, and lists the missing controls as a to-do list. Since October 29, guardrail to-dos open Ask Runtime with the fix ready for you to review and send. The **Audit log** shows runs, approvals and grades across agents for up to 365 days. **Show tool calls** opens a run as a timeline of every tool call, with blocked calls flagged. The **Evidence report** is one printable page per agent.
+
+  ![Risk management in Runtime, with the likelihood by impact matrix and the to-do list of missing controls](/images/release-notes/compliance-risk.png)
+
+  **Setup:** none. It's on for every organization, for admins and owners only. Members don't see it. Click **Reassess** after you change agents or guardrails.
+</Update>
+
+<Update label="Oct 27, 2026" tags={["Governance", "Organizations"]}>
+  ## Org-wide settings are admin-only
+
+  Members can still create and edit templates, agents, schedules and skills. Only admins and owners can now change the org's AI key and provider routing, sandbox provider, org guardrails, masking rules, org integrations and team secrets. Members can't delete or change things they didn't create, unless their group owns them. Since October 26, owners and admins can also turn on **Require organization workspace**, which hides Personal mode and organization creation for members.
+
+  **Setup:** the admin-only controls apply to every organization. Turn on **Require organization workspace** in **Settings → Team**. API and CLI calls can still use personal scope. [Learn more](/concepts/organizations#roles)
+</Update>
+
+<Update label="Oct 24, 2026" tags={["GitHub", "Triggers"]}>
+  ## GitHub PR agents: verified commits and repo filters
+
+  Agent commits now arrive on GitHub **Verified**, so repos that require signed commits accept agent PRs (Oct 13). PR sessions boot the template and harness of the agent linked to the trigger (Oct 14). PR review triggers take an optional list of repositories, so a bot that can reach every repo only reviews the ones you pick (Oct 24).
+
+  **Setup:** add repositories to the trigger's **Repositories** list. Leave it empty to review in every repo the app can reach. [Learn more](/build/how-it-works/triggers)
+</Update>
+
+<Update label="Oct 23, 2026" tags={["Guardrails", "Security"]}>
+  ## Mask sensitive data before the model sees it
+
+  Add masking rules in **Guardrails → Masking**. When a prompt matches a rule, the agent gets a `${MASKED_…}` variable it can use but never sees the value. Matches in tool output are starred before the model reads them, and agent replies are masked before they reach Slack, Teams, GitHub, Linear, email or webhooks. Since October 26, values from the Secrets page, template secrets and secret providers (Doppler, Infisical, Vault, GCP) are masked when an agent prints them. Each match is listed under **Findings**, where you can add a rule, redact every stored copy or delete the session.
+
+  ![The Masking tab in Runtime Guardrails, with masking rules and findings](/images/release-notes/masking.png)
+
+  **Setup:** an admin adds the rules, starting from a suggested pattern or writing their own regex. Secret masking needs no setup. [Learn more](/concepts/guardrails#masking)
+</Update>
+
+<Update label="Oct 23, 2026" tags={["Linear", "Integrations"]}>
+  ## Questions and approvals in Linear
+
+  When an agent started from Linear asks a question or needs an approval, it shows up in the Linear agent session, with clickable choices for a single question or **Approve** and **Reject** for an approval. The reply goes back to the same agent, which resumes in Linear.
+
+  **Setup:** the Linear user who replies has to be a member of your Runtime org with permission to approve. [Learn more](/guides/recipes/request-approval-from-a-run)
+</Update>
+
+<Update label="Oct 23, 2026" tags={["Microsoft 365", "Integrations"]}>
+  ## Give an agent one SharePoint folder
+
+  Paste a folder's link from SharePoint's **Copy link** into the agent's site list to grant that folder alone. Everything inside it is included, and nothing else on the site.
+
+  **Setup:** an admin pastes the link in the agent's Microsoft 365 access settings.
+</Update>
+
+<Update label="Oct 19, 2026" tags={["Sessions", "Collaboration & Sharing"]}>
+  ## See who sent each prompt
+
+  Every prompt in a session shows the person who sent it, including prompts from Slack, Teams, GitHub and email. A PR an agent opens ends with "Requested by", naming those people.
+
+  **Setup:** none.
+</Update>
+
+<Update label="Oct 16, 2026" tags={["Security", "Organizations"]}>
+  ## Single sign-on with Okta and Duo
+
+  Connect Okta (OIDC) or Duo (SAML) in **Settings → Team → Single sign-on**. After you verify your email domain, people sign in with **Continue with SSO**. New users get an account, and existing users on the domain are linked. Both join your org as members, even if public signups are closed.
+
+  ![Single sign-on setup in Runtime team settings](/images/release-notes/sso.png)
+
+  **Setup:** an owner or admin adds the connection and verifies the domain with a DNS TXT record. One connection per org. [Learn more](/concepts/organizations#single-sign-on)
+</Update>
+
+<Update label="Oct 13, 2026" tags={["Models", "Integrations"]}>
+  ## Run Claude Code through Amazon Bedrock
+
+  The Claude provider card on **Integrations** has a provider picker. Choose Amazon Bedrock and add your AWS region and Bedrock key, and Claude Code sessions use Bedrock model IDs and bill to your AWS account.
+
+  **Setup:** an admin saves a Bedrock API key and region on the Claude provider card.
+</Update>
+
 <Update label="Oct 9, 2026" tags={["Slack", "Integrations"]}>
   ## Agents share files and images in Slack
 
