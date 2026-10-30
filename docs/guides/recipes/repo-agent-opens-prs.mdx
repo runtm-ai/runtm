@@ -1,0 +1,134 @@
+---
+title: "Agent that opens a PR on your GitHub repo"
+description: "Turn a GitHub repo into a template, keep it current with an hourly scheduled rebuild and a startup script pull, and give an agent a prompt that commits a change and opens a pull request. Read when you want each session to start on the latest main and end with a PR."
+---
+
+## Outcome
+
+A template built from your GitHub repo rebuilds every hour, so every session boots on a recent `main`. A startup script pulls once more at boot to close the gap between rebuilds. An agent on that template takes one prompt, adds a markdown file under `memories/`, and opens a pull request through Runtime. The PR shows up in GitHub with verified commits and only the agent's change in the diff.
+
+The example repo is deliberately small: a `memories/` folder where every run adds one `.md` file. Swap in your own repo and your own prompt once the loop works.
+
+## Before you start
+
+- The GitHub App is installed on the repo, so Runtime can clone it and open PRs.
+- You are an org admin or owner. Creating, building and scheduling templates needs one of those roles.
+- The repo has a `memories/` folder on `main` (an empty `memories/.gitkeep` is enough).
+
+## Do it
+
+<Steps>
+  <Step title="Add a startup script to the repo">
+    Commit this file as `scripts/runtm-start.sh` on `main`. It runs on every session boot and pulls whatever landed after the last rebuild.
+
+    ```bash
+    #!/usr/bin/env bash
+    # Runs on every Runtime session boot. Pulls changes merged since the last template rebuild.
+    cd "$(git rev-parse --show-toplevel)" || exit 0
+    git pull --rebase --autostash --quiet || echo "startup pull failed; continuing on the snapshot" >&2
+    ```
+
+    The script lives in the repo, so you can change it without rebuilding the template. The next pull picks up your edit.
+  </Step>
+  <Step title="Create the template from the repo">
+    On **Templates**, create a template from the repo and the `main` branch, then build it. A repo of markdown files needs no AI setup step, so skip it.
+
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api template create --display-name "Memories" --github-repo <owner>/<repo> --github-branch main --skip-agent
+    cli-verify: runtm-api template get <template_id> | jq '{build_status}'
+    ```
+
+    </Visibility>
+  </Step>
+  <Step title="Point the template at the startup script">
+    In the template's settings, set **Startup Script Path** to `scripts/runtm-start.sh` and turn on **Restart Services at Startup** so the script runs when a session boots.
+
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api template update <template_id> --startup-script scripts/runtm-start.sh --restart-at-startup
+    ```
+
+    </Visibility>
+  </Step>
+  <Step title="Rebuild every hour">
+    In the template's settings, set **Auto Rebuild** to **Hourly**. Each tick pulls the latest `main` and saves a fresh snapshot. When only the repo changed, it takes the fast rebuild path and skips the dependency install.
+
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api template update <template_id> --rebuild-schedule '0 * * * *'
+    cli-verify: runtm-api template get <template_id> | jq '{rebuild_schedule}'
+    ```
+
+    </Visibility>
+  </Step>
+  <Step title="Create the agent">
+    On **Agents**, create an agent and set its **Default template** to the one above. Give it short instructions so every run ends the same way.
+
+    > You work in the memories repo. Every change ends with a pull request opened with `runtm-pr`. Never push to `main`.
+
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api agents create --name "Memory Keeper" --template <template_id> --agent claude-code --instructions "You work in the memories repo. Every change ends with a pull request opened with runtm-pr. Never push to main."
+    ```
+
+    </Visibility>
+  </Step>
+  <Step title="Send the prompt that opens the PR">
+    Start a session as the agent, from the dashboard or from a trigger, and send:
+
+    > Run `git pull --rebase`. Add a file `memories/<UTC timestamp>.md` with a short note on today's date and the latest commit on main. Commit it, then open a PR with `runtm-pr "Add memory <UTC timestamp>"`. Reply with the PR URL.
+
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api session create --template-id <template_id> --agent-id <agent_id> --agent claude-code
+    cli: runtm-api session prompt <session_id> "Run git pull --rebase. Add a file memories/<UTC timestamp>.md with a short note on today's date and the latest commit on main. Commit it, then open a PR with runtm-pr \"Add memory <UTC timestamp>\". Reply with the PR URL."
+    ```
+
+    </Visibility>
+
+    `runtm-pr` is installed in every session. It creates the branch, pushes it and opens the PR in one step. To add commits to a PR the session already opened, the agent commits and runs `runtm-push`.
+  </Step>
+</Steps>
+
+## Verify
+
+The session's last reply is a PR URL. In GitHub, the PR adds exactly one file under `memories/`, its commits show **Verified**, and its base is the commit that was on `main` when the session started. On the template, the build history shows a rebuild at the top of every hour.
+
+<Visibility for="agents">
+
+```text
+cli-verify: runtm-api session status <session_id>
+cli-verify: runtm-api template build-logs-history <template_id> | jq '.logs[0].content'
+```
+
+</Visibility>
+
+## Run it on a schedule
+
+To get one PR per day without anyone sending the prompt, put the same prompt on a scheduled agent that runs on this template. Create it disabled, run it once, then enable it, as in [Test a scheduled agent before enabling it](/guides/recipes/test-scheduled-agent-before-enabling).
+
+<Visibility for="agents">
+
+```text
+cli: runtm-api scheduled-agents create --name "Daily memory" --cron "0 9 * * *" --template <template_id> --agent claude-code --prompt "<the prompt above>" --disabled
+```
+
+</Visibility>
+
+## Gotchas
+
+- **Use `runtm-pr`, not `git push` or `gh pr create`.** Raw pushes from the sandbox are unsigned, so repos that require signed commits block the merge. They also carry template setup changes, such as dependency installs, into the diff.
+- **The startup script replaces the default service launch.** When the script exists, Runtime runs it instead of the template's per-service start commands. If the repo has a dev server, start it at the end of the script.
+- **The startup pull runs in the background.** It may still be running when the first prompt arrives. That is why the prompt starts with `git pull --rebase`. The hourly rebuild keeps the gap small either way.
+- **Cron is in UTC.** **Hourly** is `0 * * * *`. A rebuild schedule needs Cloud Scheduler on the deployment; a 503 when saving means it is not configured there.
+- **Running sessions keep their snapshot.** A rebuild only affects sessions started after it.
+
+<Card title="Templates" icon="layer-group" href="/concepts/templates">
+  What a snapshot contains, builds and fast rebuilds, and template secrets.
+</Card>
