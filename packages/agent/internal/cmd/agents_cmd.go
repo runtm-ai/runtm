@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html"
 	"net/url"
@@ -121,6 +122,7 @@ func newAgentList(rt *Runtime) *cobra.Command {
 	var (
 		agentType string
 		canLaunch bool
+		all       bool
 	)
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -133,8 +135,29 @@ org-visible; can_launch and can_edit on each row say what this key may do.
 the set worth passing to 'session create --agent-id'.
 
 With --type slack|github|linear|email, lists that platform's trigger
-integrations instead.`,
+integrations instead.
+
+--all lists the roster and every trigger type in one object keyed by
+"roster", "slack", "github", "linear", and "email". A trigger's id and key
+are what 'update' takes, e.g. to change a Slack bot's default model:
+
+  runtm-api agents list --all
+  runtm-api agents update <id> --type slack --model opus-5
+
+A source this key cannot read lands under "errors" instead of failing the
+whole listing.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if all {
+				if agentType != "" || canLaunch {
+					return fmt.Errorf("--all cannot be combined with --type or --can-launch")
+				}
+				c, _, err := requireOrgClient(rt, "agents")
+				if err != nil {
+					return err
+				}
+				rt.WriteObject(listAllAgents(c))
+				return nil
+			}
 			if agentType == "" {
 				c, _, err := requireOrgClient(rt, "agents")
 				if err != nil {
@@ -161,7 +184,45 @@ integrations instead.`,
 	}
 	cmd.Flags().StringVar(&agentType, "type", "", "Trigger integration type: slack, github, linear, or email (omit for the roster)")
 	cmd.Flags().BoolVar(&canLaunch, "can-launch", false, "Only the roster agents this key may launch")
+	cmd.Flags().BoolVar(&all, "all", false, "List the roster and every trigger type (slack, github, linear, email) together")
 	return cmd
+}
+
+// agentTriggerTypes is every --type value, in listing order.
+var agentTriggerTypes = []string{"slack", "github", "linear", "email"}
+
+// listAllAgents fetches the roster and each trigger type's list. A source that
+// fails (most often a 403 for a key without integrations:read) is reported
+// under "errors" so the readable sources still come back.
+func listAllAgents(c *client.Client) map[string]any {
+	out := map[string]any{}
+	errs := map[string]any{}
+	collect := func(key, path string) {
+		resp, err := c.Get(path, nil)
+		if err != nil {
+			entry := map[string]any{"error": err.Error()}
+			var apiErr *client.APIError
+			if errors.As(err, &apiErr) {
+				entry["status"] = apiErr.Status
+			}
+			errs[key] = entry
+			return
+		}
+		if !json.Valid(resp) {
+			out[key] = string(resp)
+			return
+		}
+		out[key] = json.RawMessage(resp)
+	}
+	collect("roster", rosterPath)
+	for _, t := range agentTriggerTypes {
+		ep, _ := agentEndpointsFor(t)
+		collect(t, ep.list)
+	}
+	if len(errs) > 0 {
+		out["errors"] = errs
+	}
+	return out
 }
 
 func newAgentGet(rt *Runtime) *cobra.Command {
