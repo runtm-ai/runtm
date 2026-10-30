@@ -26,14 +26,28 @@ Organization members have one of three roles:
 
 | Role | Can do |
 |------|--------|
-| **Member** | Create sessions, use templates, read team secrets (names only), read integrations |
-| **Admin** | Everything members can do, plus: create/edit/delete templates, manage team secrets, configure guardrails, manage integrations |
+| **Member** | Create sessions; create and edit templates, agents, schedules and skills unless they are locked; delete what they created; read team secrets (names only) and integrations |
+| **Admin** | Everything members can do, plus: the org AI key and provider routing, the sandbox provider, org guardrails and masking rules, org integrations, team secrets, locking templates and skills, and the Compliance section |
 | **Owner** | Everything admins can do, plus: manage members, transfer ownership, delete the org |
 
 Roles affect two things:
 
 1. **What you can do in the dashboard** - the UI hides actions you don't have access to
 2. **What scopes your API keys can carry** - a member cannot create an API key with `templates:write` even if they try. See [Scopes](/cloud-api/scopes#role-ceilings) for the full ceiling matrix.
+
+Members can't change or delete templates, agents, schedules, skills or sessions created by someone else unless their group owns them. Org admins can open any session by link for debugging.
+
+### Require organization workspace
+
+Owners and admins can turn on **Require organization workspace** in **Settings → Team**. Members then can't switch to Personal mode or create another organization from the dashboard. API and CLI calls can still use personal scope.
+
+## Single sign-on
+
+Owners and admins can connect Okta (OIDC) or Duo (SAML) in **Settings → Team → Single sign-on**:
+
+1. Add the identity provider's details. Each org can have one connection.
+2. Verify your email domain by adding the DNS TXT record Runtime shows you. A domain another org has already verified can't be used.
+3. People sign in from the login page with **Continue with SSO**. New users get an account and existing users on the domain are linked. Both join your org as members, even when public signups are closed. Existing roles don't change.
 
 ## API keys and org context
 

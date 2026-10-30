@@ -5,13 +5,14 @@ description: "Reference for allowlists, hooks, network rules, approvals, RBAC an
 
 Guardrails let you set the rules your entire team operates under. They govern what agents can run, what they can access, and where they can deploy. Set guardrails once at the org level, and every [session](/concepts/sessions) and [agent](/build/how-it-works/triggers) inherits them automatically.
 
-The dashboard's **Guardrails** page has six tabs, each controlling a different enforcement layer:
+The dashboard's **Guardrails** page has a tab for each enforcement layer:
 
 | Tab | What it governs |
 |-----|----------------|
 | [Allowlists](#allowlists) | Which bash commands agents can run, need approval for, or are blocked from |
 | [Hooks](#hooks) | Event-driven scripts that fire before/after tool calls, prompts, and session lifecycle |
 | [Network](#network) | Which hosts and IP ranges the sandbox can reach on the network |
+| [Masking](#masking) | Which sensitive values the model never sees in prompts, tool output and replies |
 | [Approvals](#approvals) | Human-in-the-loop gates for sensitive operations |
 | [RBAC](#rbac) | Role-based access control across the org |
 | [Audit](#audit) | Full record of what every agent and user did |
@@ -123,6 +124,17 @@ Use network rules when:
 
 Network rules use `type=network_rule_v0`. See the [Skills API reference](/cloud-api/context/skills/list).
 
+## Masking
+
+Masking keeps sensitive values away from the model and out of what Runtime stores and posts. Admins manage it in **Guardrails → Masking**.
+
+- **Rules.** A masking rule is a regex. Start from a suggested pattern, such as card numbers, or write your own. Runtime checks each pattern's speed when you save it and explains why it refuses one.
+- **Prompts.** A value in a prompt that matches a rule reaches the agent as a session-scoped variable such as `${MASKED_<RULE>_<n>}`. The agent can use the variable in commands but never sees the value. The dashboard warns you before a matching prompt is sent.
+- **Tool output.** A match in tool output, including an API response or a file, is starred before the model reads it.
+- **Secrets.** Values from the Secrets page, template secrets, tool credentials and secret providers (Doppler, Infisical, Vault, GCP) are masked when an agent prints them. This needs no rule.
+- **Replies.** Agent replies are masked before they are stored or posted to Slack, Teams, GitHub, Linear, email or webhooks.
+- **Findings.** Each match is listed as a finding. **Add rule** turns it into a rule, **Redact** removes every stored copy of the value, including the session title, and **Delete session** removes the session.
+
 ## Approvals
 
 Approvals add human-in-the-loop gates for sensitive operations. When an action requires approval, the agent pauses and waits for a team member to review and approve before proceeding.
@@ -182,6 +194,7 @@ Audit trails record every action taken by agents and users in the organization. 
 ### Accessing audit data
 
 - **Dashboard** - the Activity tab shows a real-time stream of events
+- **Compliance (beta)** - admins and owners get **Risk management**, an **Audit log** of runs, approvals and grades across agents for up to 365 days, with each run's tool calls as a timeline, and a printable **Evidence report** per agent
 - **API** - [Team Events](/cloud-api/activity/team-events) returns structured event data for export
 - **Metrics** - [Team Summary](/cloud-api/activity/team-summary) aggregates events into time-series data
 
