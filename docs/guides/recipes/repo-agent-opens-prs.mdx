@@ -1,6 +1,8 @@
 ---
 title: "Agent that opens a PR on your GitHub repo"
+sidebarTitle: "Agent that opens PRs on GitHub"
 description: "Turn a GitHub repo into a template, keep it current with an hourly scheduled rebuild and a startup script pull, and give an agent a prompt that commits a change and opens a pull request. Read when you want each session to start on the latest main and end with a PR."
+keywords: ["github", "pull request", "PR", "runtm-pr", "scheduled rebuild", "auto rebuild", "startup script", "git pull", "sync", "memories", "claude code"]
 ---
 
 ## Outcome
@@ -8,6 +10,10 @@ description: "Turn a GitHub repo into a template, keep it current with an hourly
 A template built from your GitHub repo rebuilds every hour, so every session boots on a recent `main`. A startup script pulls once more at boot to close the gap between rebuilds. An agent on that template takes one prompt, adds a markdown file under `memories/`, and opens a pull request through Runtime. The PR shows up in GitHub with verified commits and only the agent's change in the diff.
 
 The example repo is deliberately small: a `memories/` folder where every run adds one `.md` file. Swap in your own repo and your own prompt once the loop works.
+
+<Tip>
+  If the goal is for the agent to remember things across sessions, keep that memory in Notion or Confluence instead of a repo. Your team can read and edit it directly, and it needs no PR or rebuild. That is the recommended approach: [Give an agent persistent memory in Notion or Confluence](/guides/recipes/agent-memory-in-notion-or-confluence). Use this recipe when the change has to land in git.
+</Tip>
 
 ## Before you start
 
@@ -43,7 +49,11 @@ The example repo is deliberately small: a `memories/` folder where every run add
     </Visibility>
   </Step>
   <Step title="Point the template at the startup script">
-    In the template's settings, set **Startup Script Path** to `scripts/runtm-start.sh` and turn on **Restart Services at Startup** so the script runs when a session boots.
+    Open the template, and on the **Overview** tab click **Edit** next to **Template Settings**. Set **Startup Script Path** to `scripts/runtm-start.sh`, switch **Restart Services at Startup** to **Enabled** so the script runs when a session boots, and save.
+
+    <Frame caption="Template Settings in edit mode. The path is relative to the working directory.">
+      <img src="/images/dashboard/template-startup-script.png" alt="Template Settings form with Restart Services at Startup enabled and Startup Script Path set to scripts/runtm-start.sh" />
+    </Frame>
 
     <Visibility for="agents">
 
@@ -54,7 +64,11 @@ The example repo is deliberately small: a `memories/` folder where every run add
     </Visibility>
   </Step>
   <Step title="Rebuild every hour">
-    In the template's settings, set **Auto Rebuild** to **Hourly**. Each tick pulls the latest `main` and saves a fresh snapshot. When only the repo changed, it takes the fast rebuild path and skips the dependency install.
+    On the same **Overview** tab, set **Auto Rebuild** to **Hourly**. It saves right away. Each tick pulls the latest `main` and saves a fresh snapshot. When only the repo changed, it takes the fast rebuild path and skips the dependency install.
+
+    <Frame caption="Auto Rebuild on the template's Overview tab. Times are UTC.">
+      <img src="/images/dashboard/template-auto-rebuild.png" alt="Auto Rebuild dropdown open with Off, Every 30 minutes, Hourly, Every 2 hours and Daily options, Hourly selected" />
+    </Frame>
 
     <Visibility for="agents">
 
