@@ -348,6 +348,9 @@ Required scope: sessions:write in a session, assets:write outside one.`,
 			for _, id := range args {
 				resp, err := routes.c.PatchJSON(routes.item(id), map[string]any{"visibility": "link"})
 				if err != nil {
+					if len(assets) > 0 {
+						rt.WriteObject(map[string]any{"status": "partial", "approval_id": nil, "assets": assets})
+					}
 					return runJSON(rt, resp, err)
 				}
 				assets = append(assets, json.RawMessage(resp))

@@ -225,6 +225,34 @@ func TestAssetsPublishOutsideASessionPublishesEachFile(t *testing.T) {
 	}
 }
 
+func TestAssetsPublishOutsideASessionSaysWhatWentPublicBeforeAFailure(t *testing.T) {
+	rt, stdout := shareRuntime(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(r.URL.Path, "/assets/a-2") {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = io.WriteString(w, `{"detail":{"code":"ASSET_NOT_FOUND"}}`)
+			return
+		}
+		_, _ = io.WriteString(w, `{"id":"a-1","visibility":"link"}`)
+	})
+	t.Setenv("RUNTM_SESSION_ID", "")
+	t.Setenv("RUNTM_ORG_ID", "org-1")
+
+	cmd := newAssetsPublish(rt)
+	cmd.SetArgs([]string{"a-1", "a-2", "a-3"})
+	if err := cmd.Execute(); err == nil {
+		t.Fatal("want the 404 for a-2")
+	}
+
+	var out struct {
+		Status string           `json:"status"`
+		Assets []map[string]any `json:"assets"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &out); err != nil || out.Status != "partial" || len(out.Assets) != 1 || out.Assets[0]["id"] != "a-1" {
+		t.Errorf("stdout = %s, want a-1 reported as published", stdout.String())
+	}
+}
+
 func TestAssetsListAndGetPassTheirFilters(t *testing.T) {
 	var got []string
 	rt, _ := shareRuntime(t, func(w http.ResponseWriter, r *http.Request) {
