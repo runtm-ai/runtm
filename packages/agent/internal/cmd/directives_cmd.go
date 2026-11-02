@@ -237,13 +237,6 @@ func newSkillUpdate(rt *Runtime) *cobra.Command {
 			if cmd.Flags().Changed("description") {
 				body["description"] = description
 			}
-			if cmd.Flags().Changed("md") || cmd.Flags().Changed("content") {
-				content, err := resolveSkillContent(mdPath, entry, contentJSON)
-				if err != nil {
-					return err
-				}
-				body["content"] = content
-			}
 			if cmd.Flags().Changed("label") {
 				lbl, perr := parseKeyVals(labels)
 				if perr != nil {
@@ -254,12 +247,20 @@ func newSkillUpdate(rt *Runtime) *cobra.Command {
 			if cmd.Flags().Changed("owner-team") {
 				body["owner_team_id"] = ownerTeamValue(ownerTeam)
 			}
-			if len(body) == 0 {
+			replaceContent := cmd.Flags().Changed("md") || cmd.Flags().Changed("content")
+			if len(body) == 0 && !replaceContent {
 				return fmt.Errorf("pass at least one field to update (--display-name, --description, --md/--content, --label, --owner-team)")
 			}
 			c, _, err := requireOrgClient(rt, "skills")
 			if err != nil {
 				return err
+			}
+			if replaceContent {
+				content, err := updatedSkillContent(c, args[0], mdPath, entry, contentJSON)
+				if err != nil {
+					return err
+				}
+				body["content"] = content
 			}
 			resp, err := c.PatchJSON(directivePath(args[0]), body)
 			return runJSON(rt, resp, err)
@@ -267,9 +268,9 @@ func newSkillUpdate(rt *Runtime) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&displayName, "display-name", "", "New display name")
 	cmd.Flags().StringVar(&description, "description", "", "New description")
-	cmd.Flags().StringVar(&mdPath, "md", "", "Replace content from a markdown file")
-	cmd.Flags().StringVar(&entry, "entry", "SKILL.md", "Entry filename for --md content")
-	cmd.Flags().StringVar(&contentJSON, "content", "", "Replace content with a raw JSON object")
+	cmd.Flags().StringVar(&mdPath, "md", "", "Replace the entry file (SKILL.md) from a markdown file; the skill's other files are kept")
+	cmd.Flags().StringVar(&entry, "entry", "", "Entry filename for --md content (default: the skill's current entry, else SKILL.md)")
+	cmd.Flags().StringVar(&contentJSON, "content", "", "Replace all content, every file included, with a raw JSON object")
 	cmd.Flags().StringArrayVar(&labels, "label", nil, "Replace labels; KEY=VALUE (repeatable)")
 	cmd.Flags().StringVar(&ownerTeam, "owner-team", "", "Owning group (Better Auth team id); pass an empty string to make it org-wide")
 	return cmd

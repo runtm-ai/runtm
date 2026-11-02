@@ -1,11 +1,14 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/runtm-ai/runtm/packages/agent/internal/client"
 	"github.com/runtm-ai/runtm/packages/agent/internal/skills"
 	"github.com/spf13/cobra"
 )
@@ -33,7 +36,7 @@ embedded in this binary into the detected agent's skills directory.`,
 	}
 	cmd.AddCommand(
 		newSkillsList(rt),
-		newDirectiveGet(rt, "skill"),
+		newSkillGet(rt),
 		newSkillCreate(rt),
 		newSkillUpdate(rt),
 		newDirectiveDelete(rt, "skill"),
@@ -51,6 +54,104 @@ embedded in this binary into the detected agent's skills directory.`,
 		newSkillsPull(rt),
 	)
 	return cmd
+}
+
+// newSkillGet is the shared get plus --output: the links it prints for files
+// in object storage expire in minutes, so a copy that lasts has to be the files.
+func newSkillGet(rt *Runtime) *cobra.Command {
+	var output string
+	cmd := newDirectiveGet(rt, "skill")
+	printJSON := cmd.RunE
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		if output == "" {
+			return printJSON(cmd, args)
+		}
+		c, _, err := requireOrgClient(rt, "skills")
+		if err != nil {
+			return err
+		}
+		var s pulledSkill
+		if err := getSkill(c, args[0], &s); err != nil {
+			return err
+		}
+		files, err := writeSkill(c, s, output)
+		if err != nil {
+			return fmt.Errorf("write skill %q: %w", s.Name, err)
+		}
+		rt.WriteObject(map[string]any{"skill": s.Name, "id": s.ID, "path": output, "files": files})
+		return nil
+	}
+	cmd.Flags().StringVar(&output, "output", "", "Write the skill's files into this directory instead of printing links that expire")
+	return cmd
+}
+
+// getSkill decodes skill id, content included, into v.
+func getSkill(c *client.Client, id string, v any) error {
+	q := url.Values{}
+	q.Set("include_content", "true")
+	raw, err := c.Get(directivePath(id), q)
+	if err != nil {
+		return err
+	}
+	var resp struct {
+		Directive json.RawMessage `json:"directive"`
+	}
+	if err := json.Unmarshal(raw, &resp); err != nil {
+		return fmt.Errorf("parse skill: %w", err)
+	}
+	if len(resp.Directive) == 0 {
+		return fmt.Errorf("no skill %s in the response", id)
+	}
+	return json.Unmarshal(resp.Directive, v)
+}
+
+// updatedSkillContent is the content `skills update` sends: --content replaces
+// all of it, --md only the entry file, keeping the skill's other files.
+func updatedSkillContent(c *client.Client, id, mdPath, entry, contentJSON string) (map[string]any, error) {
+	if contentJSON != "" || mdPath == "" {
+		return resolveSkillContent(mdPath, entry, contentJSON)
+	}
+	var current struct {
+		Content map[string]any `json:"content"`
+	}
+	if err := getSkill(c, id, &current); err != nil {
+		return nil, err
+	}
+	if current.Content == nil {
+		return nil, fmt.Errorf("skill %s returned no content to keep; pass --content to replace it whole", id)
+	}
+	if entry == "" {
+		entry, _ = current.Content["entry_md"].(string)
+	}
+	md, err := resolveSkillContent(mdPath, entry, "")
+	if err != nil {
+		return nil, err
+	}
+	return withEntryFile(current.Content, md), nil
+}
+
+// withEntryFile returns content with md's single entry file in place of its own.
+func withEntryFile(content, md map[string]any) map[string]any {
+	entry, _ := md["entry_md"].(string)
+	mdFiles, _ := md["files"].([]map[string]any)
+	files := make([]any, 0, len(mdFiles))
+	for _, f := range mdFiles {
+		files = append(files, f)
+	}
+	existing, _ := content["files"].([]any)
+	for _, f := range existing {
+		if file, ok := f.(map[string]any); ok && strings.TrimPrefix(fmt.Sprint(file["path"]), "./") == strings.TrimPrefix(entry, "./") {
+			continue
+		}
+		files = append(files, f)
+	}
+	merged := make(map[string]any, len(content)+1)
+	for k, v := range content {
+		merged[k] = v
+	}
+	merged["entry_md"] = entry
+	merged["files"] = files
+	return merged
 }
 
 func newSkillsInstall(rt *Runtime) *cobra.Command {
