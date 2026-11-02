@@ -387,7 +387,7 @@ Read [Add guardrails and approvals](/build/guardrails-and-approvals). This agent
 
 <Steps>
   <Step title="Deny every write, from what you saw">
-    Under **Settings > Guardrails > Allowlists**, click **New rule** for each. These patterns match Bash commands the runbook could plausibly attempt.
+    On the agent's template, open the **Guardrails** tab and, under **Allowlists**, click **New allowlist rule** for each. Rules there apply only to this agent's sessions. These patterns match Bash commands the runbook could plausibly attempt.
 
     | Type | Pattern | Purpose |
     |---|---|---|
@@ -402,24 +402,23 @@ Read [Add guardrails and approvals](/build/guardrails-and-approvals). This agent
     | Allowed | `bq query*SELECT*` | Warehouse reads |
     | Allowed | `psql*SELECT*` | Case reads |
 
-    Then set the **Default policy** to **Ask**, so any command outside these patterns pauses the run instead of running.
+    Then, under **Settings > Guardrails > Allowlists**, set the org's **Default policy** to **Ask**, so any command outside these patterns pauses the run instead of running.
 
     <Visibility for="agents">
 
     ```text
-    cli: runtm-api guardrails rules create --name deny-stripe-post --kind deny --pattern "curl*-X POST*api.stripe.com*" --purpose "No Stripe writes from the agent"
-    cli: runtm-api guardrails rules create --name deny-stripe-delete --kind deny --pattern "curl*-X DELETE*api.stripe.com*" --purpose "No Stripe deletes"
-    cli: runtm-api guardrails rules create --name deny-stripe-refunds --kind deny --pattern "stripe refunds*" --purpose "Refunds are issued by a human"
-    cli: runtm-api guardrails rules create --name deny-bq-delete --kind deny --pattern "bq query*DELETE*" --purpose "No warehouse deletes"
-    cli: runtm-api guardrails rules create --name allow-stripe-reads --kind allow --pattern "curl*api.stripe.com/v1/*" --purpose "Stripe reads"
-    cli: runtm-api guardrails rules create --name allow-bq-select --kind allow --pattern "bq query*SELECT*" --purpose "Warehouse reads"
-    cli: runtm-api guardrails rules attach <rule_id> --template <template_id>
+    cli: runtm-api guardrails rules create --template <template_id> --name deny-stripe-post --kind deny --pattern "curl*-X POST*api.stripe.com*" --purpose "No Stripe writes from the agent"
+    cli: runtm-api guardrails rules create --template <template_id> --name deny-stripe-delete --kind deny --pattern "curl*-X DELETE*api.stripe.com*" --purpose "No Stripe deletes"
+    cli: runtm-api guardrails rules create --template <template_id> --name deny-stripe-refunds --kind deny --pattern "stripe refunds*" --purpose "Refunds are issued by a human"
+    cli: runtm-api guardrails rules create --template <template_id> --name deny-bq-delete --kind deny --pattern "bq query*DELETE*" --purpose "No warehouse deletes"
+    cli: runtm-api guardrails rules create --template <template_id> --name allow-stripe-reads --kind allow --pattern "curl*api.stripe.com/v1/*" --purpose "Stripe reads"
+    cli: runtm-api guardrails rules create --template <template_id> --name allow-bq-select --kind allow --pattern "bq query*SELECT*" --purpose "Warehouse reads"
     ```
 
     </Visibility>
   </Step>
   <Step title="Pin the network">
-    Under **Network**, add one rule per host. As soon as one rule exists, egress is deny-all plus this list. Slack posting is done by Runtime after the run, not by the sandbox, so `hooks.slack.com` is not needed.
+    On the same **Guardrails** tab, under **Network**, add one rule per host. As soon as one rule exists, egress is deny-all plus this list. Slack posting is done by Runtime after the run, not by the sandbox, so `hooks.slack.com` is not needed.
 
     <Frame caption="Network rules turn egress into deny-all plus the listed hosts.">
       <img src="/images/dashboard/guardrails-network.png" alt="Guardrails page, Network tab, with host rows" />
@@ -437,13 +436,12 @@ Read [Add guardrails and approvals](/build/guardrails-and-approvals). This agent
     <Visibility for="agents">
 
     ```text
-    cli: runtm-api guardrails network create --name stripe-api --kind host --value api.stripe.com --purpose "Stripe reads"
-    cli: runtm-api guardrails network create --name bigquery-api --kind host --value bigquery.googleapis.com --purpose "BigQuery queries"
-    cli: runtm-api guardrails network create --name google-oauth --kind host --value oauth2.googleapis.com --purpose "Service account token exchange"
-    cli: runtm-api guardrails network create --name risk-postgres --kind host --value <postgres_host> --purpose "Case reads"
-    cli: runtm-api guardrails network create --name runtm-app --kind host --value app.runtm.com --purpose "runtm CLI and approvals"
-    cli: runtm-api guardrails network create --name runtm-docs --kind host --value docs.runtm.com --purpose "Agent reads the docs"
-    cli: runtm-api guardrails network attach <rule_id> --template <template_id>
+    cli: runtm-api guardrails network create --template <template_id> --name stripe-api --kind host --value api.stripe.com --purpose "Stripe reads"
+    cli: runtm-api guardrails network create --template <template_id> --name bigquery-api --kind host --value bigquery.googleapis.com --purpose "BigQuery queries"
+    cli: runtm-api guardrails network create --template <template_id> --name google-oauth --kind host --value oauth2.googleapis.com --purpose "Service account token exchange"
+    cli: runtm-api guardrails network create --template <template_id> --name risk-postgres --kind host --value <postgres_host> --purpose "Case reads"
+    cli: runtm-api guardrails network create --template <template_id> --name runtm-app --kind host --value app.runtm.com --purpose "runtm CLI and approvals"
+    cli: runtm-api guardrails network create --template <template_id> --name runtm-docs --kind host --value docs.runtm.com --purpose "Agent reads the docs"
     ```
 
     </Visibility>

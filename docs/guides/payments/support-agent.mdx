@@ -322,13 +322,13 @@ Follow [Add guardrails and approvals](/build/guardrails-and-approvals). Now that
 
 <Steps>
   <Step title="Allow the reads the runs used">
-    In **Settings > Guardrails > Allowlists** add rules of type Allowed for `stripe * list*`, `stripe * retrieve*` and `psql*SELECT*`, each with a purpose.
+    On the Payment Support template's **Guardrails** tab, under **Allowlists**, add rules of type Allowed for `stripe * list*`, `stripe * retrieve*` and `psql*SELECT*`, each with a purpose. Rules there apply only to this agent's sessions.
     <Visibility for="agents">
 
     ```text
-    cli: runtm-api guardrails rules create --name allow-stripe-list --kind allow --pattern "stripe * list*" --purpose "Read-only investigation"
-    cli: runtm-api guardrails rules create --name allow-stripe-retrieve --kind allow --pattern "stripe * retrieve*" --purpose "Read-only investigation"
-    cli: runtm-api guardrails rules create --name allow-ledger-select --kind allow --pattern "psql*SELECT*" --purpose "Ledger reads through the read-only role"
+    cli: runtm-api guardrails rules create --template <template_id> --name allow-stripe-list --kind allow --pattern "stripe * list*" --purpose "Read-only investigation"
+    cli: runtm-api guardrails rules create --template <template_id> --name allow-stripe-retrieve --kind allow --pattern "stripe * retrieve*" --purpose "Read-only investigation"
+    cli: runtm-api guardrails rules create --template <template_id> --name allow-ledger-select --kind allow --pattern "psql*SELECT*" --purpose "Ledger reads through the read-only role"
     ```
 
     </Visibility>
@@ -338,19 +338,18 @@ Follow [Add guardrails and approvals](/build/guardrails-and-approvals). Now that
     <Visibility for="agents">
 
     ```text
-    cli: runtm-api guardrails rules create --name deny-stripe-refunds --kind deny --pattern "stripe refunds create*" --purpose "Refunds are issued by a person"
-    cli: runtm-api guardrails rules create --name deny-stripe-update --kind deny --pattern "stripe * update*" --purpose "No writes to Stripe from the agent"
-    cli: runtm-api guardrails rules create --name deny-stripe-post --kind deny --pattern "curl*-X POST*api.stripe.com*" --purpose "No writes to Stripe from the agent"
+    cli: runtm-api guardrails rules create --template <template_id> --name deny-stripe-refunds --kind deny --pattern "stripe refunds create*" --purpose "Refunds are issued by a person"
+    cli: runtm-api guardrails rules create --template <template_id> --name deny-stripe-update --kind deny --pattern "stripe * update*" --purpose "No writes to Stripe from the agent"
+    cli: runtm-api guardrails rules create --template <template_id> --name deny-stripe-post --kind deny --pattern "curl*-X POST*api.stripe.com*" --purpose "No writes to Stripe from the agent"
     ```
 
     </Visibility>
   </Step>
-  <Step title="Set the default policy to ask, attach, rebuild">
-    On the same tab set the default policy to **Ask**, so a command no rule anticipated pauses for a decision instead of running. Attach every rule to the Payment Support template and rebuild. Re-run case 1 and confirm it still passes.
+  <Step title="Set the default policy to ask, rebuild">
+    Under **Settings > Guardrails > Allowlists** set the org's default policy to **Ask**, so a command no rule anticipated pauses for a decision instead of running. Rebuild the Payment Support template, then re-run case 1 and confirm it still passes.
     <Visibility for="agents">
 
     ```text
-    cli: runtm-api guardrails rules attach <rule_id> --template <template_id>
     cli: runtm-api template build <template_id>
     cli-verify: runtm-api template guardrails resolve <template_id>
     ```
@@ -362,8 +361,8 @@ Follow [Add guardrails and approvals](/build/guardrails-and-approvals). Now that
     <Visibility for="agents">
 
     ```text
-    cli: runtm-api guardrails network create --name stripe-api --kind host --value api.stripe.com --purpose "Stripe reads"
-    cli: runtm-api guardrails network create --name zendesk-api --kind host --value <subdomain>.zendesk.com --purpose "Ticket reads and draft posting"
+    cli: runtm-api guardrails network create --template <template_id> --name stripe-api --kind host --value api.stripe.com --purpose "Stripe reads"
+    cli: runtm-api guardrails network create --template <template_id> --name zendesk-api --kind host --value <subdomain>.zendesk.com --purpose "Ticket reads and draft posting"
     ```
 
     </Visibility>
