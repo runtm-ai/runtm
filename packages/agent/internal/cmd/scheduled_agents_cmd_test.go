@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"encoding/json"
+	"fmt"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -137,6 +140,44 @@ func TestCreateSendsRequiredFieldsEvenWhenUnchanged(t *testing.T) {
 		if _, ok := body[key]; !ok {
 			t.Errorf("create body missing %q: %#v", key, body)
 		}
+	}
+}
+
+func TestAgentIDLinksTheSchedule(t *testing.T) {
+	body := bodyFor(t, []string{"--agent-id", "ag-1"}, true)
+	if body["agent_id"] != "ag-1" {
+		t.Errorf("agent_id = %v, want ag-1", body["agent_id"])
+	}
+}
+
+func TestAgentIDRejectsTemplate(t *testing.T) {
+	// The API launches from the agent's template, so --template would be dropped.
+	f := &scheduledAgentFlags{}
+	cmd := &cobra.Command{Use: "x"}
+	f.register(cmd)
+	if err := cmd.Flags().Parse([]string{"--agent-id", "ag-1", "--template", "tpl-1"}); err != nil {
+		t.Fatalf("flag parse: %v", err)
+	}
+	if _, err := f.body(cmd, true); err == nil {
+		t.Fatal("expected an error for --template with --agent-id")
+	}
+}
+
+func TestClearAgentIDSendsNull(t *testing.T) {
+	var body map[string]any
+	rt, _ := shareRuntime(t, func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{}`)
+	})
+	t.Setenv("RUNTM_ORG_ID", "org_test")
+	cmd := NewScheduledAgentsCommand(rt)
+	cmd.SetArgs([]string{"update", "sched-1", "--clear-agent-id"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+	if v, ok := body["agent_id"]; !ok || v != nil {
+		t.Errorf("body = %v, want agent_id: null", body)
 	}
 }
 

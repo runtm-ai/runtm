@@ -39,7 +39,11 @@ All fields optional; omitted fields are unchanged.
 </ParamField>
 
 <ParamField body="model" type="string | null">
-  New model override.
+  New model override. An unknown model is a 422 that lists the valid ones.
+</ParamField>
+
+<ParamField body="agent_id" type="string | null">
+  Roster agent the schedule runs as, or null to go back to `org_template_id` and `agent`. Linking an agent clears `org_template_id`, and clears `model` unless the same request sets it.
 </ParamField>
 
 <ParamField body="enabled" type="boolean">
