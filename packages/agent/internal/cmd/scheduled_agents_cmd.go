@@ -130,7 +130,7 @@ func (f *scheduledAgentFlags) register(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&f.prompt, "prompt", "", "Prompt run on every tick")
 	cmd.Flags().StringVar(&f.template, "template", "", "Org template id the session launches from")
 	cmd.Flags().StringVar(&f.agent, "agent", "", "Coding agent (claude-code, codex, …)")
-	cmd.Flags().StringVar(&f.model, "model", "", "Model for the launched session")
+	cmd.Flags().StringVar(&f.model, "model", "", "Model for the launched session ("+modelChoices+"); defaults to the linked agent's model")
 	cmd.Flags().BoolVar(&f.enabled, "enabled", false, "Create/enable the schedule")
 	cmd.Flags().BoolVar(&f.disabled, "disabled", false, "Turn the schedule off (keeps the agent)")
 	cmd.Flags().StringVar(&f.slackIntegration, "slack-integration", "", "Slack integration id to post results as (requires --slack-channel)")

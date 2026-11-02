@@ -8,6 +8,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// modelChoices mirrors the API's model catalog, which rejects any other model
+// with the current list.
+const modelChoices = "claude-code: sonnet, opus-5, opus, haiku, fable; codex: gpt-6-astra, gpt-5.6-sol, gpt-5.5, gpt-5.4, gpt-5.4-mini"
+
 // NewSessionCommand returns the `runtm session` subcommand tree.
 //
 // Endpoint strategy (per the programmatic API plan):
@@ -251,7 +255,7 @@ with --approval-id.`,
 	cmd.Flags().StringVar(&agentID, "agent-id", "", "Roster agent UUID to run as (NOT --agent; see 'runtm-api agents list')")
 	cmd.Flags().StringVar(&approvalID, "approval-id", "", "Approval on the calling session satisfying the target agent's caller policy")
 	cmd.Flags().StringVar(&template, "template", "", "Project template (web-app, backend-service, static-site)")
-	cmd.Flags().StringVar(&model, "model", "", "Model override: sonnet, opus, haiku, opusplan")
+	cmd.Flags().StringVar(&model, "model", "", "Model override ("+modelChoices+"); defaults to the --agent-id agent's model")
 	cmd.Flags().StringVar(&mode, "mode", "", "Session mode: autopilot or interactive")
 	cmd.Flags().BoolVar(&planMode, "plan-mode", false, "Read-only plan mode (no changes made)")
 	cmd.Flags().StringVar(&onComplete, "on-complete", "", "Lifecycle after prompt: pause, destroy, keep_alive")
@@ -410,7 +414,7 @@ Terminates with an event named "done". For background runs, use
 			return c.StreamSSE(path, body, rt.Stdout)
 		},
 	}
-	cmd.Flags().StringVar(&model, "model", "", "Model override (sonnet, opus, haiku, opusplan)")
+	cmd.Flags().StringVar(&model, "model", "", "Model override ("+modelChoices+")")
 	cmd.Flags().BoolVar(&planMode, "plan-mode", false, "Read-only plan mode")
 	cmd.Flags().StringVar(&continueSes, "continue-session", "", "Claude Code session ID to resume")
 	cmd.Flags().BoolVar(&newSession, "new-session", false, "Force a new agent session instead of resuming")

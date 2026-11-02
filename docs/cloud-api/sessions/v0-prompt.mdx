@@ -35,7 +35,7 @@ The session must be in `running` state - call [`POST /api/v0/sessions`](/cloud-a
 </ParamField>
 
 <ParamField body="model" type="string">
-  Model override: `sonnet`, `opus`, `haiku`, `opusplan`. Defaults to `sonnet`.
+  Model override, from the list on [launch](/cloud-api/sessions/launch) for the session's agent. Defaults to `sonnet`. An unknown model is a 422 that lists the valid ones.
 </ParamField>
 
 <ParamField body="plan_mode" type="boolean" default={false}>
