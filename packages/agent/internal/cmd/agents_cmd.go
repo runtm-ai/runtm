@@ -288,7 +288,7 @@ func emailIntegrationByID(rt *Runtime, c *client.Client, listPath, id string) er
 // set: the roster and the trigger integrations accept different fields, and a
 // silent mismatch would drop the edit on the floor.
 var rosterOnlyFlags = []string{
-	"description", "instructions", "avatar", "evaluator-criteria", "economics", "clear-template",
+	"description", "instructions", "avatar", "evaluator-criteria", "economics", "clear-template", "access-grant",
 }
 var integrationOnlyFlags = []string{
 	"github-repo", "rate-limit", "service-user", "model", "config", "enabled", "disabled",
@@ -310,6 +310,8 @@ func checkFlagsForMode(cmd *cobra.Command, agentType string) error {
 	}
 	return nil
 }
+
+const accessGrantHelp = `Roster: what the agent itself may do, as JSON: '{"scopes":["sessions:read"],"allowed_templates":["<name or id>"]}'. Unknown keys and scopes are rejected; '{}' lifts every restriction`
 
 // rosterBody collects the roster fields the user actually set.
 func rosterBody(cmd *cobra.Command, name, description, instructions, avatarJSON, template, agent, criteriaJSON, economicsJSON string) (map[string]any, error) {
@@ -354,6 +356,14 @@ func rosterBody(cmd *cobra.Command, name, description, instructions, avatarJSON,
 		}
 		body["economics"] = economics
 	}
+	if cmd.Flags().Changed("access-grant") {
+		raw, _ := cmd.Flags().GetString("access-grant")
+		grant, err := parseJSONObject(raw)
+		if err != nil {
+			return nil, fmt.Errorf("--access-grant: %w", err)
+		}
+		body["access_grant"] = grant
+	}
 	return body, nil
 }
 
@@ -389,6 +399,7 @@ every linked trigger.
   runtm-api agents update <id> --clear-template
   runtm-api agents update <id> --evaluator-criteria '{"objective":"Resolve the ticket","checks":["opened a PR"]}'
   runtm-api agents update <id> --economics '{"budget":{"monthly_usd_cap":50}}'
+  runtm-api agents update <id> --access-grant '{"scopes":["sessions:read"],"allowed_templates":["gtm-machine"]}'
 
 With --type, edits the trigger integration:
 
@@ -409,7 +420,7 @@ With --type, edits the trigger integration:
 					return err
 				}
 				if len(body) == 0 {
-					return fmt.Errorf("pass at least one field to update (--name, --description, --instructions, --avatar, --template/--clear-template, --agent, --evaluator-criteria, --economics)")
+					return fmt.Errorf("pass at least one field to update (--name, --description, --instructions, --avatar, --template/--clear-template, --agent, --evaluator-criteria, --economics, --access-grant)")
 				}
 				c, _, err := requireOrgClient(rt, "agents")
 				if err != nil {
@@ -494,6 +505,7 @@ With --type, edits the trigger integration:
 	cmd.Flags().StringVar(&criteriaJSON, "evaluator-criteria", "", `Roster: evaluation rubric as JSON, e.g. '{"objective":"...","checks":["..."]}' (version bumps automatically)`)
 	cmd.Flags().StringVar(&econJSON, "economics", "", `Roster: task values + budget as JSON, e.g. '{"tasks":{"triage":{"value_usd":10,"minutes":20}},"budget":{"monthly_usd_cap":50}}'`)
 	cmd.Flags().Bool("clear-template", false, "Roster: clear the default template (fans out to linked triggers)")
+	cmd.Flags().String("access-grant", "", accessGrantHelp)
 	cmd.Flags().StringVar(&agent, "agent", "", "Default coding agent to launch (claude-code, codex, ...)")
 	cmd.Flags().StringVar(&template, "template", "", "Default org template for launched sessions")
 	cmd.Flags().StringVar(&githubRepo, "github-repo", "", "Integrations: default GitHub repo (owner/repo)")
@@ -665,7 +677,7 @@ Linear finish in a browser; email and manual Linear are headless:
 				return runJSON(rt, resp, err)
 			}
 
-			for _, f := range []string{"description", "instructions", "avatar", "evaluator-criteria", "economics"} {
+			for _, f := range []string{"description", "instructions", "avatar", "evaluator-criteria", "economics", "access-grant"} {
 				if cmd.Flags().Changed(f) {
 					return fmt.Errorf("--%s only applies to roster agents; drop --type (bind the trigger to a roster agent afterwards)", f)
 				}
@@ -700,6 +712,7 @@ Linear finish in a browser; email and manual Linear are headless:
 	cmd.Flags().StringVar(&avatarJSON, "avatar", "", `Roster: avatar object as JSON, e.g. '{"kind":"icon","icon":"bot","color":"blue"}'`)
 	cmd.Flags().StringVar(&criteriaJSON, "evaluator-criteria", "", `Roster: evaluation rubric as JSON ('{"objective":"...","checks":["..."]}')`)
 	cmd.Flags().StringVar(&econJSON, "economics", "", "Roster: task values + budget as JSON")
+	cmd.Flags().String("access-grant", "", accessGrantHelp)
 	cmd.Flags().StringVar(&agent, "agent", "", "Coding agent to launch (claude-code, codex, ...)")
 	cmd.Flags().StringVar(&template, "template", "", "Default org template for launched sessions")
 	cmd.Flags().StringVar(&githubRepo, "github-repo", "", "Default GitHub repo (owner/repo) for launched sessions")

@@ -58,3 +58,41 @@ func TestListAllAgentsKeysEachSourceAndReportsErrors(t *testing.T) {
 		t.Errorf("slack config should pass through: %s", raw)
 	}
 }
+
+func TestAgentsUpdateAccessGrant(t *testing.T) {
+	var method, path string
+	var body map[string]any
+	rt, _ := shareRuntime(t, func(w http.ResponseWriter, r *http.Request) {
+		method, path = r.Method, r.URL.Path
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{}`)
+	})
+	t.Setenv("RUNTM_ORG_ID", "org_test")
+	cmd := NewAgentsCommand(rt)
+	cmd.SetArgs([]string{"update", "ag-1", "--access-grant", `{"allowed_templates":["gtm-machine"]}`})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+
+	if method != http.MethodPatch || !strings.HasSuffix(path, "/v1/agents/ag-1") {
+		t.Errorf("%s %s, want PATCH of the roster agent", method, path)
+	}
+	grant, _ := body["access_grant"].(map[string]any)
+	if fmt.Sprint(grant["allowed_templates"]) != "[gtm-machine]" {
+		t.Errorf("body = %v, want the grant sent as given", body)
+	}
+}
+
+func TestAccessGrantIsRosterOnly(t *testing.T) {
+	rt, _ := shareRuntime(t, func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+	})
+	t.Setenv("RUNTM_ORG_ID", "org_test")
+	cmd := NewAgentsCommand(rt)
+	cmd.SetArgs([]string{"update", "s-1", "--type", "slack", "--access-grant", `{}`})
+	cmd.SilenceUsage, cmd.SilenceErrors = true, true
+	if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "roster") {
+		t.Errorf("err = %v, want a roster-only error", err)
+	}
+}
