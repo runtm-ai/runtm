@@ -57,7 +57,7 @@ runtm-api agents list --all   # roster + slack, github, linear, email triggers
     "system_instructions": "Be terse. Prefer PRs over prose.",
     "default_template": "gtm-machine",
     "default_agent": "claude-code",
-    "evaluator_criteria": {"version": 2, "objective": "Ship weekly lists", "checks": ["lists posted"]},
+    "evaluator_criteria": {"version": 2, "categories": [{"key": "weekly-lists", "description": "Weekly outbound lists", "success_criteria": "Lists posted for approval"}]},
     "economics": {"budget": {"monthly_usd_cap": 50}}
   }
 ]

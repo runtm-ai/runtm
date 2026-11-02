@@ -40,7 +40,7 @@ agent), an evaluation rubric (evaluator_criteria), and a budget (economics).
 
   runtm-api agents list
   runtm-api agents create --name Donna --instructions 'Be terse.'
-  runtm-api agents update <id> --evaluator-criteria '{"objective":"...","checks":["..."]}'
+  runtm-api agents update <id> --evaluator-criteria '{"categories":[{"key":"resolution","description":"...","success_criteria":"..."}]}'
   runtm-api agents scorecard --days 30
 
 With --type, commands operate on the trigger integrations that launch
@@ -387,7 +387,7 @@ every linked trigger.
   runtm-api agents update <id> --instructions 'Be terse. Prefer PRs.'
   runtm-api agents update <id> --template gtm-machine --agent codex
   runtm-api agents update <id> --clear-template
-  runtm-api agents update <id> --evaluator-criteria '{"objective":"Resolve the ticket","checks":["opened a PR"]}'
+  runtm-api agents update <id> --evaluator-criteria '{"categories":[{"key":"resolution","description":"Resolve the ticket","success_criteria":"Opened a PR that fixes it"}]}'
   runtm-api agents update <id> --economics '{"budget":{"monthly_usd_cap":50}}'
 
 With --type, edits the trigger integration:
@@ -491,7 +491,7 @@ With --type, edits the trigger integration:
 	cmd.Flags().StringVar(&description, "description", "", "Roster: short description")
 	cmd.Flags().StringVar(&instructions, "instructions", "", "Roster: system instructions injected into every session")
 	cmd.Flags().StringVar(&avatarJSON, "avatar", "", `Roster: avatar object as JSON, e.g. '{"kind":"icon","icon":"bot","color":"blue"}'`)
-	cmd.Flags().StringVar(&criteriaJSON, "evaluator-criteria", "", `Roster: evaluation rubric as JSON, e.g. '{"objective":"...","checks":["..."]}' (version bumps automatically)`)
+	cmd.Flags().StringVar(&criteriaJSON, "evaluator-criteria", "", `Roster: evaluation rubric as JSON, e.g. '{"categories":[{"key":"...","description":"...","success_criteria":"..."}]}'; runs are graded per category (version bumps automatically)`)
 	cmd.Flags().StringVar(&econJSON, "economics", "", `Roster: task values + budget as JSON, e.g. '{"tasks":{"triage":{"value_usd":10,"minutes":20}},"budget":{"monthly_usd_cap":50}}'`)
 	cmd.Flags().Bool("clear-template", false, "Roster: clear the default template (fans out to linked triggers)")
 	cmd.Flags().StringVar(&agent, "agent", "", "Default coding agent to launch (claude-code, codex, ...)")
@@ -637,7 +637,7 @@ identity, instructions, session defaults, rubric, and budget. Bind triggers
 to it afterwards.
 
   runtm-api agents create --name Donna --instructions 'Be terse.' \
-    --template gtm-machine --evaluator-criteria '{"objective":"...","checks":["..."]}'
+    --template gtm-machine --evaluator-criteria '{"categories":[{"key":"resolution","description":"...","success_criteria":"..."}]}'
 
 With --type, creates a trigger integration. Slack, GitHub, and managed
 Linear finish in a browser; email and manual Linear are headless:
@@ -698,7 +698,7 @@ Linear finish in a browser; email and manual Linear are headless:
 	cmd.Flags().StringVar(&description, "description", "", "Roster: short description")
 	cmd.Flags().StringVar(&instructions, "instructions", "", "Roster: system instructions injected into every session")
 	cmd.Flags().StringVar(&avatarJSON, "avatar", "", `Roster: avatar object as JSON, e.g. '{"kind":"icon","icon":"bot","color":"blue"}'`)
-	cmd.Flags().StringVar(&criteriaJSON, "evaluator-criteria", "", `Roster: evaluation rubric as JSON ('{"objective":"...","checks":["..."]}')`)
+	cmd.Flags().StringVar(&criteriaJSON, "evaluator-criteria", "", `Roster: evaluation rubric as JSON ('{"categories":[{"key":"...","description":"...","success_criteria":"..."}]}'); runs are graded per category`)
 	cmd.Flags().StringVar(&econJSON, "economics", "", "Roster: task values + budget as JSON")
 	cmd.Flags().StringVar(&agent, "agent", "", "Coding agent to launch (claude-code, codex, ...)")
 	cmd.Flags().StringVar(&template, "template", "", "Default org template for launched sessions")

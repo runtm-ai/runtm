@@ -48,7 +48,7 @@ runtm-api agents get a1b2c3d4-0000-0000-0000-000000000000
   "system_instructions": "Be terse.",
   "default_template": "gtm-machine",
   "default_agent": "claude-code",
-  "evaluator_criteria": {"version": 2, "objective": "Ship weekly lists", "checks": ["lists posted"]},
+  "evaluator_criteria": {"version": 2, "categories": [{"key": "weekly-lists", "description": "Weekly outbound lists", "success_criteria": "Lists posted for approval"}]},
   "economics": null
 }
 ```
