@@ -1,0 +1,31 @@
+# Runtm reads each node's Pod Snapshot agent bootstrap log (gkeVersion +
+# runscVersion) to retarget a snapshot after a GKE upgrade. Applied
+# separately by scripts/cluster-setup.sh because the namespace is
+# GKE-managed: if Autopilot refuses it, setup warns and Runtm restores
+# paused sessions from the workspace archive instead.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: runtm-hub
+  namespace: gke-managed-pod-snapshots
+rules:
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [list]
+  - apiGroups: [""]
+    resources: [pods/log]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: runtm-hub
+  namespace: gke-managed-pod-snapshots
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: runtm-hub
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: User
+    name: ${runtm_sa_email}

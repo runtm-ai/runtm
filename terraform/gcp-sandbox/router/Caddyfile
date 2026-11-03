@@ -1,0 +1,46 @@
+# Runtm preview router (customer side). Runs in this cluster's
+# `agent-sandbox-system` namespace behind the LoadBalancer Service
+# `sandbox-router`, whose loadBalancerSourceRanges admit only Runtm's egress
+# addresses.
+#
+# Runtm's preview edge has already verified the visitor's preview cookie and
+# names the target sandbox and port in two headers:
+#
+#   X-Runtm-Sandbox  sandbox (pod) name, a DNS label
+#   X-Runtm-Port     port of the sandbox's dev server, 1-5 digits
+#
+# Both are checked here before they are used, so a request can only ever
+# reach <sandbox>.sandboxes.svc.cluster.local:<port> (the per-sandbox
+# headless Service agent-sandbox creates). Anything else gets a 400. Both
+# headers are removed before the request reaches the sandbox.
+#
+# RUNTM_INGRESS_CIDRS (space-separated, from the Deployment's env) are
+# trusted as proxies, so the edge's X-Forwarded-For/-Proto reach the
+# sandbox unchanged.
+{
+	admin off
+	auto_https off
+	servers {
+		trusted_proxies static {$RUNTM_INGRESS_CIDRS}
+	}
+}
+
+:8080 {
+	# The placeholders join repeated headers with ",", which neither pattern
+	# admits, so a request carrying two values for either header is refused
+	# too.
+	@target expression `{http.request.header.X-Runtm-Sandbox}.matches("^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$") && {http.request.header.X-Runtm-Port}.matches("^[0-9]{1,5}$")`
+	handle @target {
+		# A paused sandbox has no Service: the dial fails and the edge gets
+		# a 502, which it turns into Runtm's wake page.
+		reverse_proxy {http.request.header.X-Runtm-Sandbox}.sandboxes.svc.cluster.local:{http.request.header.X-Runtm-Port} {
+			header_up -X-Runtm-Sandbox
+			header_up -X-Runtm-Port
+			# WebSocket (HMR/terminal) + SSE need unbuffered responses.
+			flush_interval -1
+		}
+	}
+	handle {
+		respond "bad sandbox target" 400
+	}
+}
