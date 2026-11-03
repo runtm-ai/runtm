@@ -26,7 +26,7 @@ Work from evidence. The passing runs in step 5 gave you the exact commands and h
 
 ## The three guardrail types
 
-Each type exists in two places: as an org-wide directive you attach to templates, repos or the whole org, and as a template-owned row on the template's **Guardrails** tab. Org rules layer over template rules, and `template guardrails resolve` shows the effective set with each item marked `active`, `deduped` or `shadowed`.
+Each type exists in two places: as an org rule under **Settings → Guardrails**, and as a template-owned row on the template's **Guardrails** tab. An org allowlist or network rule applies to every session in the org as soon as it is saved. An org hook applies where you attach it: templates, repos, or the whole org. A template rule applies only to sessions from that template. Org rules layer over template rules, and `template guardrails resolve` shows the effective set with each item marked `active`, `deduped` or `shadowed`.
 
 | Type | Content | Enforced by |
 |---|---|---|
@@ -46,21 +46,21 @@ Org limits are separate from guardrail content. Under **Guardrails → Limits** 
 
 <Steps>
   <Step title="Write the allowlist rules">
-    Open **Settings → Guardrails → Allowlists** and click **New allowlist rule**. Pick the **Type** (Allowed, Ask first, Denied), enter the pattern ("e.g. git push --force or rm -rf *") and a purpose ("Why this rule exists"). For a payments agent, create the deny rules first.
+    Open the agent's template, go to its **Guardrails** tab, open **Allowlists** and click **New allowlist rule**. Pick the **Type** (Allowed, Ask first, Denied), enter the pattern ("e.g. git push --force or rm -rf *") and a purpose ("Why this rule exists"). For a payments agent, create the deny rules first. The same form under **Settings → Guardrails** creates an org rule, which applies to every session in the org the moment you save it.
 
     <Visibility for="agents">
 
     ```text
-    cli: runtm-api guardrails rules create --name deny-stripe-refunds --kind deny --pattern "stripe refunds create*" --purpose "Refunds are issued by a human"
-    cli: runtm-api guardrails rules create --name deny-stripe-post --kind deny --pattern "curl*-X POST*api.stripe.com*" --purpose "No writes to Stripe from the agent"
-    cli: runtm-api guardrails rules create --name allow-stripe-reads --kind allow --pattern "stripe * list*" --purpose "Read-only investigation"
+    cli: runtm-api guardrails rules create --template <template_id> --name deny-stripe-refunds --kind deny --pattern "stripe refunds create*" --purpose "Refunds are issued by a human"
+    cli: runtm-api guardrails rules create --template <template_id> --name deny-stripe-post --kind deny --pattern "curl*-X POST*api.stripe.com*" --purpose "No writes to Stripe from the agent"
+    cli: runtm-api guardrails rules create --template <template_id> --name allow-stripe-reads --kind allow --pattern "stripe * list*" --purpose "Read-only investigation"
     ```
 
     </Visibility>
   </Step>
 
   <Step title="Set the default policy to ask">
-    On the same tab, set the default policy for commands no rule matches. `ask` means the run pauses for a permission decision on anything you did not anticipate. `deny` is stricter and breaks runbooks that install a package on the fly. The org default is `allow`.
+    Under **Settings → Guardrails → Allowlists**, set the org's default policy for commands no rule matches. `ask` means the run pauses for a permission decision on anything you did not anticipate. `deny` is stricter and breaks runbooks that install a package on the fly. The org default is `allow`.
 
     The CLI does not expose the default command policy (`runtm-api guardrails allowlist` manages the repo allowlist, a different setting). Set it with `PUT /api/cloud/organizations/<org_id>/allowlist-policy` and a body of `{"default_policy": "ask"}`, or on the Allowlists tab.
 
@@ -86,26 +86,25 @@ Org limits are separate from guardrail content. Under **Guardrails → Limits** 
   </Step>
 
   <Step title="Pin the network">
-    Open **Network** and add one rule per host or CIDR ("api.anthropic.com or 10.0.0.0/8") with a purpose ("Why agents need this"). As soon as one rule exists, the sandbox can reach only what is listed. Include the tool hosts, `app.runtm.com`, `docs.runtm.com`, and whatever your skills' `mise` tooling downloads from.
+    On the template's **Guardrails** tab, open **Network** and add one rule per host or CIDR ("api.anthropic.com or 10.0.0.0/8") with a purpose ("Why agents need this"). As soon as one rule exists, the sandbox can reach only what is listed. Include the tool hosts, `app.runtm.com`, `docs.runtm.com`, and whatever your skills' `mise` tooling downloads from.
 
     <Visibility for="agents">
 
     ```text
-    cli: runtm-api guardrails network create --name stripe-api --kind host --value api.stripe.com --purpose "Stripe reads"
-    cli: runtm-api guardrails network create --name runtm-docs --kind host --value docs.runtm.com --purpose "Agent reads the docs"
+    cli: runtm-api guardrails network create --template <template_id> --name stripe-api --kind host --value api.stripe.com --purpose "Stripe reads"
+    cli: runtm-api guardrails network create --template <template_id> --name runtm-docs --kind host --value docs.runtm.com --purpose "Agent reads the docs"
     ```
 
     </Visibility>
   </Step>
 
-  <Step title="Attach the rules to the template">
-    Org-wide rules apply to nothing until attached. Attach each rule to the agent's template (or to every repo in the org with `--all`). Alternatively create the rule directly on the template's **Guardrails** tab, where inherited org rules show as read-only "Enforced" rows above the template's own list.
+  <Step title="Attach org hooks and check the effective set">
+    An org hook applies nowhere until you attach it, to the agent's template or to every repo with `--all`. Org allowlist and network rules need no attaching: they already apply to every session. The template's **Guardrails** tab shows inherited org rules as read-only "Enforced" rows above the template's own list.
 
     <Visibility for="agents">
 
     ```text
-    cli: runtm-api guardrails rules attach <rule_id> --template <template_id>
-    cli: runtm-api template guardrails create <template_id> --type allowlist --name deny-refunds --content '{"kind":"deny","pattern":"stripe refunds create*","purpose":"Refunds are issued by a human"}'
+    cli: runtm-api guardrails hooks attach <hook_id> --template <template_id>
     cli-verify: runtm-api template guardrails resolve <template_id>
     ```
 
@@ -113,7 +112,7 @@ Org limits are separate from guardrail content. Under **Guardrails → Limits** 
   </Step>
 
   <Step title="Rebuild the template">
-    Allowlist rules and hooks are materialized into the snapshot. Attaching after the last build leaves the template stale until you build again. Network rules are resolved at session creation and do not need a rebuild.
+    Allowlist rules and hooks are materialized into the snapshot. Adding or attaching one after the last build leaves the template stale until you build again. Network rules are resolved at session creation and do not need a rebuild.
 
     <Visibility for="agents">
 
@@ -192,7 +191,7 @@ cli-verify: runtm-api session approvals list <session_id>
 ## Gotchas
 
 - **Allowlist rules see only Bash.** File edits, web fetches and MCP tool calls are not evaluated by allowlist rules. Use a hook with a matcher such as `Edit|Write` for those.
-- **Attached is not built.** An allowlist or hook attached after the last build is not in the snapshot. `template get` reports `attachments_changed_since_build: true`. Build again.
+- **Added is not built.** An allowlist rule or hook added or attached after the last build is not in the snapshot. `template get` reports `attachments_changed_since_build: true`. Build again.
 - **One network rule flips the default.** With zero rules the sandbox has open egress. With one rule it has deny-all plus that rule. Forgetting `app.runtm.com` breaks the runtm CLI inside the sandbox, and forgetting your package registry breaks skill tooling.
 - **Network rules have no ports.** A host is reachable on every port or not at all.
 - **Approvals are runbook steps, not settings.** The **Approvals** tab under Guardrails describes the concept but does not configure anything. If the skill never calls `runtm-approval`, nothing waits.

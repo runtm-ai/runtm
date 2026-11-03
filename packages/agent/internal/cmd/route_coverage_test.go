@@ -226,7 +226,7 @@ func TestGuardrailDirectiveFamilies(t *testing.T) {
 	guardrails := NewGuardrailsCommand(newTestRuntime())
 	for _, family := range []string{"rules", "hooks", "network"} {
 		fam := findSub(t, guardrails, family)
-		for _, name := range []string{"list", "get", "create", "update", "delete", "attach", "detach", "attachments", "lock", "unlock"} {
+		for _, name := range []string{"list", "get", "create", "update", "delete", "attachments", "lock", "unlock"} {
 			if !hasSub(fam, name) {
 				t.Errorf("guardrails %s is missing %q", family, name)
 			}

@@ -448,15 +448,14 @@ Read [Add guardrails and approvals](/build/guardrails-and-approvals). Only now, 
 
 <Steps>
   <Step title="Deny writes to the application tables">
-    Under **Settings > Guardrails > Allowlists**, create deny rules for anything that writes through `psql`, then attach them to the `Underwriting` template.
+    On the `Underwriting` template's **Guardrails** tab, under **Allowlists**, create deny rules for anything that writes through `psql`. Rules made there apply only to this agent's sessions; the same rules under **Settings > Guardrails** would apply to every session in the org.
 
     <Visibility for="agents">
 
     ```text
-    cli: runtm-api guardrails rules create --name deny-applications-update --kind deny --pattern "psql*UPDATE*" --purpose "The agent never changes an application"
-    cli: runtm-api guardrails rules create --name deny-applications-insert --kind deny --pattern "psql*INSERT*" --purpose "Read-only underwriting"
-    cli: runtm-api guardrails rules create --name deny-applications-delete --kind deny --pattern "psql*DELETE*" --purpose "Read-only underwriting"
-    cli: runtm-api guardrails rules attach <rule_id> --template <template_id>
+    cli: runtm-api guardrails rules create --template <template_id> --name deny-applications-update --kind deny --pattern "psql*UPDATE*" --purpose "The agent never changes an application"
+    cli: runtm-api guardrails rules create --template <template_id> --name deny-applications-insert --kind deny --pattern "psql*INSERT*" --purpose "Read-only underwriting"
+    cli: runtm-api guardrails rules create --template <template_id> --name deny-applications-delete --kind deny --pattern "psql*DELETE*" --purpose "Read-only underwriting"
     ```
 
     </Visibility>
@@ -469,8 +468,8 @@ Read [Add guardrails and approvals](/build/guardrails-and-approvals). Only now, 
     <Visibility for="agents">
 
     ```text
-    cli: runtm-api guardrails rules create --name allow-middesk-reads --kind allow --pattern "curl*api.middesk.com*" --purpose "KYB reads"
-    cli: runtm-api guardrails rules create --name deny-middesk-post --kind deny --pattern "curl*-X POST*api.middesk.com*" --purpose "The agent does not create or order anything in Middesk"
+    cli: runtm-api guardrails rules create --template <template_id> --name allow-middesk-reads --kind allow --pattern "curl*api.middesk.com*" --purpose "KYB reads"
+    cli: runtm-api guardrails rules create --template <template_id> --name deny-middesk-post --kind deny --pattern "curl*-X POST*api.middesk.com*" --purpose "The agent does not create or order anything in Middesk"
     ```
 
     </Visibility>
@@ -480,17 +479,16 @@ Read [Add guardrails and approvals](/build/guardrails-and-approvals). Only now, 
     <Visibility for="agents">
 
     ```text
-    cli: runtm-api guardrails rules create --name allow-middesk-reads --kind allow --pattern "curl*api.middesk.com*" --purpose "KYB reads and the create-business call"
-    cli: runtm-api guardrails rules create --name deny-middesk-orders --kind deny --pattern "curl*-X POST*api.middesk.com/v1/businesses/*" --purpose "The agent never orders verifications on an existing business"
-    cli: runtm-api guardrails rules create --name deny-middesk-patch --kind deny --pattern "curl*-X PATCH*api.middesk.com*" --purpose "Read-only underwriting"
-    cli: runtm-api guardrails rules create --name deny-middesk-delete --kind deny --pattern "curl*-X DELETE*api.middesk.com*" --purpose "Read-only underwriting"
-    cli: runtm-api guardrails rules attach <rule_id> --template <template_id>
+    cli: runtm-api guardrails rules create --template <template_id> --name allow-middesk-reads --kind allow --pattern "curl*api.middesk.com*" --purpose "KYB reads and the create-business call"
+    cli: runtm-api guardrails rules create --template <template_id> --name deny-middesk-orders --kind deny --pattern "curl*-X POST*api.middesk.com/v1/businesses/*" --purpose "The agent never orders verifications on an existing business"
+    cli: runtm-api guardrails rules create --template <template_id> --name deny-middesk-patch --kind deny --pattern "curl*-X PATCH*api.middesk.com*" --purpose "Read-only underwriting"
+    cli: runtm-api guardrails rules create --template <template_id> --name deny-middesk-delete --kind deny --pattern "curl*-X DELETE*api.middesk.com*" --purpose "Read-only underwriting"
     ```
 
     </Visibility>
   </Step>
   <Step title="Set the default policy to ask">
-    On the **Allowlists** tab set the default policy to `ask`, so any command outside the patterns above pauses for a permission decision instead of running. The CLI does not set this; use the tab or `PUT /api/cloud/organizations/<org_id>/allowlist-policy` with `{"default_policy": "ask"}`.
+    Under **Settings > Guardrails > Allowlists** set the org's default policy to `ask`, so any command outside the patterns above pauses for a permission decision instead of running. The CLI does not set this; use the tab or `PUT /api/cloud/organizations/<org_id>/allowlist-policy` with `{"default_policy": "ask"}`.
 
     <Visibility for="agents">
 
@@ -506,12 +504,11 @@ Read [Add guardrails and approvals](/build/guardrails-and-approvals). Only now, 
     <Visibility for="agents">
 
     ```text
-    cli: runtm-api guardrails network create --name middesk-api --kind host --value api.middesk.com --purpose "KYB reads"
-    cli: runtm-api guardrails network create --name notion-api --kind host --value api.notion.com --purpose "Underwriting policy pages"
-    cli: runtm-api guardrails network create --name merchants-db --kind host --value <postgres_host> --purpose "Read-only applications database"
-    cli: runtm-api guardrails network create --name runtm-app --kind host --value app.runtm.com --purpose "runtm-api and runtm-approval"
-    cli: runtm-api guardrails network create --name runtm-docs --kind host --value docs.runtm.com --purpose "Agent reads the docs"
-    cli: runtm-api guardrails network attach <rule_id> --template <template_id>
+    cli: runtm-api guardrails network create --template <template_id> --name middesk-api --kind host --value api.middesk.com --purpose "KYB reads"
+    cli: runtm-api guardrails network create --template <template_id> --name notion-api --kind host --value api.notion.com --purpose "Underwriting policy pages"
+    cli: runtm-api guardrails network create --template <template_id> --name merchants-db --kind host --value <postgres_host> --purpose "Read-only applications database"
+    cli: runtm-api guardrails network create --template <template_id> --name runtm-app --kind host --value app.runtm.com --purpose "runtm-api and runtm-approval"
+    cli: runtm-api guardrails network create --template <template_id> --name runtm-docs --kind host --value docs.runtm.com --purpose "Agent reads the docs"
     ```
 
     </Visibility>

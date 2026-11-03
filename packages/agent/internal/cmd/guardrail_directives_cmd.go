@@ -11,9 +11,12 @@ import (
 // network), distinct from `guardrails limits` and `guardrails allowlist`
 // which manage the org's numeric limits and default allowlist policy.
 //
-// Scope a rule to templates or repos with attach/detach, exactly like skills.
+// Hooks attach to templates or repos like skills. Allowlist and network rules
+// only exist org-wide as directives, so their create asks for --template (a
+// template guardrail instead) or an explicit --org-wide.
 //
-// Routes: /api/agent-directives family CRUD, context:read / context:write.
+// Routes: /api/agent-directives family CRUD, context:read / context:write;
+// /api/org-templates/{id}/guardrails for --template, guardrails:write.
 
 func addGuardrailDirectiveCommands(cmd *cobra.Command, rt *Runtime) {
 	cmd.AddCommand(
@@ -24,15 +27,18 @@ func addGuardrailDirectiveCommands(cmd *cobra.Command, rt *Runtime) {
 			typeName: "allowlist_rule_v0",
 			short:    "Command allowlist rules: allow, ask, or deny command patterns",
 			long: `Allowlist rules decide which shell commands sessions may run: each rule is
-{"kind": "allow|ask|deny", "pattern": "<glob>", "purpose": "..."}. Rules are
-directives, so they attach to templates, repos, or the whole org.
+{"kind": "allow|ask|deny", "pattern": "<glob>", "purpose": "..."}. A rule
+applies to the sessions of one template, or to every session in the org:
 
   runtm-api guardrails rules create --name block-force-push \
-    --kind deny --pattern 'git push --force*'
-  runtm-api guardrails rules attach <id> --template <template_id>
+    --kind deny --pattern 'git push --force*' --template <template_id>
+  runtm-api guardrails rules create --name block-force-push \
+    --kind deny --pattern 'git push --force*' --org-wide
 
-The org's DEFAULT policy (allow-all vs allowlist mode) stays under
-'runtm-api guardrails allowlist get|set'.`,
+Rules created with --template are managed under 'runtm-api template
+guardrails'. The org's DEFAULT policy (allow-all vs allowlist mode) stays
+under 'runtm-api guardrails allowlist get|set'.`,
+			orgWideOnly: true,
 			contentFlags: func(c *cobra.Command, v *guardrailContentFlags) {
 				c.Flags().StringVar(&v.kind, "kind", "", "Rule kind: allow, ask, or deny")
 				c.Flags().StringVar(&v.pattern, "pattern", "", "Command pattern the rule matches, e.g. 'npm *'")
@@ -115,11 +121,17 @@ Hook names must be lowercase slugs (a-z, 0-9, hyphens).`,
 			typeName: "network_rule_v0",
 			short:    "Network egress rules: hosts and CIDRs sandboxes may reach",
 			long: `Network rules declare the hosts or CIDR ranges sandbox egress may reach:
-{"kind": "host|cidr", "value": "api.example.com", "purpose": "..."}. Rules
-are directives, so they attach to templates, repos, or the whole org.
+{"kind": "host|cidr", "value": "api.example.com", "purpose": "..."}. A rule
+applies to the sessions of one template, or to every session in the org:
 
   runtm-api guardrails network create --name allow-stripe \
-    --kind host --value api.stripe.com --purpose 'billing API'`,
+    --kind host --value api.stripe.com --template <template_id>
+  runtm-api guardrails network create --name allow-stripe \
+    --kind host --value api.stripe.com --purpose 'billing API' --org-wide
+
+Rules created with --template are managed under 'runtm-api template
+guardrails'.`,
+			orgWideOnly: true,
 			contentFlags: func(c *cobra.Command, v *guardrailContentFlags) {
 				c.Flags().StringVar(&v.kind, "kind", "", "Rule kind: host or cidr")
 				c.Flags().StringVar(&v.value, "value", "", "Hostname or CIDR range")
@@ -167,6 +179,9 @@ type guardrailFamilySpec struct {
 	long         string
 	contentFlags func(*cobra.Command, *guardrailContentFlags)
 	buildContent func(*cobra.Command, *guardrailContentFlags) (map[string]any, bool, error)
+	// orgWideOnly: the API attaches these to the whole org on create and
+	// refuses any other scope, so create needs --template or --org-wide.
+	orgWideOnly bool
 }
 
 // newGuardrailFamilyCommand assembles one family's command tree, reusing the
@@ -177,18 +192,39 @@ func newGuardrailFamilyCommand(rt *Runtime, spec guardrailFamilySpec) *cobra.Com
 		Short: spec.short,
 		Long:  spec.long,
 	}
+	list := newDirectiveList(rt, spec.singular, spec.family)
+	if spec.orgWideOnly {
+		list.Long += `
+
+Rules created with --template live on the template: 'runtm-api template
+guardrails list <template_id>' lists them, and 'template guardrails resolve
+<template_id>' shows everything its sessions load.`
+	}
 	cmd.AddCommand(
-		newDirectiveList(rt, spec.singular, spec.family),
+		list,
 		newDirectiveGet(rt, spec.singular),
 		newGuardrailDirectiveCreate(rt, spec),
 		newGuardrailDirectiveUpdate(rt, spec),
 		newDirectiveDelete(rt, spec.singular),
 		newDirectiveAttachments(rt, spec.singular),
-		newDirectiveAttach(rt, spec.singular),
-		newDirectiveDetach(rt, spec.singular),
 		newDirectiveLock(rt, spec.singular, true),
 		newDirectiveLock(rt, spec.singular, false),
 	)
+	if !spec.orgWideOnly {
+		cmd.AddCommand(newDirectiveAttach(rt, spec.singular), newDirectiveDetach(rt, spec.singular))
+		return cmd
+	}
+	// Older docs and skills still say `attach --template`; answer with the way to scope one.
+	for _, verb := range []string{"attach", "detach"} {
+		cmd.AddCommand(&cobra.Command{
+			Use:                verb,
+			Hidden:             true,
+			DisableFlagParsing: true,
+			RunE: func(*cobra.Command, []string) error {
+				return fmt.Errorf("%ss can't be attached or detached: create one with --template <template_id> for that template's sessions ('runtm-api template guardrails' manages it), or --org-wide for every session", spec.singular)
+			},
+		})
+	}
 	return cmd
 }
 
@@ -200,13 +236,22 @@ func newGuardrailDirectiveCreate(rt *Runtime, spec guardrailFamilySpec) *cobra.C
 		contentJSON string
 		labels      []string
 		flags       guardrailContentFlags
+		templateID  string
+		orgWide     bool
 	)
+	short := fmt.Sprintf("Create an org %s", spec.singular)
+	if spec.orgWideOnly {
+		short = "Create a rule for one template (--template) or the whole org (--org-wide)"
+	}
 	cmd := &cobra.Command{
 		Use:   "create",
-		Short: fmt.Sprintf("Create an org %s", spec.singular),
+		Short: short,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if name == "" {
 				return fmt.Errorf("--name is required")
+			}
+			if spec.orgWideOnly && (templateID != "") == orgWide {
+				return fmt.Errorf("pass one of --template <id> (sessions from that template) or --org-wide (every session in the org, right away)")
 			}
 			var content map[string]any
 			if contentJSON != "" {
@@ -236,7 +281,13 @@ func newGuardrailDirectiveCreate(rt *Runtime, spec guardrailFamilySpec) *cobra.C
 			if description != "" {
 				body["description"] = description
 			}
-			if len(labels) > 0 {
+			path := directivesListPath
+			if templateID != "" {
+				if len(labels) > 0 {
+					return fmt.Errorf("--label only applies with --org-wide")
+				}
+				path = templateSubPath(templateID, "/guardrails")
+			} else if len(labels) > 0 {
 				lbl, perr := parseKeyVals(labels)
 				if perr != nil {
 					return perr
@@ -247,7 +298,7 @@ func newGuardrailDirectiveCreate(rt *Runtime, spec guardrailFamilySpec) *cobra.C
 			if err != nil {
 				return err
 			}
-			resp, err := c.PostJSON(directivesListPath, body)
+			resp, err := c.PostJSON(path, body)
 			return runJSON(rt, resp, err)
 		},
 	}
@@ -256,6 +307,10 @@ func newGuardrailDirectiveCreate(rt *Runtime, spec guardrailFamilySpec) *cobra.C
 	cmd.Flags().StringVar(&description, "description", "", "Short description")
 	cmd.Flags().StringVar(&contentJSON, "content", "", "Raw content object as JSON (overrides the typed flags)")
 	cmd.Flags().StringArrayVar(&labels, "label", nil, "Label as KEY=VALUE (repeatable)")
+	if spec.orgWideOnly {
+		cmd.Flags().StringVar(&templateID, "template", "", fmt.Sprintf("Apply the %s to sessions from this template only", spec.singular))
+		cmd.Flags().BoolVar(&orgWide, "org-wide", false, fmt.Sprintf("Apply the %s to every session in the org as soon as it's created", spec.singular))
+	}
 	spec.contentFlags(cmd, &flags)
 	_ = cmd.MarkFlagRequired("name")
 	return cmd

@@ -310,9 +310,8 @@ Follow [Add guardrails and approvals](/build/guardrails-and-approvals). For a mu
     <Visibility for="agents">
 
     ```text
-    cli: runtm-api guardrails rules create --name deny-force-push --kind deny --pattern "git push --force*" --purpose "Reviewable changes only"
-    cli: runtm-api guardrails rules create --name deny-pr-merge --kind deny --pattern "gh pr merge*" --purpose "Humans merge"
-    cli: runtm-api guardrails rules attach <rule_id> --template <engineering_template_id>
+    cli: runtm-api guardrails rules create --template <engineering_template_id> --name deny-force-push --kind deny --pattern "git push --force*" --purpose "Reviewable changes only"
+    cli: runtm-api guardrails rules create --template <engineering_template_id> --name deny-pr-merge --kind deny --pattern "gh pr merge*" --purpose "Humans merge"
     ```
 
     </Visibility>

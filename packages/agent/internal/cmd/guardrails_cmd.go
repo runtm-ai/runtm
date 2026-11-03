@@ -32,7 +32,8 @@ Policy and limits (org settings):
   allowlist get|set       the DEFAULT command policy (all vs allowlist mode)
   can-deploy, deploy-limits, cleanup
 
-Guardrail content (directive-backed; attach to templates, repos, or the org):
+Guardrail content (rules and network: one template or the whole org;
+hooks attach to templates, repos, or the org):
   rules ...               allowlist rules (allow/ask/deny command patterns)
   hooks ...               lifecycle hooks (scripts or prompts on agent events)
   network ...             egress rules (hosts/CIDRs sandboxes may reach)
@@ -49,8 +50,7 @@ See https://docs.runtm.com/cloud-api/guardrails for the full schemas.`,
 		newGuardrailsDeployLimits(rt),
 		newGuardrailsCleanup(rt),
 	)
-	// The guardrail CONTENT: allowlist rules, hooks, and network rules
-	// (directive-backed, attachable to templates/repos/org).
+	// The guardrail CONTENT: allowlist rules, hooks, and network rules.
 	addGuardrailDirectiveCommands(cmd, rt)
 	return cmd
 }
