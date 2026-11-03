@@ -59,7 +59,7 @@ All endpoints are organization scoped when the `X-Organization-Id` header is pre
 </ResponseField>
 
 <ResponseField name="evaluator_criteria" type="object | null">
-  The rubric the run grader scores against: `{"version": 1, "objective": "...", "checks": ["..."]}`. The server bumps `version` on every edit so grades record which rubric produced them.
+  The rubric the run grader scores against: `{"version": 1, "categories": [{"key": "...", "description": "...", "success_criteria": "...", "tags": {"<tag>": "<instruction>"}}]}`. Each run is graded per category; `tags` is optional. The server bumps `version` on every edit so grades record which rubric produced them.
 </ResponseField>
 
 <ResponseField name="economics" type="object | null">
@@ -119,6 +119,6 @@ restrictions ride on `can_launch` / `can_edit` rather than hiding rows.
 runtm-api agents list
 runtm-api agents list --can-launch          # only what this key may launch
 runtm-api agents create --name Donna --instructions 'Be terse.'
-runtm-api agents update <id> --evaluator-criteria '{"objective":"Resolve the ticket","checks":["opened a PR"]}'
+runtm-api agents update <id> --evaluator-criteria '{"categories":[{"key":"resolution","description":"Resolve the ticket","success_criteria":"Opened a PR that fixes it"}]}'
 runtm-api agents scorecard --days 30
 ```

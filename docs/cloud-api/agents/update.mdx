@@ -105,7 +105,7 @@ runtm-api agents update a1b2c3d4-0000-0000-0000-000000000000 --clear-template
   "system_instructions": "Be terse.",
   "default_template": "gtm-machine",
   "default_agent": "claude-code",
-  "evaluator_criteria": {"objective": "Ship weekly lists", "checks": ["lists posted"], "version": 2},
+  "evaluator_criteria": {"categories": [{"key": "weekly-lists", "description": "Weekly outbound lists", "success_criteria": "Lists posted for approval"}], "version": 2},
   "economics": {"budget": {"monthly_usd_cap": 50}}
 }
 ```

@@ -45,7 +45,7 @@ Creates a named agent headlessly. Triggers (Slack, GitHub, Linear, Email) are bo
 </ParamField>
 
 <ParamField body="evaluator_criteria" type="object">
-  Evaluation rubric: `{"objective": "...", "checks": ["..."]}`. The server manages the `version` field.
+  Evaluation rubric: `{"categories": [{"key": "...", "description": "...", "success_criteria": "..."}]}`. Each run is graded per category, so a rubric with no category `key` is a 422. The older `{"objective", "checks"}` form is stored as one `general` category. The server manages the `version` field.
 </ParamField>
 
 <ParamField body="economics" type="object">
@@ -67,7 +67,7 @@ curl -X POST "https://app.runtm.com/api/cloud/v1/agents" \
     "description": "GTM research agent",
     "system_instructions": "Be terse. Prefer PRs over prose.",
     "default_template": "gtm-machine",
-    "evaluator_criteria": {"objective": "Ship weekly lists", "checks": ["lists posted"]}
+    "evaluator_criteria": {"categories": [{"key": "weekly-lists", "description": "Weekly outbound lists", "success_criteria": "Lists posted for approval"}]}
   }'
 ```
 
@@ -75,7 +75,7 @@ curl -X POST "https://app.runtm.com/api/cloud/v1/agents" \
 runtm-api agents create --name Donna \
   --instructions 'Be terse. Prefer PRs over prose.' \
   --template gtm-machine \
-  --evaluator-criteria '{"objective":"Ship weekly lists","checks":["lists posted"]}'
+  --evaluator-criteria '{"categories":[{"key":"weekly-lists","description":"Weekly outbound lists","success_criteria":"Lists posted for approval"}]}'
 ```
 </RequestExample>
 
@@ -91,7 +91,7 @@ runtm-api agents create --name Donna \
   "system_instructions": "Be terse. Prefer PRs over prose.",
   "default_template": "gtm-machine",
   "default_agent": null,
-  "evaluator_criteria": {"objective": "Ship weekly lists", "checks": ["lists posted"], "version": 1},
+  "evaluator_criteria": {"categories": [{"key": "weekly-lists", "description": "Weekly outbound lists", "success_criteria": "Lists posted for approval"}], "version": 1},
   "economics": null
 }
 ```
