@@ -33,11 +33,11 @@ The recommended order is to create with `"enabled": false`, prove the configurat
 </ParamField>
 
 <ParamField body="model" type="string">
-  Model override for the launched session. Defaults to the linked agent's model. An unknown model is a 422 that lists the valid ones.
+  Model override for the launched session. Defaults to the model set on the linked agent's triggers. For Claude Code and Codex an unknown model is a 422 that lists the valid ones.
 </ParamField>
 
 <ParamField body="agent_id" type="string">
-  Roster agent the schedule runs as. Each run uses the agent's template, harness, instructions and model, and `org_template_id` is ignored. A `model` set on the schedule overrides the agent's.
+  Roster agent the schedule runs as. Each run uses the agent's template, harness and instructions, and `org_template_id` is ignored. The model is the schedule's `model` if set, else the one set on the agent's triggers.
 </ParamField>
 
 <ParamField body="enabled" type="boolean" default="true">

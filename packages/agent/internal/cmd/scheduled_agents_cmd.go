@@ -132,7 +132,7 @@ func (f *scheduledAgentFlags) register(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&f.prompt, "prompt", "", "Prompt run on every tick")
 	cmd.Flags().StringVar(&f.template, "template", "", "Org template id the session launches from")
 	cmd.Flags().StringVar(&f.agent, "agent", "", "Coding agent (claude-code, codex, …)")
-	cmd.Flags().StringVar(&f.agentID, "agent-id", "", "Roster agent the schedule runs as: its template, harness, instructions and model apply (see 'runtm-api agents list')")
+	cmd.Flags().StringVar(&f.agentID, "agent-id", "", "Roster agent the schedule runs as: its template, harness and instructions apply, and the model set on its triggers (see 'runtm-api agents list')")
 	cmd.Flags().StringVar(&f.model, "model", "", "Model for the launched session ("+modelChoices+"); defaults to the model set on the linked agent's triggers")
 	cmd.Flags().BoolVar(&f.enabled, "enabled", false, "Create/enable the schedule")
 	cmd.Flags().BoolVar(&f.disabled, "disabled", false, "Turn the schedule off (keeps the agent)")
@@ -213,7 +213,8 @@ create disabled, verify with 'run-now', then enable:
   runtm-api scheduled-agents update <id> --enabled
 
 Pass --agent-id to run as a roster agent: each run launches with the agent's
-template, harness, instructions and model (--model still overrides).
+template, harness and instructions, and the model set on its triggers unless
+--model names one.
 
 Pass --slack-integration and --slack-channel together to post each run's
 result to a channel. Requires admin or owner role.`,
