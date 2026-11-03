@@ -47,7 +47,7 @@ This is the core "fire and forget" endpoint for programmatic agent workflows. It
 </ParamField>
 
 <ParamField body="model" type="string">
-  Model to use: `sonnet`, `opus`, `haiku`, `opusplan`.
+  Model to use. Claude Code takes `sonnet`, `opus-5`, `opus`, `haiku` or `fable` (or the model id an alias points to, such as `claude-sonnet-5-5`, which runs as that alias); Codex takes `gpt-6-astra`, `gpt-5.6-sol`, `gpt-5.5`, `gpt-5.4` or `gpt-5.4-mini`. For those two harnesses an unknown model is a 422 that lists the valid ones. With `agent_id` and no `model`, the session runs the model set on that agent's triggers, if any.
 </ParamField>
 
 <ParamField body="mode" type="string" default="autopilot">
