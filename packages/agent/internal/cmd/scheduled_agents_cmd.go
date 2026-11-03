@@ -117,6 +117,8 @@ type scheduledAgentFlags struct {
 	prompt           string
 	template         string
 	agent            string
+	agentID          string
+	clearAgentID     bool
 	model            string
 	enabled          bool
 	disabled         bool
@@ -130,6 +132,7 @@ func (f *scheduledAgentFlags) register(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&f.prompt, "prompt", "", "Prompt run on every tick")
 	cmd.Flags().StringVar(&f.template, "template", "", "Org template id the session launches from")
 	cmd.Flags().StringVar(&f.agent, "agent", "", "Coding agent (claude-code, codex, …)")
+	cmd.Flags().StringVar(&f.agentID, "agent-id", "", "Roster agent the schedule runs as: its template, harness and instructions apply, and the model set on its triggers (see 'runtm-api agents list')")
 	cmd.Flags().StringVar(&f.model, "model", "", "Model for the launched session ("+modelChoices+"); defaults to the model set on the linked agent's triggers")
 	cmd.Flags().BoolVar(&f.enabled, "enabled", false, "Create/enable the schedule")
 	cmd.Flags().BoolVar(&f.disabled, "disabled", false, "Turn the schedule off (keeps the agent)")
@@ -165,6 +168,18 @@ func (f *scheduledAgentFlags) body(cmd *cobra.Command, onlyChanged bool) (map[st
 	if cmd.Flags().Changed("agent") {
 		body["agent"] = f.agent
 	}
+	if cmd.Flags().Changed("agent-id") {
+		if f.clearAgentID {
+			return nil, fmt.Errorf("--agent-id and --clear-agent-id are mutually exclusive")
+		}
+		if cmd.Flags().Changed("template") {
+			return nil, fmt.Errorf("--template doesn't apply with --agent-id: the schedule launches from the agent's template")
+		}
+		body["agent_id"] = f.agentID
+	}
+	if f.clearAgentID {
+		body["agent_id"] = nil
+	}
 	if cmd.Flags().Changed("model") {
 		body["model"] = f.model
 	}
@@ -197,6 +212,10 @@ create disabled, verify with 'run-now', then enable:
   runtm-api scheduled-agents run-now <id>          # same path the tick takes
   runtm-api scheduled-agents update <id> --enabled
 
+Pass --agent-id to run as a roster agent: each run launches with the agent's
+template, harness and instructions, and the model set on its triggers unless
+--model names one.
+
 Pass --slack-integration and --slack-channel together to post each run's
 result to a channel. Requires admin or owner role.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -209,7 +228,7 @@ result to a channel. Requires admin or owner role.`,
 			}
 			// Omit optional fields the user never set so the server defaults
 			// apply (agent defaults to claude-code, model to the org default).
-			for _, key := range []string{"org_template_id", "agent", "model"} {
+			for _, key := range []string{"org_template_id", "agent", "agent_id", "model"} {
 				if v, ok := body[key]; ok && v == "" {
 					delete(body, key)
 				}
@@ -239,6 +258,7 @@ func newScheduledAgentUpdate(rt *Runtime) *cobra.Command {
   runtm-api scheduled-agents update <id> --enabled
   runtm-api scheduled-agents update <id> --cron '0 17 * * 1'   # DST shift
   runtm-api scheduled-agents update <id> --disabled            # stop the schedule
+  runtm-api scheduled-agents update <id> --agent-id <roster_agent_id>
 
 Requires admin or owner role.`,
 		Args: cobra.ExactArgs(1),
@@ -248,7 +268,7 @@ Requires admin or owner role.`,
 				return err
 			}
 			if len(body) == 0 {
-				return fmt.Errorf("pass at least one field to update (--name, --cron, --prompt, --template, --agent, --model, --enabled/--disabled, --slack-integration + --slack-channel)")
+				return fmt.Errorf("pass at least one field to update (--name, --cron, --prompt, --template, --agent, --agent-id/--clear-agent-id, --model, --enabled/--disabled, --slack-integration + --slack-channel)")
 			}
 			c, _, err := requireOrgClient(rt, "scheduled agents")
 			if err != nil {
@@ -259,6 +279,7 @@ Requires admin or owner role.`,
 		},
 	}
 	f.register(cmd)
+	cmd.Flags().BoolVar(&f.clearAgentID, "clear-agent-id", false, "Stop running as a roster agent (back to --template and --agent)")
 	return cmd
 }
 
