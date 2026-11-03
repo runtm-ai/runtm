@@ -268,7 +268,7 @@ func newSkillUpdate(rt *Runtime) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&displayName, "display-name", "", "New display name")
 	cmd.Flags().StringVar(&description, "description", "", "New description")
-	cmd.Flags().StringVar(&mdPath, "md", "", "Replace the entry file (SKILL.md) from a markdown file; the skill's other files are kept")
+	cmd.Flags().StringVar(&mdPath, "md", "", "Replace the entry file (SKILL.md) from a markdown file; the skill's other files are kept, so the key needs context:read too")
 	cmd.Flags().StringVar(&entry, "entry", "", "Entry filename for --md content (default: the skill's current entry, else SKILL.md)")
 	cmd.Flags().StringVar(&contentJSON, "content", "", "Replace all content, every file included, with a raw JSON object")
 	cmd.Flags().StringArrayVar(&labels, "label", nil, "Replace labels; KEY=VALUE (repeatable)")

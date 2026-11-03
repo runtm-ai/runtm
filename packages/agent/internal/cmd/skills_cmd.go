@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -29,7 +31,8 @@ CLI's own bundled skill files locally.
 
 Cloud commands (create/get/list/update/delete) are org-scoped: they require an
 org-scoped API key, which --org / RUNTM_ORG_ID cannot substitute for. Writes
-need the context:write scope.
+need the context:write scope; 'skills update --md' also reads the skill to keep
+its other files, so it needs context:read too.
 
 'skills install' is a local operation (no API call) that copies the skill files
 embedded in this binary into the detected agent's skills directory.`,
@@ -115,6 +118,10 @@ func updatedSkillContent(c *client.Client, id, mdPath, entry, contentJSON string
 		Content map[string]any `json:"content"`
 	}
 	if err := getSkill(c, id, &current); err != nil {
+		var apiErr *client.APIError
+		if errors.As(err, &apiErr) && apiErr.Status == http.StatusForbidden {
+			return nil, fmt.Errorf("--md reads the skill to keep its other files, so the key needs context:read as well as context:write; --content replaces every file without reading: %w", err)
+		}
 		return nil, err
 	}
 	if current.Content == nil {

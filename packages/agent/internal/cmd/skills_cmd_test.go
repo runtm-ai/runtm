@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -78,6 +79,28 @@ func TestSkillsUpdateMdKeepsTheOtherFiles(t *testing.T) {
 	content := patched["content"].(map[string]any)
 	if _, ok := content["requires"]; !ok {
 		t.Errorf("requires dropped: %v", content)
+	}
+}
+
+func TestSkillsUpdateMdWithAWriteOnlyKeyNamesTheMissingScope(t *testing.T) {
+	patched := false
+	rt, _ := shareRuntime(t, func(w http.ResponseWriter, r *http.Request) {
+		patched = patched || r.Method == http.MethodPatch
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		fmt.Fprint(w, `{"detail":"Missing required scope: context:read"}`)
+	})
+	t.Setenv("RUNTM_ORG_ID", "org_test")
+
+	cmd := newSkillUpdate(rt)
+	cmd.SetArgs([]string{"sk-1", "--md", writeMarkdown(t, "new body")})
+	err := cmd.Execute()
+
+	if err == nil || !strings.Contains(err.Error(), "needs context:read as well as context:write") {
+		t.Fatalf("err = %v, want it to say --md needs context:read", err)
+	}
+	if patched {
+		t.Error("PATCH sent although the skill couldn't be read")
 	}
 }
 

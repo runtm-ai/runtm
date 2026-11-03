@@ -69,6 +69,7 @@ The same mapping, keyed by `runtm-api` command. Role gates are noted where a sco
 | `template mcp`, `skills list --template` | `templates:read` |
 | `skills\|mcp list\|get\|attachments`, `skills discover\|facets` | `context:read` |
 | `skills\|mcp create\|update\|delete\|attach\|detach`, `skills import\|resync\|upload-file` | `context:write` |
+| `skills update --md` | `context:read` and `context:write` (it reads the skill to keep its other files) |
 | `skills\|mcp lock\|unlock` | `context:write` (admin or owner) |
 | `guardrails rules\|hooks\|network` reads | `context:read` |
 | `guardrails rules\|hooks\|network` writes | `context:write` |

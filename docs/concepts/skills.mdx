@@ -126,7 +126,7 @@ There is no draft/publish cycle. Each `(organization, type, name)` has exactly o
 |--------|----------|-----|
 | Create | `POST /api/agent-directives` | `runtm-api skills create` |
 | Get | `GET /api/agent-directives/{id}` | `runtm-api skills get <id>` (`--output <dir>` writes the files; printed file links expire in minutes) |
-| Update content | `PATCH /api/agent-directives/{id}` | `runtm-api skills update <id>` (`--md` replaces only the entry file; `--content` replaces every file) |
+| Update content | `PATCH /api/agent-directives/{id}` | `runtm-api skills update <id>` (`--md` replaces only the entry file and needs `context:read` too; `--content` replaces every file) |
 | Resync from source | `POST /api/agent-directives/{id}:resync` | `runtm-api skills resync <id>` |
 | Lock against edits | `POST /api/agent-directives/{id}:lock` | `runtm-api skills lock <id>` |
 | Unlock | `POST /api/agent-directives/{id}:unlock` | `runtm-api skills unlock <id>` |
