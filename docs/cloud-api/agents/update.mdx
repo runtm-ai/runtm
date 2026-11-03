@@ -58,6 +58,10 @@ All fields optional; omitted fields are unchanged.
   Who may launch it: `{"humans": true, "groups": ["team_ops"], "agents": [{"agent_id": "...", "approval": {"required_team_id": "team_ops"}}]}`. Both lists empty = anyone in the org; naming anyone closes it to exactly those. `humans: false` bars every person regardless, including org admins. See [Trigger a subagent](/cloud-api/patterns/subagents).
 </ParamField>
 
+<ParamField body="access_grant" type="object">
+  What the agent itself may do: `{"scopes": ["sessions:read"], "allowed_templates": ["<template name or id>"]}`. Scopes only narrow the agent's ceiling, and a launch from a template outside `allowed_templates` is refused. An unknown key or scope is a 422; `{}` lifts every restriction.
+</ParamField>
+
 ## Response
 
 The updated [agent object](/cloud-api/agents/overview#the-agent-object).
