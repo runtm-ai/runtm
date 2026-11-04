@@ -329,6 +329,7 @@ requests that carry a token wait while the router retries fetching them.
 | `pods_cidr` | `10.77.128.0/17` | Pod range (subnet the module creates). |
 | `services_cidr` | `10.77.16.0/22` | Service range (subnet the module creates). |
 | `sandbox_egress_allowed_cidrs` | `[]` | Private ranges sandboxes may reach. See [Sandbox egress](#sandbox-egress). |
+| `agent_sandbox_manifest` | v1.0.9 release on GitHub | URL and sha256 of the agent-sandbox release, fetched when planning. Point it at a mirror if the runner cannot reach GitHub. |
 | `snapshot_log_access` | `true` | Let Runtm read the Pod Snapshot agents' logs (Role in `gke-managed-pod-snapshots`). See [What Runtm can do in the cluster](#what-runtm-can-do-in-the-cluster). |
 | `preview` | `null` | Previews on your own domain. See [Previews on your own domain](#previews-on-your-own-domain). |
 | `manage_firewall_rules` | `true` | Create the preview load balancer's firewall rule. |

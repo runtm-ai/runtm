@@ -9,6 +9,10 @@ terraform {
       # which enables Pod Snapshots when the cluster is created.
       version = ">= 7.33"
     }
+    http = {
+      source  = "hashicorp/http"
+      version = ">= 3.4"
+    }
     kubectl = {
       source = "alekc/kubectl"
       # 3.x: lazy_load, discovery refreshed between apply retries.

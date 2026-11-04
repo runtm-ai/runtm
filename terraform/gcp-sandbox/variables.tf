@@ -205,6 +205,18 @@ variable "sandbox_egress_allowed_cidrs" {
   }
 }
 
+variable "agent_sandbox_manifest" {
+  description = "The agent-sandbox controller release the module applies, fetched when planning and checked against sha256. Point url at a mirror if the machine running Terraform cannot reach GitHub; keep the same file."
+  type = object({
+    url    = string
+    sha256 = string
+  })
+  default = {
+    url    = "https://github.com/kubernetes-sigs/agent-sandbox/releases/download/v1.0.9/sandbox-with-extensions.yaml"
+    sha256 = "4bf9ee5558e9a663f91cfa5963e96f2591bfaa1dcf79f03bfab65bc5d65cc699"
+  }
+}
+
 variable "snapshot_log_access" {
   description = "Let Runtm read the Pod Snapshot agents' logs in the GKE-managed namespace gke-managed-pod-snapshots, to retarget a paused session's snapshot after a GKE upgrade. Set false if your cluster refuses the Role there; Runtm then restores those sessions from the workspace archive."
   type        = bool

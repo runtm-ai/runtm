@@ -1,0 +1,73 @@
+# Stand-in for the agent-sandbox release (same objects, no specs), served by the
+# mocked http provider.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: agent-sandbox-system
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: sandboxclaims.extensions.agents.x-k8s.io
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: sandboxes.agents.x-k8s.io
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: sandboxtemplates.extensions.agents.x-k8s.io
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: sandboxwarmpools.extensions.agents.x-k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: agent-sandbox-controller
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: agent-sandbox-controller-extensions
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: agent-sandbox-controller
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: agent-sandbox-controller-extensions
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agent-sandbox-controller
+  namespace: agent-sandbox-system
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-sandbox-controller
+  namespace: agent-sandbox-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-sandbox-controller
+  namespace: agent-sandbox-system
+spec:
+  template:
+    metadata:
+      labels:
+        app: agent-sandbox-controller
+    spec:
+      containers:
+      - name: agent-sandbox-controller
+        image: registry.k8s.io/agent-sandbox/agent-sandbox-controller:v1.0.9

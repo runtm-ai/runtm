@@ -26,11 +26,22 @@ provider "kubectl" {
   apply_retry_count = 40
 }
 
+# agent-sandbox controller release, fetched at plan time and checksum-verified
+# (no cluster needed, so the documents below are known when planning).
+data "http" "agent_sandbox" {
+  url = var.agent_sandbox_manifest.url
+
+  lifecycle {
+    postcondition {
+      condition     = self.status_code == 200 && sha256(self.response_body) == var.agent_sandbox_manifest.sha256
+      error_message = "agent-sandbox manifest ${var.agent_sandbox_manifest.url}: HTTP ${self.status_code} or checksum mismatch (want ${var.agent_sandbox_manifest.sha256})."
+    }
+  }
+}
+
 locals {
-  # agent-sandbox controller release, vendored verbatim (kubernetes-sigs/agent-sandbox v1.0.9,
-  # sandbox-with-extensions.yaml, sha256 4bf9ee5558e9a663f91cfa5963e96f2591bfaa1dcf79f03bfab65bc5d65cc699).
   agent_sandbox_docs = {
-    for doc in split("\n---\n", file("${path.module}/k8s/agent-sandbox-v1.0.9.yaml")) :
+    for doc in split("\n---\n", data.http.agent_sandbox.response_body) :
     "${yamldecode(doc).kind}/${yamldecode(doc).metadata.name}" => doc
     if trimspace(doc) != ""
   }

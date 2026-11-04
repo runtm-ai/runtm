@@ -3,6 +3,16 @@
 
 mock_provider "kubectl" {}
 
+mock_provider "http" {
+  override_data {
+    target = data.http.agent_sandbox
+    values = {
+      status_code   = 200
+      response_body = file("tests/agent-sandbox.yaml")
+    }
+  }
+}
+
 mock_provider "google" {
   override_during = plan
 
@@ -63,6 +73,10 @@ mock_provider "google" {
 }
 
 variables {
+  agent_sandbox_manifest = {
+    url    = "https://example.com/agent-sandbox.yaml"
+    sha256 = sha256(file("tests/agent-sandbox.yaml"))
+  }
   runtm_organization_id = "org123"
   project_id            = "my-project-1"
   region                = "us-west1"
@@ -474,4 +488,17 @@ run "snapshot_log_access_can_be_turned_off" {
     condition     = !contains(keys(kubectl_manifest.runtm), "heal_role") && !contains(keys(kubectl_manifest.runtm), "heal_role_binding")
     error_message = "no Role in gke-managed-pod-snapshots"
   }
+}
+
+run "agent_sandbox_manifest_checksum_mismatch_is_refused" {
+  command = plan
+
+  variables {
+    agent_sandbox_manifest = {
+      url    = "https://example.com/agent-sandbox.yaml"
+      sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  }
+
+  expect_failures = [data.http.agent_sandbox]
 }
