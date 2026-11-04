@@ -264,6 +264,7 @@ run "internal_preview_with_managed_certificate_and_zone" {
       yamldecode(kubectl_manifest.runtm["router"].yaml_body).spec.template.spec.containers[0].image == "us-west1-docker.pkg.dev/kuimjyxqkrbfvalw-public/runtm-public/sandbox-preview-proxy:latest" &&
       yamldecode(kubectl_manifest.runtm["router"].yaml_body).spec.template.spec.containers[0].imagePullPolicy == "Always" &&
       contains(yamldecode(kubectl_manifest.runtm["router"].yaml_body).spec.template.spec.containers[0].env, { name = "RUNTM_PROXY_MODE", value = "customer" }) &&
+      yamldecode(kubectl_manifest.runtm["router"].yaml_body).spec.template.spec.containers[0].resources == { requests = { cpu = "500m", memory = "512Mi" } } &&
       contains(yamldecode(kubectl_manifest.runtm["router"].yaml_body).spec.template.spec.containers[0].env, { name = "RUNTM_PREVIEW_DOMAIN_RE", value = "runtm\\.rain\\.xyz" }) &&
       yamldecode(kubectl_manifest.router_service.yaml_body).spec.type == "ClusterIP"
     )
@@ -467,7 +468,8 @@ run "in_cluster_setup_through_the_dns_endpoint" {
       kubectl_manifest.router_service.force_new && kubectl_manifest.router_service.wait &&
       length(kubectl_manifest.router_gateway) == 0 &&
       yamldecode(kubectl_manifest.runtm["router"].yaml_body).spec.template.spec.containers[0].image == "us-west1-docker.pkg.dev/kuimjyxqkrbfvalw-public/runtm-public/sandbox-preview-proxy:latest" &&
-      contains(yamldecode(kubectl_manifest.runtm["router"].yaml_body).spec.template.spec.containers[0].env, { name = "RUNTM_PROXY_MODE", value = "edge" })
+      contains(yamldecode(kubectl_manifest.runtm["router"].yaml_body).spec.template.spec.containers[0].env, { name = "RUNTM_PROXY_MODE", value = "edge" }) &&
+      yamldecode(kubectl_manifest.runtm["router"].yaml_body).spec.template.spec.containers[0].resources == { requests = { cpu = "500m", memory = "512Mi" } }
     )
     error_message = "the edge router runs the public proxy image in its edge mode behind a LoadBalancer on the reserved address, replaced on change and deleted only after its load balancer"
   }

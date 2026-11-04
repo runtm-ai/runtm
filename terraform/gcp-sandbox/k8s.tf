@@ -306,6 +306,12 @@ locals {
     },
   )
 
+  # What Autopilot enforces for the router pod anyway (its admission controller
+  # raised the old 250m / 256Mi to these). Declaring them keeps the manifest
+  # equal to the live Deployment: otherwise every plan reports drift on
+  # resources.requests and re-applies it.
+  router_resources = { requests = { cpu = "500m", memory = "512Mi" } }
+
   router_edge_deployment = {
     apiVersion = "apps/v1"
     kind       = "Deployment"
@@ -332,7 +338,7 @@ locals {
               { name = "RUNTM_INGRESS_CIDRS", value = join(" ", var.runtm_ingress_cidrs) },
             ]
             readinessProbe = { tcpSocket = { port = "http" }, periodSeconds = 10 }
-            resources      = { requests = { cpu = "250m", memory = "256Mi" } }
+            resources      = local.router_resources
           }]
         }
       }
@@ -377,7 +383,7 @@ locals {
               { name = "RUNTM_PROXY_CIDRS", value = var.preview.proxy_only_subnet_cidr },
             ]
             readinessProbe = { httpGet = { path = "/__runtm/healthz", port = "http" }, periodSeconds = 10 }
-            resources      = { requests = { cpu = "250m", memory = "256Mi" } }
+            resources      = local.router_resources
           }]
         }
       }
