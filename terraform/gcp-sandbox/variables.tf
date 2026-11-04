@@ -294,7 +294,7 @@ variable "preview" {
 }
 
 variable "router_image" {
-  description = "Preview router image. null = caddy:2.11.7 for Runtm's edge, and Runtm's public router image (ghcr.io/runtm-ai/runtm-sandbox-router:latest, pulled on every start) with `preview`. Set it to a copy in your own registry if nodes may not pull from ghcr.io."
+  description = "Preview router image. null = caddy:2.11.7 for Runtm's edge, and with `preview` Runtm's preview proxy from its public repository (us-west1-docker.pkg.dev/kuimjyxqkrbfvalw-public/runtm-public/sandbox-preview-proxy:latest, pulled on every start; reachable over Private Google Access, no NAT needed). Set it to a copy in your own registry if your policy requires one."
   type        = string
   default     = null
 }

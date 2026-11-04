@@ -149,7 +149,9 @@ locals {
 
   router_image = coalesce(
     var.router_image,
-    local.preview_enabled ? "ghcr.io/runtm-ai/runtm-sandbox-router:latest" : "caddy:2.11.7",
+    # Runtm's preview proxy image, the one Runtm runs for its own sandboxes, from Runtm's
+    # public repository (it holds only this image). Its Caddyfile is replaced by ours.
+    local.preview_enabled ? "us-west1-docker.pkg.dev/kuimjyxqkrbfvalw-public/runtm-public/sandbox-preview-proxy:latest" : "caddy:2.11.7",
   )
   router_caddyfile = file("${path.module}/router/${local.preview_enabled ? "Caddyfile.preview" : "Caddyfile"}")
   # The router's address: the edge load balancer's, or the Gateway's.

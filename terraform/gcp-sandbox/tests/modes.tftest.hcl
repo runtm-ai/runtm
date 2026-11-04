@@ -245,7 +245,7 @@ run "internal_preview_with_managed_certificate_and_zone" {
   assert {
     condition = (
       strcontains(local.k8s_manifest, "gatewayClassName: gke-l7-rilb") &&
-      strcontains(local.k8s_manifest, "image: ghcr.io/runtm-ai/runtm-sandbox-router:latest") &&
+      strcontains(local.k8s_manifest, "image: us-west1-docker.pkg.dev/kuimjyxqkrbfvalw-public/runtm-public/sandbox-preview-proxy:latest") &&
       strcontains(local.k8s_manifest, "imagePullPolicy: Always") &&
       !strcontains(local.k8s_manifest, "type: LoadBalancer")
     )

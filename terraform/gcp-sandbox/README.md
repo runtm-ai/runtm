@@ -271,10 +271,13 @@ preview = {
   - `pem`: pass `pem_certificate` and `pem_private_key`. The key ends up in
     Terraform state; prefer `certificate_manager` when the key must stay out
     of it.
-- **Router:** two replicas of `ghcr.io/runtm-ai/runtm-sandbox-router:latest`
-  (Caddy with caddy-jwt, built from `router/Dockerfile`), pulled on every
-  start so a restart picks up the current build. `router_image` overrides it,
-  e.g. with a copy in your own registry.
+- **Router:** two replicas of Runtm's preview proxy image, the one Runtm runs
+  for its own sandboxes (Caddy with caddy-jwt), from Runtm's public
+  repository `us-west1-docker.pkg.dev/kuimjyxqkrbfvalw-public/runtm-public/sandbox-preview-proxy:latest`. It is
+  pulled on every start, so a restart picks up Runtm's current build, and is
+  reachable over Private Google Access (no NAT needed). The module replaces the
+  image's Caddyfile with `router/Caddyfile.preview`. `router_image` overrides
+  it, e.g. with a copy in your own registry.
 - **Access:** nothing upstream vouches for the visitor, so the router checks
   Runtm's preview token itself (`router/Caddyfile.preview`): an ES256/RS256 JWT
   verified against Runtm's published keys (`runtm_preview_jwks_url`), whose
