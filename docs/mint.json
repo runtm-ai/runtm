@@ -79,6 +79,16 @@
       ]
     },
     {
+      "group": "Runtime MCP server",
+      "pages": [
+        "mcp/overview",
+        "mcp/authentication",
+        "mcp/tools",
+        "mcp/okta",
+        "mcp/troubleshooting"
+      ]
+    },
+    {
       "group": "Build an agent",
       "pages": [
         "build/overview",
@@ -126,16 +136,6 @@
         "cloud-api/errors",
         "cloud-api/rate-limits",
         "cloud-api/conventions"
-      ]
-    },
-    {
-      "group": "MCP Server",
-      "pages": [
-        "cloud-api/mcp/overview",
-        "cloud-api/mcp/authentication",
-        "cloud-api/mcp/tools",
-        "cloud-api/mcp/okta",
-        "cloud-api/mcp/troubleshooting"
       ]
     },
     {
