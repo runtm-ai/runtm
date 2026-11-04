@@ -275,11 +275,13 @@ preview = {
   for its own sandboxes (Caddy with caddy-jwt), from Runtm's public
   repository `us-west1-docker.pkg.dev/kuimjyxqkrbfvalw-public/runtm-public/sandbox-preview-proxy:latest`. It is
   pulled on every start, so a restart picks up Runtm's current build, and is
-  reachable over Private Google Access (no NAT needed). The module replaces the
-  image's Caddyfile with `router/Caddyfile.preview`. `router_image` overrides
-  it, e.g. with a copy in your own registry.
+  reachable over Private Google Access (no NAT needed). The module runs it in
+  its customer mode (`RUNTM_PROXY_MODE=customer`) and configures it with
+  environment variables only: no config file in this module. `router_image`
+  overrides the image, e.g. with a copy in your own registry.
 - **Access:** nothing upstream vouches for the visitor, so the router checks
-  Runtm's preview token itself (`router/Caddyfile.preview`): an ES256/RS256 JWT
+  Runtm's preview token itself (the image's customer mode,
+  `proxy-gke/Caddyfile.customer` in Runtm's repository): an ES256/RS256 JWT
   verified against Runtm's published keys (`runtm_preview_jwks_url`), whose
   audience is your domain and whose `lbl` claim must equal the host's
   `<port>-<sandbox>`. No secret is shared with your cluster. A visitor without

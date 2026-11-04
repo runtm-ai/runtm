@@ -242,18 +242,10 @@ spec:
 %{ else ~}
 # Preview router, previews on your own domain: a regional GKE Gateway (TLS
 # terminated with a Certificate Manager certificate) -> this router ->
-# <sandbox>.sandboxes.svc:<port>. The router checks Runtm's signed preview
-# token itself (router/Caddyfile.preview). Same namespace and label as the edge
+# <sandbox>.sandboxes.svc:<port>. Runtm's preview proxy image in its customer
+# mode (RUNTM_PROXY_MODE=customer, configured by the env below): it checks
+# Runtm's signed preview token itself. Same namespace and label as the edge
 # router: the one ingress source agent-sandbox's per-sandbox NetworkPolicy admits.
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: sandbox-router
-  namespace: agent-sandbox-system
-data:
-  Caddyfile: |
-    ${indent(4, router_caddyfile)}
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -271,8 +263,6 @@ spec:
       labels:
         app: sandbox-router
       annotations:
-        # Restart the router when its config changes.
-        runtm.com/config-sha256: ${router_config_sha256}
         cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
     spec:
       topologySpreadConstraints:
@@ -290,6 +280,8 @@ spec:
           ports:
             - { name: http, containerPort: 8080 }
           env:
+            # The image's config for customer clusters (the default is Runtm's hosted one).
+            - { name: RUNTM_PROXY_MODE, value: customer }
             - { name: RUNTM_PREVIEW_DOMAIN, value: "${preview.domain}" }
             # Single quotes: the backslashes are literal (regex escapes, not YAML ones).
             - { name: RUNTM_PREVIEW_DOMAIN_RE, value: '${preview.domain_re}' }
@@ -302,12 +294,6 @@ spec:
             periodSeconds: 10
           resources:
             requests: { cpu: 250m, memory: 256Mi }
-          volumeMounts:
-            - { name: config, mountPath: /etc/caddy }
-      volumes:
-        - name: config
-          configMap:
-            name: sandbox-router
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget

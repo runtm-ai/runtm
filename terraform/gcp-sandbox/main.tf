@@ -150,10 +150,11 @@ locals {
   router_image = coalesce(
     var.router_image,
     # Runtm's preview proxy image, the one Runtm runs for its own sandboxes, from Runtm's
-    # public repository (it holds only this image). Its Caddyfile is replaced by ours.
+    # public repository (it holds only this image), run in its customer mode.
     local.preview_enabled ? "us-west1-docker.pkg.dev/kuimjyxqkrbfvalw-public/runtm-public/sandbox-preview-proxy:latest" : "caddy:2.11.7",
   )
-  router_caddyfile = file("${path.module}/router/${local.preview_enabled ? "Caddyfile.preview" : "Caddyfile"}")
+  # The edge router's config (stock Caddy). With `preview` the router image carries its own.
+  router_caddyfile = file("${path.module}/router/Caddyfile")
   # The router's address: the edge load balancer's, or the Gateway's.
   router_address    = local.preview_enabled ? google_compute_address.preview[0].address : google_compute_address.router[0].address
   router_address_id = local.preview_enabled ? google_compute_address.preview[0].id : google_compute_address.router[0].id
@@ -541,7 +542,8 @@ resource "google_artifact_registry_repository_iam_member" "runtm_writer" {
 # Previews on your own domain (`preview`): a regional GKE Gateway (internal or
 # external Application Load Balancer) in front of the router, TLS terminated at
 # the load balancer with a Certificate Manager certificate, and optionally the
-# DNS records. The router itself checks Runtm's preview token (Caddyfile.preview).
+# DNS records. The router (the preview proxy image in its customer mode) checks
+# Runtm's preview token itself.
 # ---------------------------------------------------------------------------
 
 # The Envoy proxies of a regional load balancer run in this subnet; a VPC has

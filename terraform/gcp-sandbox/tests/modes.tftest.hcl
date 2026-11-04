@@ -247,6 +247,8 @@ run "internal_preview_with_managed_certificate_and_zone" {
       strcontains(local.k8s_manifest, "gatewayClassName: gke-l7-rilb") &&
       strcontains(local.k8s_manifest, "image: us-west1-docker.pkg.dev/kuimjyxqkrbfvalw-public/runtm-public/sandbox-preview-proxy:latest") &&
       strcontains(local.k8s_manifest, "imagePullPolicy: Always") &&
+      strcontains(local.k8s_manifest, "{ name: RUNTM_PROXY_MODE, value: customer }") &&
+      !strcontains(local.k8s_manifest, "kind: ConfigMap\nmetadata:\n  name: sandbox-router") &&
       !strcontains(local.k8s_manifest, "type: LoadBalancer")
     )
     error_message = "the manifest deploys the Gateway and the public router image, without the edge LoadBalancer"
