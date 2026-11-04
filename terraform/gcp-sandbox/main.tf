@@ -411,6 +411,8 @@ resource "terraform_data" "cluster_setup" {
     sha256(local.k8s_heal_rbac),
     filesha256("${path.module}/scripts/cluster-setup.sh"),
     local.agent_sandbox_sha256,
+    # Re-create the router after router_lb_release's cleanup deleted it.
+    terraform_data.router_lb_release.id,
   ]
 
   provisioner "local-exec" {
@@ -435,11 +437,16 @@ resource "terraform_data" "cluster_setup" {
   ]
 }
 
-# On `terraform destroy` only: delete the router Service so GKE releases its
-# load balancer before the cluster and the reserved address go (GKE does not
+# On destroy, or when the cluster or reserved address is replaced: delete the
+# router Service so GKE releases its load balancer before they go (GKE does not
 # always clean it up with the cluster). Kept apart from cluster_setup, whose
 # replacement on every config change must not take the router down.
 resource "terraform_data" "router_lb_release" {
+  triggers_replace = [
+    google_container_cluster.sandboxes.id,
+    google_compute_address.router.id,
+  ]
+
   input = {
     project_id = var.project_id
     region     = var.region
