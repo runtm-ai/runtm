@@ -1,6 +1,6 @@
 ---
 title: "MCP server"
-description: "Connect Claude, ChatGPT, Cursor, VS Code or Codex to Runtime with one URL, https://mcp.runtm.com/mcp. Copy-paste install for each client, sign-in with OAuth or an API key, and what the server can do. Read before connecting an AI client to Runtime."
+description: "Connect Claude, ChatGPT, Grok Bot, Cursor, VS Code or Codex to Runtime with one URL, https://mcp.runtm.com/mcp. Copy-paste install for each client, sign-in with OAuth or an API key, and what the server can do. Read before connecting an AI client to Runtime."
 ---
 
 The Runtime MCP server lets an AI client create, run and govern your Runtime agents from chat. It calls the same API as the dashboard and the [Agent CLI](/cloud-api/agent-cli), with the same scopes, roles and rate limits.
@@ -10,10 +10,6 @@ https://mcp.runtm.com/mcp
 ```
 
 Streamable HTTP. Sign in with OAuth (your Runtime login, including SSO) or send a Runtime API key as a bearer token. See [Authentication](/mcp/authentication).
-
-<Warning>
-**TODO(mcp-docs): not live yet.** Merge this page only after the MCP server, OAuth sign-in and the MCP OAuth app for Okta are in production. The client steps below follow each client's own docs and have not been tested end to end against `mcp.runtm.com`.
-</Warning>
 
 ## Quick start
 
@@ -33,15 +29,18 @@ Pick your client. The first time you use it, it opens a browser to sign in to Ru
     3. Click **Connect** and sign in to Runtime.
 
     Claude Desktop uses the same connectors as Claude.ai. On Team and Enterprise plans, an owner may need to add the connector first.
-
-    <Warning>TODO(mcp-docs): confirm Claude.ai menu labels and the Team/Enterprise owner step at launch.</Warning>
   </Tab>
   <Tab title="ChatGPT">
     1. Open **Settings → Apps & Connectors → Advanced settings** and turn on **Developer mode**.
     2. Click **Create**, name it `Runtime`, paste `https://mcp.runtm.com/mcp` and choose **OAuth**.
     3. Sign in to Runtime when ChatGPT asks.
+  </Tab>
+  <Tab title="Grok Bot">
+    1. Send your bot: `Add a custom MCP server called runtime at https://mcp.runtm.com/mcp`.
+    2. Check the name and URL it shows, then confirm.
+    3. Click **Authorize** on the connect card and sign in to Runtime.
 
-    <Warning>TODO(mcp-docs): confirm ChatGPT menu labels, which plans can add custom connectors, and whether Developer mode is still required at launch.</Warning>
+    Grok Bot connects custom servers with OAuth only, so it always uses sign-in, never an API key.
   </Tab>
   <Tab title="Cursor">
     Add this to `~/.cursor/mcp.json`, or `.cursor/mcp.json` in a project:
@@ -83,8 +82,6 @@ Pick your client. The first time you use it, it opens a browser to sign in to Ru
 </Tabs>
 
 Check it works: ask your client to **call `runtm_whoami`**. It returns your user, organization, role and scopes.
-
-<Warning>TODO(mcp-docs): add a screenshot of the Runtime consent screen and a short recording of the Claude.ai connect flow (real UI, demo org) once it is live.</Warning>
 
 ## Use an API key instead
 

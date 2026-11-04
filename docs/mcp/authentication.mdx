@@ -7,7 +7,7 @@ Every request to `https://mcp.runtm.com/mcp` carries a bearer token. It is eithe
 
 ## OAuth sign-in
 
-Clients that support MCP authorization (Claude.ai, Claude Desktop, ChatGPT, Claude Code, Cursor, VS Code, Codex) find Runtime's sign-in on their own. You only paste the URL.
+Clients that support MCP authorization (Claude.ai, Claude Desktop, ChatGPT, Grok Bot, Claude Code, Cursor, VS Code, Codex) find Runtime's sign-in on their own. You only paste the URL.
 
 <Steps>
   <Step title="Sign in to Runtime">
@@ -45,10 +45,6 @@ A connected app can never hold `api_keys:*`, so it can't mint keys that outlive 
 - **Blocks and rate limits apply.** A blocked account or a locked-out IP is refused exactly as with an API key.
 - **Clients register themselves.** Claude uses a client metadata document, and ChatGPT and Cursor use dynamic client registration. There's nothing for an admin to set up.
 
-<Warning>
-TODO(mcp-docs): document how to see and revoke connected apps, and the access and refresh token lifetimes. Neither is in the shipped flow yet.
-</Warning>
-
 ## API keys
 
 Send a Runtime API key in the `Authorization` header. Use one for MCP gateways, CI, and clients without OAuth.
@@ -77,7 +73,3 @@ For MCP gateways and client developers. A request without a token gets a `401` w
 - Grant types: `authorization_code` (with PKCE) and `refresh_token`. There is no `client_credentials`: every token acts for a person.
 - Access tokens are JWTs signed with EdDSA, with the MCP server URL as the audience. DPoP-bound tokens aren't supported.
 - Standard scopes offered: `openid`, `profile`, `email`, `offline_access`.
-
-<Warning>
-TODO(mcp-docs): these URLs come from the production config. Check them against the live protected-resource metadata after launch, then remove this note.
-</Warning>

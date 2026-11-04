@@ -23,10 +23,6 @@ When a client connects to `https://mcp.runtm.com/mcp`, people sign in on Runtime
   </Step>
 </Steps>
 
-<Warning>
-TODO(mcp-docs): admin-managed access through Okta (Cross App Access, where Okta grants the AI client access to Runtime without a separate consent) is planned, not built. Don't promise it until it ships.
-</Warning>
-
 ## Connect an Okta-protected MCP server
 
 Many internal MCP servers sit behind Okta. Okta doesn't let apps register themselves, so **Sign in with OAuth** on such a server shows **This server needs an OAuth app first**. An org admin sets the app up once, and then everyone in the org signs in with their own Okta account.
@@ -72,14 +68,6 @@ Many internal MCP servers sit behind Okta. Okta doesn't let apps register themse
 - **Removing the app** sends sign-in back to automatic registration, and existing connections show an error on their next refresh.
 - **Other providers.** Choose **Custom OAuth app** and enter the issuer URL. It must use `https`.
 - **Members can't sign in to OAuth MCP servers yet.** Today, only admins can create OAuth connections, and personal MCP servers can't use OAuth.
-
-<Warning>
-TODO(mcp-docs): sign-in against a real Okta tenant is not tested yet (only a mock Okta server). Confirm the steps, the Okta console labels and how Okta treats the `resource` parameter in staging before merging. Add a screenshot of the **Set up OAuth app** dialog with demo values.
-</Warning>
-
-<Warning>
-TODO(mcp-docs): the member limit above is a known follow-up. Update or remove that bullet when members can sign in.
-</Warning>
 
 ### If sign-in fails
 
