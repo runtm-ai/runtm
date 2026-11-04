@@ -143,14 +143,10 @@ locals {
     var.preview.dns_zone,
   ) : null
 
-  router_image = coalesce(
-    var.router_image,
-    # Runtm's preview proxy image, the one Runtm runs for its own sandboxes, from Runtm's
-    # public repository (it holds only this image), run in its customer mode.
-    local.preview_enabled ? "us-west1-docker.pkg.dev/kuimjyxqkrbfvalw-public/runtm-public/sandbox-preview-proxy:latest" : "caddy:2.11.7",
-  )
-  # The edge router's config (stock Caddy). With `preview` the router image carries its own.
-  router_caddyfile = file("${path.module}/router/Caddyfile")
+  # Runtm's preview proxy image, the one Runtm runs for its own sandboxes, from Runtm's
+  # public repository (it holds only this image). It carries the router's config for both
+  # modes (RUNTM_PROXY_MODE edge or customer, set in k8s.tf); this module carries none.
+  router_image = coalesce(var.router_image, "us-west1-docker.pkg.dev/kuimjyxqkrbfvalw-public/runtm-public/sandbox-preview-proxy:latest")
   # The router's address: the edge load balancer's, or the Gateway's.
   router_address = local.preview_enabled ? google_compute_address.preview[0].address : google_compute_address.router[0].address
 }

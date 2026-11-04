@@ -150,7 +150,7 @@ In the cluster:
 | Namespace `sandboxes` | Sandboxes run here. |
 | `PodSnapshotStorageConfig` `runtm-snapshots` | `gs://<bucket>/podsnapshots`, `federatedP4SA`. |
 | `PodSnapshotPolicy` `runtm-rootfs` | Root-filesystem snapshots on Runtm's trigger only, grouped per session, deleted after 90 days without a restore. |
-| Preview router `agent-sandbox-system/sandbox-router` | Caddy (`router/Caddyfile`) behind a `LoadBalancer` Service on the static IP, `loadBalancerSourceRanges` = `runtm_ingress_cidrs`. Forwards a request to `<sandbox>.sandboxes.svc.cluster.local:<port>` named by two headers Runtm's preview edge sets and the router validates. With `preview`, see [Previews on your own domain](#previews-on-your-own-domain). |
+| Preview router `agent-sandbox-system/sandbox-router` | Runtm's public preview proxy image (`RUNTM_PROXY_MODE=edge`) behind a `LoadBalancer` Service on the static IP, `loadBalancerSourceRanges` = `runtm_ingress_cidrs`. Forwards a request to `<sandbox>.sandboxes.svc.cluster.local:<port>` named by two headers Runtm's preview edge sets and the router validates. With `preview`, see [Previews on your own domain](#previews-on-your-own-domain). |
 | `NetworkPolicy` `sandboxes/runtm-egress-allowed` | Only with `sandbox_egress_allowed_cidrs`. See [Sandbox egress](#sandbox-egress). |
 | RBAC for Runtm's service account | Below. |
 

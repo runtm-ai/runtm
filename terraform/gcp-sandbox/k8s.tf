@@ -249,16 +249,6 @@ locals {
       })
     } : {},
 
-    # Runtm's edge: stock Caddy with router/Caddyfile.
-    local.preview_enabled ? {} : {
-      router_config = yamlencode({
-        apiVersion = "v1"
-        kind       = "ConfigMap"
-        metadata   = { name = "sandbox-router", namespace = "agent-sandbox-system" }
-        data       = { Caddyfile = local.router_caddyfile }
-      })
-    },
-
     # Previews on your own domain: a regional GKE Gateway (TLS terminated with
     # a Certificate Manager certificate) -> the router.
     local.preview_enabled ? {
@@ -331,25 +321,25 @@ locals {
       selector = { matchLabels = { app = "sandbox-router" } }
       template = {
         metadata = {
-          labels = { app = "sandbox-router" }
-          annotations = {
-            # Restart the router when its config changes.
-            "runtm.com/config-sha256"                        = sha256(local.router_caddyfile)
-            "cluster-autoscaler.kubernetes.io/safe-to-evict" = "false"
-          }
+          labels      = { app = "sandbox-router" }
+          annotations = { "cluster-autoscaler.kubernetes.io/safe-to-evict" = "false" }
         }
         spec = {
           containers = [{
             name  = "caddy"
             image = local.router_image
-            ports = [{ name = "http", containerPort = 8080 }]
-            # Space-separated; trusted as proxies (router/Caddyfile).
-            env            = [{ name = "RUNTM_INGRESS_CIDRS", value = join(" ", var.runtm_ingress_cidrs) }]
+            # A moving tag: every (re)start runs the current router image.
+            imagePullPolicy = "Always"
+            ports           = [{ name = "http", containerPort = 8080 }]
+            env = [
+              # The image's config behind Runtm's preview edge (proxy-gke/Caddyfile.edge in runtm-cloud).
+              { name = "RUNTM_PROXY_MODE", value = "edge" },
+              # Space-separated; Runtm's edge, trusted as proxies.
+              { name = "RUNTM_INGRESS_CIDRS", value = join(" ", var.runtm_ingress_cidrs) },
+            ]
             readinessProbe = { tcpSocket = { port = "http" }, periodSeconds = 10 }
             resources      = { requests = { cpu = "250m", memory = "256Mi" } }
-            volumeMounts   = [{ name = "config", mountPath = "/etc/caddy" }]
           }]
-          volumes = [{ name = "config", configMap = { name = "sandbox-router" } }]
         }
       }
     }
