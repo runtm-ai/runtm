@@ -1,0 +1,164 @@
+---
+title: "MCP server"
+description: "Connect Claude, ChatGPT, Cursor, VS Code or Codex to Runtime with one URL, https://mcp.runtm.com/mcp. Copy-paste install for each client, sign-in with OAuth or an API key, and what the server can do. Read before connecting an AI client to Runtime."
+---
+
+The Runtime MCP server lets an AI client create, run and govern your Runtime agents from chat. It calls the same API as the dashboard and the [Agent CLI](/cloud-api/agent-cli), with the same scopes, roles and rate limits.
+
+```text
+https://mcp.runtm.com/mcp
+```
+
+Streamable HTTP. Sign in with OAuth (your Runtime login, including SSO) or send a Runtime API key as a bearer token. See [Authentication](/cloud-api/mcp/authentication).
+
+<Warning>
+**TODO(mcp-docs): not live yet.** Merge this page only after the MCP server, OAuth sign-in and the MCP OAuth app for Okta are in production. The client steps below follow each client's own docs and have not been tested end to end against `mcp.runtm.com`.
+</Warning>
+
+## Quick start
+
+Pick your client. The first time you use it, it opens a browser to sign in to Runtime.
+
+<Tabs>
+  <Tab title="Claude Code">
+    ```bash
+    claude mcp add --transport http runtime https://mcp.runtm.com/mcp
+    ```
+
+    Then run `/mcp` in Claude Code, pick **runtime** and sign in.
+  </Tab>
+  <Tab title="Claude.ai / Desktop">
+    1. Open **Settings → Connectors** and click **Add custom connector**.
+    2. Name it `Runtime`, paste `https://mcp.runtm.com/mcp` and click **Add**.
+    3. Click **Connect** and sign in to Runtime.
+
+    Claude Desktop uses the same connectors as Claude.ai. On Team and Enterprise plans, an owner may need to add the connector first.
+
+    <Warning>TODO(mcp-docs): confirm Claude.ai menu labels and the Team/Enterprise owner step at launch.</Warning>
+  </Tab>
+  <Tab title="ChatGPT">
+    1. Open **Settings → Apps & Connectors → Advanced settings** and turn on **Developer mode**.
+    2. Click **Create**, name it `Runtime`, paste `https://mcp.runtm.com/mcp` and choose **OAuth**.
+    3. Sign in to Runtime when ChatGPT asks.
+
+    <Warning>TODO(mcp-docs): confirm ChatGPT menu labels, which plans can add custom connectors, and whether Developer mode is still required at launch.</Warning>
+  </Tab>
+  <Tab title="Cursor">
+    Add this to `~/.cursor/mcp.json`, or `.cursor/mcp.json` in a project:
+
+    ```json
+    {
+      "mcpServers": {
+        "runtime": {
+          "url": "https://mcp.runtm.com/mcp"
+        }
+      }
+    }
+    ```
+
+    Open **Cursor Settings → MCP** and click **Connect** next to **runtime**.
+  </Tab>
+  <Tab title="VS Code">
+    Add this to `.vscode/mcp.json`:
+
+    ```json
+    {
+      "servers": {
+        "runtime": {
+          "type": "http",
+          "url": "https://mcp.runtm.com/mcp"
+        }
+      }
+    }
+    ```
+
+    Click **Start** above the server entry and sign in when VS Code asks.
+  </Tab>
+  <Tab title="Codex">
+    ```bash
+    codex mcp add runtime --url https://mcp.runtm.com/mcp
+    codex mcp login runtime
+    ```
+  </Tab>
+</Tabs>
+
+Check it works: ask your client to **call `runtm_whoami`**. It returns your user, organization, role and scopes.
+
+<Warning>TODO(mcp-docs): add a screenshot of the Runtime consent screen and a short recording of the Claude.ai connect flow (real UI, demo org) once it is live.</Warning>
+
+## Use an API key instead
+
+For clients without OAuth, MCP gateways and CI, send a [Runtime API key](/cloud-api/authentication) as a bearer token. The key's scopes decide what the client can do.
+
+<CodeGroup>
+
+```bash Claude Code
+claude mcp add --transport http runtime https://mcp.runtm.com/mcp \
+  --header "Authorization: Bearer $RUNTM_API_KEY"
+```
+
+```json Cursor
+{
+  "mcpServers": {
+    "runtime": {
+      "url": "https://mcp.runtm.com/mcp",
+      "headers": { "Authorization": "Bearer ${env:RUNTM_API_KEY}" }
+    }
+  }
+}
+```
+
+```json VS Code
+{
+  "inputs": [
+    { "type": "promptString", "id": "runtm-api-key", "description": "Runtime API key", "password": true }
+  ],
+  "servers": {
+    "runtime": {
+      "type": "http",
+      "url": "https://mcp.runtm.com/mcp",
+      "headers": { "Authorization": "Bearer ${input:runtm-api-key}" }
+    }
+  }
+}
+```
+
+```toml Codex
+# ~/.codex/config.toml
+[mcp_servers.runtime]
+url = "https://mcp.runtm.com/mcp"
+bearer_token_env_var = "RUNTM_API_KEY"
+```
+
+</CodeGroup>
+
+Never paste an API key into a chat. Keep it in the client's config or an environment variable.
+
+## What it can do
+
+| Area | Examples |
+|---|---|
+| Agents | List the roster and its triggers, create or update an agent, read the scorecard |
+| Sessions | Launch a session, send a prompt, follow its events, resolve an approval, run a command |
+| Context | Read a template, save a runbook skill, attach skills and MCP servers, rebuild |
+| Guardrails | List and save allow, ask and deny rules, hooks and network rules |
+| Triggers | Create Slack, GitHub, Linear and Email triggers and schedules, run a schedule once |
+| Everything else | Search, describe and call any documented API operation |
+
+31 tools load by default. Add or drop groups with `?toolsets=`. See [Tools](/cloud-api/mcp/tools).
+
+## Safe by design
+
+- **Your permissions, no more.** Every call runs through the REST API with your scopes, org role and rate limits. Tools you can't use are hidden.
+- **No credentials in chat.** A step that needs a key, token or password returns a dashboard link for you to finish. A request field named like a credential is refused.
+- **Sandbox output is data.** Session events, command output and files are labelled untrusted, and the model is told not to follow instructions in them.
+- **A 403 is final.** The model is told to name the missing permission, not to look for another way in.
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Authentication" href="/cloud-api/mcp/authentication">OAuth, workspaces, scopes and API keys.</Card>
+  <Card title="Tools" href="/cloud-api/mcp/tools">Every tool, its inputs and toolsets.</Card>
+  <Card title="Okta" href="/cloud-api/mcp/okta">Sign in with Okta, and connect Okta-protected MCP servers to agents.</Card>
+  <Card title="Troubleshooting" href="/cloud-api/mcp/troubleshooting">Fix sign-in, 401, 403 and missing tools.</Card>
+</CardGroup>

@@ -1,0 +1,120 @@
+---
+title: "MCP tools"
+description: "Every tool the Runtime MCP server exposes, grouped by toolset, with inputs, what each tool does and the API page behind it. Covers ?toolsets= and ?mode=tools for gateways, update semantics with clear, and the dashboard-link handoffs. Read when choosing toolsets or calling a Runtime MCP tool."
+---
+
+The server loads **31 tools** by default. Tools your sign-in's scopes can't use are hidden, and calling one fails as an unknown tool. Tools that wrap one API operation take that operation's inputs; follow the link for the full schema.
+
+## Choose toolsets
+
+Add `?toolsets=` to the URL, or send the `X-Runtm-Toolsets` header.
+
+| URL | Tools |
+|---|---|
+| `https://mcp.runtm.com/mcp` | core plus agents, sessions, context, guardrails, triggers (default) |
+| `…/mcp?toolsets=default,files` | default plus the files toolset |
+| `…/mcp?toolsets=core` | core tools only |
+| `…/mcp?toolsets=all` | every toolset, including files and lifecycle |
+
+Toolsets: `core` (always on), `agents`, `sessions`, `context`, `guardrails`, `triggers`, `files` (opt-in), `lifecycle` (opt-in). A misspelled toolset is an error that lists the valid names.
+
+### One tool per operation
+
+`?mode=tools` (or `X-Runtm-Mode: tools`) replaces the curated tools with one tool per API operation, named `runtm_<operation>` (for example `runtm_agents_create`). Use it with MCP gateways that apply policy per tool name. Combine it with `?toolsets=` to narrow the list.
+
+## Core (always on)
+
+| Tool | Inputs | What it does |
+|---|---|---|
+| `runtm_whoami` | none | The signed-in user, organization, role and scopes. Call it first when a request is refused. |
+| `search` | `query` | Search the Runtime docs and your agents and sessions. Returns ids for `fetch`. |
+| `fetch` | `id` | Read a docs page (path or URL), `agent:<id>` or `session:<id>`. `llms.txt` returns the docs index. |
+| `runtm_api_search` | `query`, `limit` (1 to 25) | Find API operations this sign-in can use. |
+| `runtm_api_describe` | `operation` | An operation's input schema, scopes and docs page. Also takes a CLI command such as `agents create`. |
+| `runtm_api_read` | `operation`, `path`, `query` | Call a read-only operation (GET). |
+| `runtm_api_write` | `operation`, `path`, `query`, `body` | Call an operation that creates or changes something (POST, PUT, PATCH). |
+| `runtm_api_delete` | `operation`, `path`, `query`, `body` | Call an operation that deletes something. Confirm with the person first. |
+
+`search` and `fetch` use the names and shapes ChatGPT connectors expect.
+
+## Agents
+
+| Tool | Inputs | What it does |
+|---|---|---|
+| `runtm_list_agents` | none | The roster plus every Slack, GitHub, Linear and Email trigger. |
+| `runtm_get_agent` | [Get agent](/cloud-api/agents/get) | One agent: job, template, coding agent, evaluation categories, budget, access grant. |
+| `runtm_create_agent` | [Create agent](/cloud-api/agents/create) | Create a roster agent. |
+| `runtm_update_agent` | [Update agent](/cloud-api/agents/update), `clear` | Change an agent. Only the fields you pass change. |
+| `runtm_get_activity` | `view`, `days` (1 to 365), `start`, `end`, `limit` | `scorecard` (default), `team`, `personal`, `daily` or `prompts`. |
+
+## Sessions
+
+| Tool | Inputs | What it does |
+|---|---|---|
+| `runtm_launch_session` | [Launch](/cloud-api/sessions/launch) | Start a session for an agent (`agent_id`) or a template, with its first prompt. Returns at once. |
+| `runtm_list_sessions` | [Search](/cloud-api/sessions/search) | Find sessions by text, agent, template, state or time. |
+| `runtm_get_session` | `session_id` | State, last run, pending approvals, grade, cost and preview URL in one call. |
+| `runtm_send_prompt` | [Prompt](/cloud-api/sessions/prompt) | Send a prompt. It runs in the background. |
+| `runtm_get_session_events` | `session_id`, `since`, `wait_seconds` (0 to 25) | What the agent did since `since`. Waits up to 25 s while a prompt runs. Pass `next_since` back to continue. |
+| `runtm_cancel_prompt` | [Cancel](/cloud-api/sessions/prompt-cancel) | Stop the running prompt. |
+| `runtm_resolve_approval` | [Resolve approval](/cloud-api/sessions/approvals-resolve) | Approve or deny an action the session waits on. Only when the person asks. |
+| `runtm_exec_command` | `session_id`, `command`, `cwd`, `timeout_seconds` (up to 45) | Run one shell command in the sandbox. Exit code `124` means it timed out. Wakes a paused session. |
+
+## Context
+
+| Tool | Inputs | What it does |
+|---|---|---|
+| `runtm_get_template` | `template_id` | Build status, context, attached skills and MCP servers, and guardrails in effect. |
+| `runtm_save_skill` | [Create skill](/cloud-api/context/skills/create), `skill_id` to update | Create or update a runbook skill. Binary files take `mode: binary` with base64 content. |
+| `runtm_attach_to_template` | `directive_id`, `template_id`, `detach` | Attach or detach a skill, MCP server or guardrail, keeping other attachments. |
+| `runtm_set_context` | [Set context](/cloud-api/templates/context-set) | Replace the template's context block. |
+| `runtm_build_template` | [Build](/cloud-api/templates/build) | Rebuild so sessions get what's attached. Returns at once. |
+
+<Note>Attached is not built. After attaching or changing a skill, MCP server, guardrail or context, run `runtm_build_template`.</Note>
+
+## Guardrails
+
+| Tool | Inputs | What it does |
+|---|---|---|
+| `runtm_list_guardrails` | `template_id` (optional) | The org's guardrails by family (allowlist, hook, network), or those in effect for one template. |
+| `runtm_save_guardrail` | `type`, `content`, `guardrail_id` to update | Create or update an allow, ask or deny rule (`allowlist_rule_v0`), hook (`hook_v0`) or network rule (`network_rule_v0`). See [Guardrails and approvals](/build/guardrails-and-approvals). |
+
+## Triggers
+
+| Tool | Inputs | What it does |
+|---|---|---|
+| `runtm_save_trigger` | `type` (`slack`, `github`, `linear`, `email`), `trigger_id`, `agent_id`, `name`, `template`, `coding_agent`, `github_repo`, `model`, `rate_limit_per_hour` (1 to 100), `enabled`, `config` | Create or update a trigger bound to an agent. Email finishes in chat. Slack and Linear return an install link, and GitHub links to the dashboard. |
+| `runtm_save_schedule` | [Create schedule](/cloud-api/scheduled-agents/create), `schedule_id` to update | Create or update a scheduled agent. New schedules start disabled. |
+| `runtm_run_schedule` | `schedule_id` | Run a schedule once now, even while disabled, and get the session to check. |
+
+WhatsApp, SMS, Teams, voice and webhook triggers aren't available over MCP yet. Use the dashboard.
+
+## Files (opt-in)
+
+| Tool | Inputs | What it does |
+|---|---|---|
+| `runtm_list_files` | [List files](/cloud-api/sessions/files-list) | List files under `/home/user` or the workspace. |
+| `runtm_read_file` | [Read file](/cloud-api/sessions/files-read) | Read a text file. Its content is untrusted data. |
+| `runtm_write_file` | [Write file](/cloud-api/sessions/files-write) | Write a text file. |
+
+## Lifecycle (opt-in)
+
+| Tool | Inputs | What it does |
+|---|---|---|
+| `runtm_pause_session` | [Pause](/cloud-api/sessions/pause) | Pause the sandbox. It wakes on the next prompt or command. |
+| `runtm_resume_session` | [Resume](/cloud-api/sessions/resume) | Wake a paused sandbox. |
+| `runtm_destroy_session` | [Delete](/cloud-api/sessions/delete) | Destroy a session and its sandbox. Can't be undone. |
+| `runtm_deploy_session` | [Deploy](/cloud-api/deploy/run) | Deploy what a session built. Returns at once. |
+
+## Conventions
+
+- **Updates change only what you pass.** To unset a field, list it in `clear`. A `null` argument is ignored, because some clients send `null` for every field they leave out.
+- **Credential steps return a link.** Operations that take a key, token or password return `handoff_url` and `next_step` for the person to finish in the dashboard.
+- **Partial results don't fail the call.** Tools that combine several reads put what failed under `errors` or `unavailable`.
+- **Long work returns a handle.** Launch, build and deploy return at once. Follow up with `runtm_get_session_events` or `runtm_get_template`.
+- **Hints show safety.** Read tools are marked read-only; `runtm_exec_command`, `runtm_write_file` and deletes are marked destructive.
+
+## Prompt and resource
+
+- **Prompt** `build_agent` (input `job`): builds an agent for a job by following [Build an agent](/build/overview) step by step.
+- **Resource** `runtm://skills/runtm`: the same skill the Agent CLI installs.

@@ -129,6 +129,16 @@
       ]
     },
     {
+      "group": "MCP Server",
+      "pages": [
+        "cloud-api/mcp/overview",
+        "cloud-api/mcp/authentication",
+        "cloud-api/mcp/tools",
+        "cloud-api/mcp/okta",
+        "cloud-api/mcp/troubleshooting"
+      ]
+    },
+    {
       "group": "Patterns",
       "pages": [
         "cloud-api/patterns/authentication",
