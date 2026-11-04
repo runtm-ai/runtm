@@ -95,17 +95,17 @@ bucket, push to the repository, and use the cluster through Kubernetes RBAC
 | Resource | Name | Notes |
 |---|---|---|
 | APIs | container, compute, storage, artifactregistry, iam, cloudresourcemanager | Never disabled on destroy. |
-| VPC network + subnet | `runtm-sandbox-<label>-<region>` / `runtm-sandbox-<label>` | Custom mode, Private Google Access on. Nodes `subnet_cidr` (`10.77.0.0/20`), pods `pods_cidr` (`10.77.128.0/17`), Services `services_cidr` (`10.77.16.0/22`). |
-| Cloud Router + Cloud NAT | `runtm-sandbox-nat-<label>` | Outbound internet for the private nodes and the sandboxes. |
+| VPC network + subnet | `runtm-sandbox-<label>-<region>` / `runtm-sandbox-<label>` | Custom mode, Private Google Access on. Nodes `subnet_cidr` (`10.77.0.0/20`), pods `pods_cidr` (`10.77.128.0/17`), Services `services_cidr` (`10.77.16.0/22`). Skipped when you [bring your own network](#bring-your-own-network). |
+| Cloud Router + Cloud NAT | `runtm-sandbox-nat-<label>` | Outbound internet for the private nodes and the sandboxes. `nat = "existing"` or `"none"` skips it. |
 | GKE Autopilot cluster | `runtm-sandbox-<label>` (regional) | RAPID channel, Pod Snapshots on, private nodes. The Kubernetes API's IP endpoint admits only `runtm_ingress_cidrs`; its DNS endpoint is Google IAM-authorized (the module's own setup uses it). |
 | Node service account | `rtm-node-<slug><disc>` | Kubernetes Engine Default Node Service Account (project) and Artifact Registry Reader (repository). |
-| Static IP | `runtm-sandbox-preview-<label>` (regional) | The preview router's load balancer. |
+| Static IP | `runtm-sandbox-preview-<label>` (regional) | The preview router's load balancer. With [`preview`](#previews-on-your-own-domain), the Gateway's address `runtm-sandbox-gw-<label>` instead. |
 | Bucket | `runtm-sandbox-<label>-<disc>` | Hierarchical namespace, uniform access, public access prevented, soft delete off (Pod Snapshots requirements). `fs-snapshots/sessions/` expire after 90 days, `podsnapshots/backup/` after 30. Not deleted while it has objects. |
 | Artifact Registry repository | `runtm-sandbox-<label>` (Docker, in `region`) | Runtm copies its sandbox image here. |
 | Bucket grants to GKE | GKE node service agent: Storage Admin; GKE service agent: Storage Object User | Pod Snapshots write with short-lived per-path tokens (`federatedP4SA`) and delete expired snapshots. |
 | Grants to Runtm's service account | Storage Object Admin (bucket), Artifact Registry Writer (repository) | Each scoped to the one resource it is needed on. |
 | In the cluster | see below | Applied by `scripts/cluster-setup.sh`. |
-| `runtm/cluster.json` in the bucket | | `endpoint`, `ca`, `cluster`, `namespace`, `router_ip`: how Runtm finds the cluster. Written last. |
+| `runtm/cluster.json` in the bucket | | `endpoint`, `ca`, `cluster`, `namespace`, `router_ip`: how Runtm finds the cluster. With `preview`, `preview` (domain, exposure, address) replaces `router_ip`; with `control_plane_access = "dns"`, `dns_endpoint` is added. Written last. |
 
 `<label>` is `<suffix>-<slug>` or `<slug>`; `<slug>` is the first 12 hex
 characters of `sha256(organization id)`, the same slug the organization has on
@@ -131,6 +131,10 @@ other resources are regional.
 | Artifact Registry repository | `runtm-sandbox-<label>` | 37 | 63 |
 | Node service account | `rtm-node-<slug><disc>` | **30** | 30 |
 | Bucket | `runtm-sandbox-<label>-<disc>` | 47 | 63 |
+| Gateway address (`preview`) | `runtm-sandbox-gw-<label>` | 40 | 63 |
+| Proxy-only subnet (`preview`) | `runtm-sandbox-proxy-<label>` | 43 | 63 |
+| Firewall rule (`preview`) | `rtm-sbx-gw-<label>-<region>` | 58 | 63 |
+| Certificate / DNS authorization (`preview`) | `runtm-sandbox-<label>` | 37 | 63 |
 
 The `suffix` cap is 10, the same as `aws-sandbox` and `azure-sandbox`, so one
 value entered in the Runtm dialog works on every cloud.
@@ -143,7 +147,8 @@ In the cluster:
 | Namespace `sandboxes` | Sandboxes run here. |
 | `PodSnapshotStorageConfig` `runtm-snapshots` | `gs://<bucket>/podsnapshots`, `federatedP4SA`. |
 | `PodSnapshotPolicy` `runtm-rootfs` | Root-filesystem snapshots on Runtm's trigger only, grouped per session, deleted after 90 days without a restore. |
-| Preview router `agent-sandbox-system/sandbox-router` | Caddy (`router/Caddyfile`) behind a `LoadBalancer` Service on the static IP, `loadBalancerSourceRanges` = `runtm_ingress_cidrs`. Forwards a request to `<sandbox>.sandboxes.svc.cluster.local:<port>` named by two headers Runtm's preview edge sets and the router validates. |
+| Preview router `agent-sandbox-system/sandbox-router` | Caddy (`router/Caddyfile`) behind a `LoadBalancer` Service on the static IP, `loadBalancerSourceRanges` = `runtm_ingress_cidrs`. Forwards a request to `<sandbox>.sandboxes.svc.cluster.local:<port>` named by two headers Runtm's preview edge sets and the router validates. With `preview`, see [Previews on your own domain](#previews-on-your-own-domain). |
+| `NetworkPolicy` `sandboxes/runtm-egress-allowed` | Only with `sandbox_egress_allowed_cidrs`. See [Sandbox egress](#sandbox-egress). |
 | RBAC for Runtm's service account | Below. |
 
 ### What Runtm can do in the cluster
@@ -171,6 +176,118 @@ lets Runtm read each node's Pod Snapshot agent version after a GKE upgrade; if
 your cluster refuses that grant the setup warns and continues, and Runtm
 restores paused sessions from the workspace archive instead.
 
+## Bring your own network
+
+By default the module creates a dedicated VPC, subnet and Cloud NAT. To run
+the cluster in a network you already operate:
+
+| You have | Set | The module |
+|---|---|---|
+| Nothing (default) | | creates the VPC, subnet and NAT |
+| A VPC | `network` | creates its subnet (`subnet_cidr`, `pods_cidr`, `services_cidr`) in your VPC |
+| A subnet | `subnetwork`, `pods_range_name`, `services_range_name` | uses it; creates no subnet |
+| A Shared VPC | the above plus `network_project_id` (the host project) | looks the network up in the host project |
+
+`network` and `subnetwork` take a name, an id (`projects/<p>/regions/<r>/subnetworks/<n>`)
+or a self link. An existing subnet must be in `region`, have **Private Google
+Access** on (nodes pull the sandbox image and write snapshots over it) and
+have the two named secondary ranges (about /17 for pods, /22 for Services).
+The plan fails with a clear message otherwise.
+
+**Outbound internet (`nat`).** Sandboxes need it to install packages and reach
+Runtm.
+
+- `create` (default): a Cloud Router and NAT. In your VPC it covers only the
+  sandbox subnet, all of its ranges, so it never claims a subnet another NAT
+  serves.
+- `existing`: your Cloud NAT already covers this subnet. It must cover the
+  **pods range, not only the primary range** (otherwise nodes are healthy but
+  sandboxes have no internet), and needs enough ports: many sandboxes share a
+  node, so use dynamic port allocation with a minimum of 256 ports per VM.
+- `none`: egress leaves through your own appliance or proxy.
+
+**Shared VPC prerequisites** (the module cannot grant these in a host project
+it does not own): on the subnet, `roles/compute.networkUser` for the cluster
+project's GKE service agent (`service-<number>@container-engine-robot.iam.gserviceaccount.com`)
+and Google APIs service agent (`<number>@cloudservices.gserviceaccount.com`); on
+the host project, `roles/container.hostServiceAgentUser` for the GKE service
+agent. GKE cannot create firewall rules in a host network: create the rule for
+the control plane to reach nodes and, with `preview`, the one below, then set
+`manage_firewall_rules = false`.
+
+**Kubernetes API (`control_plane_access`).** `ip` (default): the IP endpoint,
+admitting only `runtm_ingress_cidrs`. `dns`: the IP endpoint is turned off and
+Runtm uses the DNS endpoint (`*.gke.goog`), authorized by Google IAM, so no
+public IP or allowlist remains. `dns` requires Runtm's support for DNS
+endpoints.
+
+## Sandbox egress
+
+Sandboxes reach only public addresses: the NetworkPolicy agent-sandbox manages
+for every sandbox blocks `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16` and
+link-local. Running in your VPC therefore does not expose your other
+workloads. To let agents reach specific internal services, list their ranges
+in `sandbox_egress_allowed_cidrs`; the module adds one NetworkPolicy allowing
+them (all ports) on top.
+
+## Previews on your own domain
+
+By default Runtm's preview edge reaches the router through an external load
+balancer allowlisted to Runtm, and previews are served on Runtm's domain. Set
+`preview` to serve them from your project instead:
+
+```hcl
+preview = {
+  domain   = "runtm.example.com"                 # https://<port>-<sandbox>.runtm.example.com
+  exposure = "internal"                          # internal (VPN / Interconnect) | external
+  dns_zone = "projects/net-prj/managedZones/example" # optional
+}
+```
+
+- **Load balancer:** a regional GKE Gateway, `gke-l7-rilb` (internal, on an
+  address in the sandbox subnet) or `gke-l7-regional-external-managed`
+  (external, Standard tier). TLS ends at the load balancer. Long-lived
+  connections (WebSocket HMR, SSE) get a one-hour backend timeout. An external
+  Gateway can take a regional Cloud Armor policy (`security_policy`).
+- **Proxy-only subnet:** regional load balancers need one per region per VPC
+  (`proxy_only_subnet_cidr`, default `10.77.24.0/23`). If your VPC already has
+  one in the region, set `proxy_only_subnet = "existing"` and its range in
+  `proxy_only_subnet_cidr`.
+- **Firewall:** the module allows the proxy-only subnet and Google's health
+  checkers (`35.191.0.0/16`, `130.211.0.0/22`) to reach the router pods on TCP
+  8080 (destination: the pods range). `manage_firewall_rules = false` leaves it
+  to you.
+- **DNS:** with `dns_zone` (public or private, any project), the module creates
+  `*.<domain>` and the certificate's authorization record. Without it, create
+  the records listed in the `preview_dns_records` output.
+- **Certificate (`certificate.mode`):**
+  - `google_managed` (default): Certificate Manager issues `*.<domain>`. It is
+    validated by a DNS authorization record that must resolve on the **public**
+    internet, so a domain only in a private zone needs the record published
+    publicly too, or a private CA: set `issuance_config` to a Certificate Manager
+    issuance config backed by Certificate Authority Service.
+  - `certificate_manager`: an existing regional certificate you manage
+    (uploaded, or issued by your CA), by name or id in `project_id` / `region`.
+  - `pem`: pass `pem_certificate` and `pem_private_key`. The key ends up in
+    Terraform state; prefer `certificate_manager` when the key must stay out
+    of it.
+- **Router:** two replicas of `ghcr.io/runtm-ai/runtm-sandbox-router:latest`
+  (Caddy with caddy-jwt, built from `router/Dockerfile`), pulled on every
+  start so a restart picks up the current build. `router_image` overrides it,
+  e.g. with a copy in your own registry.
+- **Access:** nothing upstream vouches for the visitor, so the router checks
+  Runtm's preview token itself (`router/Caddyfile.preview`): an ES256/RS256 JWT
+  verified against Runtm's published keys (`runtm_preview_jwks_url`), whose
+  audience is your domain and whose `lbl` claim must equal the host's
+  `<port>-<sandbox>`. No secret is shared with your cluster. A visitor without
+  a valid token is sent to Runtm to sign in and comes back through
+  `/__runtm/auth`, which stores the token in a cookie for that one host. Only
+  `runtm_app_origin` may embed a preview.
+
+`preview` requires Runtm's support for customer preview domains (signing
+preview tokens with a published key). Until Runtm publishes those keys,
+requests that carry a token wait while the router retries fetching them.
+
 ## Deployer permissions and prerequisites
 
 - **Owner** on the project (or Kubernetes Engine Admin + Compute Network
@@ -181,6 +298,8 @@ restores paused sessions from the workspace archive instead.
   nodes to the sandboxes). Request more under *IAM & Admin → Quotas* before
   go-live.
 - IAM grants take 1-2 minutes to propagate; Runtm's test retries.
+- With `preview`: Certificate Manager Editor and, with `dns_zone`, DNS
+  Administrator on the zone's project (Owner covers both in one project).
 
 ## Inputs
 
@@ -191,10 +310,22 @@ restores paused sessions from the workspace archive instead.
 | `region` | — | GCP region, e.g. `us-west1`. |
 | `suffix` | `""` | Optional label in front of the org slug in every resource name (`pci`, `ops`); 1-10 lowercase chars. |
 | `runtm_google_project` | Runtm production | Leave unset. Runtm staff only, for testing a stack against Runtm staging. |
-| `runtm_ingress_cidrs` | Runtm production's egress IPs | The only sources admitted to the Kubernetes API's IP endpoint and to the preview router. `/0` is refused. Override only for Runtm staging. |
-| `subnet_cidr` | `10.77.0.0/20` | Node range. |
-| `pods_cidr` | `10.77.128.0/17` | Pod range. |
-| `services_cidr` | `10.77.16.0/22` | Service range. |
+| `runtm_ingress_cidrs` | Runtm production's egress IPs | The only sources admitted to the Kubernetes API's IP endpoint and to the edge preview router. `/0` is refused. Override only for Runtm staging. Unused with `control_plane_access = "dns"` and `preview`. |
+| `network` | `null` | Existing VPC for the module's subnet. See [Bring your own network](#bring-your-own-network). |
+| `subnetwork` | `null` | Existing subnet for the cluster. |
+| `network_project_id` | `project_id` | Shared VPC host project. |
+| `pods_range_name` / `services_range_name` | `pods` / `services` | Secondary range names (yours, with `subnetwork`). |
+| `nat` | `create` | `create`, `existing` or `none`. |
+| `control_plane_access` | `ip` | `ip` (allowlisted IP endpoint) or `dns` (DNS endpoint only). |
+| `subnet_cidr` | `10.77.0.0/20` | Node range (subnet the module creates). |
+| `pods_cidr` | `10.77.128.0/17` | Pod range (subnet the module creates). |
+| `services_cidr` | `10.77.16.0/22` | Service range (subnet the module creates). |
+| `sandbox_egress_allowed_cidrs` | `[]` | Private ranges sandboxes may reach. See [Sandbox egress](#sandbox-egress). |
+| `preview` | `null` | Previews on your own domain. See [Previews on your own domain](#previews-on-your-own-domain). |
+| `manage_firewall_rules` | `true` | Create the preview load balancer's firewall rule. |
+| `router_image` | per mode | Preview router image. |
+| `runtm_app_origin` | Runtm production | Where the preview router sends visitors to sign in. Override only for Runtm staging. |
+| `runtm_preview_jwks_url` | `<runtm_app_origin>/.well-known/runtm-preview-jwks.json` | Runtm's preview-token keys. |
 | `session_artifact_retention_days` | `90` | Lifetime of paused-session workspace archives. |
 | `labels` | `{}` | Extra labels. |
 
@@ -207,12 +338,13 @@ reads the address from `runtm/cluster.json`): `cluster`, `project_id`,
 `region`, `suffix`, `cluster_name`, `network`, `subnet`, `nat_router`,
 `router_ip_name`, `node_service_account`, `bucket`, `ar_repo`. Individual
 outputs `project_id`, `region`, `bucket`, `ar_repo`, `cluster_name`,
-`router_ip` and `runtm_service_account`.
+`router_ip`, `runtm_service_account` and `dns_endpoint`; with `preview`, also
+`preview_url_pattern` and `preview_dns_records`.
 
 ## Deleting the stack
 
 Delete your Runtm sandboxes first (or disconnect in Runtm), then
-`terraform destroy`. It deletes the router's load balancer, the cluster and
+`terraform destroy`. It deletes the router's load balancer (Service or Gateway), the cluster and
 everything else except the bucket, which is not deleted while it holds
 objects (the twin of CloudFormation's `Retain`); empty it first if you mean
 it.

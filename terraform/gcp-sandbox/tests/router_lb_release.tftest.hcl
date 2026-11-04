@@ -8,7 +8,7 @@ mock_provider "google" {
     values = { id = "projects/p/locations/us-west1/clusters/c" }
   }
   override_resource {
-    target = google_compute_address.router
+    target = google_compute_address.router[0]
     values = { id = "projects/p/regions/us-west1/addresses/a" }
   }
 }

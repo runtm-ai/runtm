@@ -164,6 +164,7 @@ subjects:
     kind: User
     name: ${runtm_sa_email}
 ---
+%{ if preview == null ~}
 # Preview router: Runtm's preview edge -> <sandbox>.sandboxes.svc:<port>.
 # See router/Caddyfile. It lives in agent-sandbox-system with label
 # app=sandbox-router because that is the one ingress source the NetworkPolicy
@@ -238,3 +239,192 @@ spec:
     app: sandbox-router
   ports:
     - { name: http, port: 80, targetPort: http }
+%{ else ~}
+# Preview router, previews on your own domain: a regional GKE Gateway (TLS
+# terminated with a Certificate Manager certificate) -> this router ->
+# <sandbox>.sandboxes.svc:<port>. The router checks Runtm's signed preview
+# token itself (router/Caddyfile.preview). Same namespace and label as the edge
+# router: the one ingress source agent-sandbox's per-sandbox NetworkPolicy admits.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sandbox-router
+  namespace: agent-sandbox-system
+data:
+  Caddyfile: |
+    ${indent(4, router_caddyfile)}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sandbox-router
+  namespace: agent-sandbox-system
+  labels:
+    app: sandbox-router
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sandbox-router
+  template:
+    metadata:
+      labels:
+        app: sandbox-router
+      annotations:
+        # Restart the router when its config changes.
+        runtm.com/config-sha256: ${router_config_sha256}
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
+    spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: sandbox-router
+      containers:
+        - name: caddy
+          image: ${router_image}
+          # A moving tag: every (re)start runs the current router image.
+          imagePullPolicy: Always
+          ports:
+            - { name: http, containerPort: 8080 }
+          env:
+            - { name: RUNTM_PREVIEW_DOMAIN, value: "${preview.domain}" }
+            # Single quotes: the backslashes are literal (regex escapes, not YAML ones).
+            - { name: RUNTM_PREVIEW_DOMAIN_RE, value: '${preview.domain_re}' }
+            - { name: RUNTM_PREVIEW_JWKS_URL, value: "${preview.jwks_url}" }
+            - { name: RUNTM_APP_ORIGIN, value: "${preview.app_origin}" }
+            # The load balancer's proxies (proxy-only subnet): the only trusted proxies.
+            - { name: RUNTM_PROXY_CIDRS, value: "${preview.proxy_cidr}" }
+          readinessProbe:
+            httpGet: { path: /__runtm/healthz, port: http }
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 250m, memory: 256Mi }
+          volumeMounts:
+            - { name: config, mountPath: /etc/caddy }
+      volumes:
+        - name: config
+          configMap:
+            name: sandbox-router
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sandbox-router
+  namespace: agent-sandbox-system
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: sandbox-router
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sandbox-router
+  namespace: agent-sandbox-system
+  labels:
+    app: sandbox-router
+spec:
+  type: ClusterIP
+  selector:
+    app: sandbox-router
+  ports:
+    - { name: http, port: 80, targetPort: http }
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: sandbox-router
+  namespace: agent-sandbox-system
+spec:
+  gatewayClassName: ${preview.gateway_class}
+  addresses:
+    - type: NamedAddress
+      value: ${preview.address_name}
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: "*.${preview.domain}"
+      tls:
+        mode: Terminate
+        options:
+          networking.gke.io/cert-manager-certs: ${preview.cert_name}
+      allowedRoutes:
+        namespaces:
+          from: Same
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: sandbox-router
+  namespace: agent-sandbox-system
+spec:
+  parentRefs:
+    - name: sandbox-router
+  hostnames:
+    - "*.${preview.domain}"
+  rules:
+    - backendRefs:
+        - name: sandbox-router
+          port: 80
+---
+# The router answers 200 only on this path (every other request needs a token).
+apiVersion: networking.gke.io/v1
+kind: HealthCheckPolicy
+metadata:
+  name: sandbox-router
+  namespace: agent-sandbox-system
+spec:
+  default:
+    config:
+      type: HTTP
+      httpHealthCheck:
+        requestPath: /__runtm/healthz
+  targetRef:
+    group: ""
+    kind: Service
+    name: sandbox-router
+---
+# Long-lived dev-server connections (WebSocket HMR, SSE) outlast the 30 s default.
+apiVersion: networking.gke.io/v1
+kind: GCPBackendPolicy
+metadata:
+  name: sandbox-router
+  namespace: agent-sandbox-system
+spec:
+  default:
+    timeoutSec: 3600
+%{ if preview.security_policy != null ~}
+    securityPolicy: ${preview.security_policy}
+%{ endif ~}
+  targetRef:
+    group: ""
+    kind: Service
+    name: sandbox-router
+%{ endif ~}
+%{ if length(egress_allowed_cidrs) > 0 ~}
+---
+# Private ranges sandboxes may reach (sandbox_egress_allowed_cidrs). Additive:
+# agent-sandbox's per-sandbox NetworkPolicy blocks private ranges, and
+# NetworkPolicies allow the union of their rules. Selects sandbox pods only
+# (the label agent-sandbox sets), which that policy already isolates.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: runtm-egress-allowed
+  namespace: sandboxes
+spec:
+  podSelector:
+    matchExpressions:
+      - { key: agents.x-k8s.io/sandbox-template-ref-hash, operator: Exists }
+  policyTypes: [Egress]
+  egress:
+    - to:
+%{ for cidr in egress_allowed_cidrs ~}
+        - ipBlock: { cidr: "${cidr}" }
+%{ endfor ~}
+%{ endif ~}

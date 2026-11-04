@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **GCP sandboxes (`terraform/gcp-sandbox`)**: enterprise network and preview options, all off by default (existing stacks plan no changes)
+  - Bring your own network: `network` / `subnetwork` (names, ids or self links, Shared VPC through `network_project_id`), custom secondary range names, and `nat = create | existing | none`; in your VPC the module's NAT covers only the sandbox subnet. Plan-time checks for the subnet's region, Private Google Access and secondary ranges
+  - `control_plane_access = "dns"`: no IP endpoint or allowlist; the DNS endpoint only
+  - `preview`: serve previews at `https://<port>-<sandbox>.<your domain>` from a regional GKE Gateway (internal or external), with a Certificate Manager certificate (Google-managed with DNS authorization or a private CA, an existing certificate, or a PEM) and optional Cloud DNS records. The router verifies Runtm's signed preview token against Runtm's published keys, so no secret is shared with the cluster
+  - `sandbox_egress_allowed_cidrs`: let sandboxes reach chosen internal ranges (agent-sandbox blocks private ranges by default)
+  - New public router image `ghcr.io/runtm-ai/runtm-sandbox-router` (Caddy + caddy-jwt), rebuilt weekly; `terraform test` suite and a Terraform CI workflow for the module
 - **Agent CLI**: `runtm-api skills`, `runtm-api mcp`, and `runtm-api tools` now support full create / get / list / update / delete against the cloud API, so agents can author skills, wire up MCP servers, and store provider tool credentials without the dashboard
   - `skills` gained cloud CRUD alongside the existing `install`. `skills list` lists your org's skills; `skills list --bundled` lists the skill files embedded in the binary
   - `mcp` manages MCP servers over stdio (`--command/--arg/--env`) or http/sse (`--url/--header`); skill content comes from a markdown file (`--md`) or a raw content object (`--content`); tools take `--provider/--auth-method/--credentials`
