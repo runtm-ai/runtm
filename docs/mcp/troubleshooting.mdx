@@ -1,0 +1,29 @@
+---
+title: "MCP troubleshooting"
+description: "Fix common Runtime MCP server problems: the browser shows docs instead of tools, 401 invalid_token, 403 after sign-in, missing tools, unknown toolset, rate limits, timeouts and the wrong workspace. Read when a client can't connect to https://mcp.runtm.com/mcp or a tool call fails."
+---
+
+Start with **`runtm_whoami`**. It shows who you're signed in as, the organization, your role and your scopes.
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Opening the URL in a browser shows the docs | Browsers are sent to the docs on purpose | Add the URL to an MCP client, not a browser tab. |
+| `401 invalid_token` | The token is missing, expired or not valid for this server | Reconnect the client, or check your [API key](/cloud-api/authentication) and the `Authorization: Bearer` header. |
+| `401` "The token has expired" and the client doesn't refresh | The client didn't get a refresh token | Reconnect. Make sure the client keeps `offline_access`. |
+| `403` "You are no longer a member of this organization" | You left or were removed from the workspace the app was connected to | Reconnect and choose another workspace. |
+| `403` on one tool | Your role or scopes don't allow it | Ask an org admin for the permission `runtm_whoami` shows as missing. Don't use a different key to get around it. |
+| A tool is missing | Its toolset isn't loaded, or your scopes can't use it | Add the toolset (`?toolsets=default,files`) or use a key with the scope. See [Tools](/mcp/tools). |
+| "Unknown toolset" or "Unknown mode" | A typo in `?toolsets=` or `?mode=` | Use `core`, `agents`, `sessions`, `context`, `guardrails`, `triggers`, `files`, `lifecycle`, `all` or `default`, and mode `default` or `tools`. |
+| "Retry in N seconds" | Rate limit or a temporary lockout after failed sign-ins | Wait the time shown, then retry. |
+| `runtm_exec_command` returns exit code `124` | The command hit `timeout_seconds` (45 s at most) | Run long work in the background and read its log. |
+| The agent's new skill or MCP server doesn't show up | It was attached but not built | Run `runtm_build_template`, then start a new session. |
+| A tool returns a link instead of doing the step | The step needs a credential or a browser install | Open the link and finish it in the dashboard. Never paste the secret into chat. |
+| Actions land in the wrong org | The app is connected to another workspace, or the API key is personal | Reconnect and pick the right workspace, or use an org API key. |
+| `GET /mcp` returns `405` | The server is stateless and has no event stream | Use a client with streamable HTTP; it sends `POST`. |
+
+For problems signing in to an Okta-protected MCP server from an agent, see [Okta](/mcp/okta#if-sign-in-fails).
+
+## Still stuck
+
+Email [support@runtm.com](mailto:support@runtm.com) with the client name and version, the time of the failure, and the `runtm_whoami` output. Never include a token or API key.
+

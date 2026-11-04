@@ -79,6 +79,16 @@
       ]
     },
     {
+      "group": "Runtime MCP server",
+      "pages": [
+        "mcp/overview",
+        "mcp/authentication",
+        "mcp/tools",
+        "mcp/okta",
+        "mcp/troubleshooting"
+      ]
+    },
+    {
       "group": "Build an agent",
       "pages": [
         "build/overview",

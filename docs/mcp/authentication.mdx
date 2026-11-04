@@ -1,0 +1,75 @@
+---
+title: "MCP authentication"
+description: "How AI clients sign in to the Runtime MCP server: OAuth with your Runtime login or SSO, the workspace and consent screens, the scopes a connected app gets, and API keys as bearer tokens. Read when connecting a client, choosing a workspace, or limiting what a connected app can do."
+---
+
+Every request to `https://mcp.runtm.com/mcp` carries a bearer token. It is either an OAuth access token issued by Runtime, or a [Runtime API key](/cloud-api/authentication).
+
+## OAuth sign-in
+
+Clients that support MCP authorization (Claude.ai, Claude Desktop, ChatGPT, Grok Bot, Claude Code, Cursor, VS Code, Codex) find Runtime's sign-in on their own. You only paste the URL.
+
+<Steps>
+  <Step title="Sign in to Runtime">
+    The client opens Runtime's login page. Use email, Google, GitHub, or **Continue with SSO** if your org uses [single sign-on](/concepts/organizations#single-sign-on).
+  </Step>
+  <Step title="Choose a workspace">
+    If you belong to more than one organization, or to an organization and your personal workspace, pick which one this app acts in. You're asked on every new connection. The app can only act in the workspace you choose.
+  </Step>
+  <Step title="Allow access">
+    The consent screen names the app and lists what it can do, by area. Click **Allow** to connect or **Deny** to cancel. Either way you go back to the client.
+  </Step>
+</Steps>
+
+### What a connected app gets
+
+A connected app acts as you, in the workspace you chose, and never with more than your role allows there. By default it requests every Runtime scope below, plus `offline_access` so it stays signed in.
+
+| Area | Scopes |
+|---|---|
+| Sessions | `sessions:read`, `sessions:write`, `sessions:prompt`, `sessions:terminal`, `sessions:delete` |
+| Templates | `templates:read`, `templates:write`, `templates:build`, `templates:delete` |
+| Context | `context:read`, `context:write` |
+| Guardrails | `guardrails:read`, `guardrails:write` |
+| Secrets | `secrets:read`, `secrets:write` |
+| Deployments | `deployments:read`, `deployments:write`, `deployments:delete` |
+| Integrations | `integrations:read`, `integrations:write` |
+| Activity | `activity:read` |
+
+A connected app can never hold `api_keys:*`, so it can't mint keys that outlive the connection. See [Scopes](/cloud-api/scopes) for what each scope allows.
+
+### Good to know
+
+- **Tokens are for the MCP server only.** An OAuth token from this flow works at `mcp.runtm.com/mcp`. The REST API still takes API keys only.
+- **Leaving an org ends access there.** If you're removed from the organization, the app's calls fail with a 403. Reconnect and choose another workspace.
+- **Blocks and rate limits apply.** A blocked account or a locked-out IP is refused exactly as with an API key.
+- **Clients register themselves.** Claude uses a client metadata document, and ChatGPT and Cursor use dynamic client registration. There's nothing for an admin to set up.
+
+## API keys
+
+Send a Runtime API key in the `Authorization` header. Use one for MCP gateways, CI, and clients without OAuth.
+
+```http
+POST /mcp HTTP/1.1
+Host: mcp.runtm.com
+Authorization: Bearer runtm_sk_live_...
+```
+
+- Create the key in **Settings → API Keys**. Switch to an organization first for an org key. See [Authentication](/cloud-api/authentication).
+- The key's scopes decide which tools the client sees. A **Read-only** key shows only read tools.
+- Install snippets for each client are in the [quick start](/mcp/overview#use-an-api-key-instead).
+
+## Discovery endpoints
+
+For MCP gateways and client developers. A request without a token gets a `401` with a `WWW-Authenticate` header naming the protected-resource metadata ([RFC 9728](https://www.rfc-editor.org/rfc/rfc9728)).
+
+| | URL |
+|---|---|
+| MCP server (resource and token audience) | `https://mcp.runtm.com/mcp` |
+| Protected-resource metadata | `https://mcp.runtm.com/.well-known/oauth-protected-resource/mcp` |
+| Authorization server (issuer) | `https://app.runtm.com/api/auth` |
+| Signing keys | `https://app.runtm.com/api/auth/jwks` |
+
+- Grant types: `authorization_code` (with PKCE) and `refresh_token`. There is no `client_credentials`: every token acts for a person.
+- Access tokens are JWTs signed with EdDSA, with the MCP server URL as the audience. DPoP-bound tokens aren't supported.
+- Standard scopes offered: `openid`, `profile`, `email`, `offline_access`.

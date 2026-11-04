@@ -333,7 +333,7 @@ Anything outside the catalog becomes a custom provider. Stripe, Postgres, Snowfl
     </Visibility>
   </Step>
   <Step title="Add a connection for its credentials">
-    Open the server and add a connection. Static kinds are `api_token`, `headers` and `env`. For servers that publish OAuth metadata, use the OAuth flow and the platform discovers the endpoints. Scope the connection to the org, yourself, or one agent. Credentials on a connection are injected at session start and never baked into the template snapshot. Connections are managed in the dashboard and through the `/api/agent-directives/{id}/connections` endpoints; the CLI does not create them today.
+    Open the server and add a connection. Static kinds are `api_token`, `headers` and `env`. For servers that publish OAuth metadata, use the OAuth flow and the platform discovers the endpoints. If the server's sign-in provider doesn't register apps automatically (Okta, for example), an org admin sets up an OAuth app for it first: see [Connect an Okta-protected MCP server](/mcp/okta#connect-an-okta-protected-mcp-server). Scope the connection to the org, yourself, or one agent. Credentials on a connection are injected at session start and never baked into the template snapshot. Connections are managed in the dashboard and through the `/api/agent-directives/{id}/connections` endpoints; the CLI does not create them today.
   </Step>
   <Step title="Attach it to the template">
     Attach the server to the agent's template, to a repo, or org-wide. Then rebuild the template.

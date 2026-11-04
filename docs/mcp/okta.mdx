@@ -1,0 +1,81 @@
+---
+title: "Okta and the MCP server"
+description: "Two ways Okta works with Runtime MCP: people sign in to the Runtime MCP server through your Okta SSO, and org admins give an Okta-protected MCP server its own OAuth app (Okta domain plus authorization server ID) so agents can connect to it. Read when your company uses Okta."
+---
+
+Okta works with Runtime and MCP in two directions:
+
+| You want to | Set up |
+|---|---|
+| Let people connect Claude, ChatGPT or Cursor to Runtime with their Okta login | [Okta single sign-on](#sign-in-to-the-runtime-mcp-with-okta) for your Runtime org |
+| Let your Runtime agents use an internal MCP server that sits behind Okta | An [OAuth app for that MCP server](#connect-an-okta-protected-mcp-server) |
+
+## Sign in to the Runtime MCP with Okta
+
+When a client connects to `https://mcp.runtm.com/mcp`, people sign in on Runtime's login page. If your org has [single sign-on](/concepts/organizations#single-sign-on) with Okta, they click **Continue with SSO**, sign in through Okta, choose the workspace and allow access. Their connected app gets their Runtime role in that org, and no more.
+
+<Steps>
+  <Step title="Connect Okta to Runtime">
+    An owner or admin adds Okta (OIDC) in **Settings → Team → Single sign-on** and verifies the email domain. See [Single sign-on](/concepts/organizations#single-sign-on).
+  </Step>
+  <Step title="Connect the client">
+    Each person adds `https://mcp.runtm.com/mcp` to their client ([quick start](/mcp/overview#quick-start)) and picks **Continue with SSO** when the browser opens.
+  </Step>
+</Steps>
+
+## Connect an Okta-protected MCP server
+
+Many internal MCP servers sit behind Okta. Okta doesn't let apps register themselves, so **Sign in with OAuth** on such a server shows **This server needs an OAuth app first**. An org admin sets the app up once, and then everyone in the org signs in with their own Okta account.
+
+### Before you start
+
+- You're an owner or admin of the Runtime org.
+- The MCP server is already added in **Settings → Context → Tools & MCP**. See [Give it tools](/build/give-it-tools).
+- You can create app integrations in Okta, and you know which authorization server the MCP server trusts.
+
+<Steps>
+  <Step title="Open the OAuth app setup">
+    In Runtime, open the MCP server and click **Set up OAuth app**. Choose **Okta**. Copy the **Redirect URI** shown in the dialog.
+  </Step>
+  <Step title="Create the app in Okta">
+    In the Okta admin console, create an **OIDC** app integration of type **Web Application**, with the **Authorization Code** and **Refresh Token** grant types. Paste the redirect URI as a **Sign-in redirect URI**. Assign the people or groups who should connect.
+  </Step>
+  <Step title="Fill in the Okta preset">
+    | Field | Value |
+    |---|---|
+    | Okta domain | Your Okta domain, for example `acme.okta.com` |
+    | Authorization server ID | From **Security → API** in Okta, for example `default` |
+    | Client ID | From the Okta app |
+    | Client secret | From the Okta app. Leave blank for a public client (PKCE only) |
+    | Scopes | `openid profile email offline_access` (the default) |
+
+    The issuer becomes `https://<okta domain>/oauth2/<authorization server ID>`. Use a custom authorization server: leaving the ID empty uses Okta's org authorization server, whose tokens other servers can't validate.
+  </Step>
+  <Step title="Save and sign in">
+    Click **Save**. Runtime reads the issuer's OAuth metadata and checks it matches before saving. Then click **Sign in with OAuth** on the MCP server and sign in through Okta.
+  </Step>
+  <Step title="Attach and rebuild">
+    Attach the MCP server to the agent's template and rebuild. At each session start, Runtime refreshes the token and passes it to the server.
+  </Step>
+</Steps>
+
+### Good to know
+
+- **Keep `offline_access`.** Okta only issues a refresh token when it's requested. Without it, connections stop working when the access token expires.
+- **One app per server URL.** The app applies to every MCP server in the org with the same URL. Each connection still authorizes as the person who signs in.
+- **The secret stays in Runtime.** Members can see the issuer, client ID and scopes, never the secret. Only admins can change or remove the app.
+- **Edit without retyping the secret.** Leave **Client secret** blank to keep the stored one.
+- **Removing the app** sends sign-in back to automatic registration, and existing connections show an error on their next refresh.
+- **Other providers.** Choose **Custom OAuth app** and enter the issuer URL. It must use `https`.
+- **Members can't sign in to OAuth MCP servers yet.** Today, only admins can create OAuth connections, and personal MCP servers can't use OAuth.
+
+### If sign-in fails
+
+| Message | Fix |
+|---|---|
+| This server needs an OAuth app first | An admin sets up the OAuth app, as above. |
+| The sign-in provider rejected the requested scopes | Check the app's scopes against what the Okta authorization server allows. |
+| This OAuth app is not allowed to sign in this way | In Okta, enable the Authorization Code and Refresh Token grant types. |
+| The sign-in provider did not recognize the OAuth app | Check the client ID and secret, and that the app is active in Okta. |
+| Sign-in was cancelled or denied | The person denied consent, or isn't assigned to the Okta app. |
+| Saving fails with an issuer error | Check the Okta domain and authorization server ID. The issuer in Okta's metadata must match exactly. |
