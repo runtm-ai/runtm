@@ -171,13 +171,11 @@ In the cluster:
 | cluster | nodes | get, list |
 | | podsnapshotstorageconfigs | get |
 | namespace `agent-sandbox-system` | configmaps | get |
-| namespace `gke-managed-pod-snapshots` | pods | list |
-| | pods/log | get |
 
-No cluster-admin, no Secrets, nothing outside these namespaces. The last row
-lets Runtm read each node's Pod Snapshot agent version after a GKE upgrade; if
-your cluster refuses that grant, set `snapshot_log_access = false` and Runtm
-restores paused sessions from the workspace archive instead.
+No cluster-admin, no Secrets, nothing outside these namespaces. Runtm gets no
+access to the GKE-managed namespace `gke-managed-pod-snapshots` (Autopilot
+refuses any write there), so after a GKE upgrade it restores paused sessions
+from the workspace archive.
 
 ## Bring your own network
 
@@ -330,7 +328,6 @@ requests that carry a token wait while the router retries fetching them.
 | `services_cidr` | `10.77.16.0/22` | Service range (subnet the module creates). |
 | `sandbox_egress_allowed_cidrs` | `[]` | Private ranges sandboxes may reach. See [Sandbox egress](#sandbox-egress). |
 | `agent_sandbox_manifest` | v1.0.9 release on GitHub | URL and sha256 of the agent-sandbox release, fetched when planning. Point it at a mirror if the runner cannot reach GitHub. |
-| `snapshot_log_access` | `true` | Let Runtm read the Pod Snapshot agents' logs (Role in `gke-managed-pod-snapshots`). See [What Runtm can do in the cluster](#what-runtm-can-do-in-the-cluster). |
 | `preview` | `null` | Previews on your own domain. See [Previews on your own domain](#previews-on-your-own-domain). |
 | `manage_firewall_rules` | `true` | Create the preview load balancer's firewall rule. |
 | `router_image` | per mode | Preview router image. |

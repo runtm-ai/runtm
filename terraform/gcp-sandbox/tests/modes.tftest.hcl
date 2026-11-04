@@ -472,21 +472,8 @@ run "in_cluster_setup_through_the_dns_endpoint" {
     error_message = "the edge router runs the public proxy image in its edge mode behind a LoadBalancer on the reserved address, replaced on change and deleted only after its load balancer"
   }
   assert {
-    condition     = contains(keys(kubectl_manifest.runtm), "heal_role") && yamldecode(kubectl_manifest.runtm["role_binding"].yaml_body).subjects[0].name == local.runtm_sa_email
-    error_message = "Runtm's service account is bound, including the snapshot log access"
-  }
-}
-
-run "snapshot_log_access_can_be_turned_off" {
-  command = plan
-
-  variables {
-    snapshot_log_access = false
-  }
-
-  assert {
-    condition     = !contains(keys(kubectl_manifest.runtm), "heal_role") && !contains(keys(kubectl_manifest.runtm), "heal_role_binding")
-    error_message = "no Role in gke-managed-pod-snapshots"
+    condition     = !contains(keys(kubectl_manifest.runtm), "heal_role") && yamldecode(kubectl_manifest.runtm["role_binding"].yaml_body).subjects[0].name == local.runtm_sa_email
+    error_message = "Runtm's service account is bound, with no Role in the GKE-managed namespace"
   }
 }
 

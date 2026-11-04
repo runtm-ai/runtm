@@ -237,28 +237,11 @@ locals {
       router = local.preview_enabled ? yamlencode(local.router_gateway_deployment) : yamlencode(local.router_edge_deployment)
     },
 
-    # Runtm reads each node's Pod Snapshot agent bootstrap log (gkeVersion +
-    # runscVersion) to retarget a snapshot after a GKE upgrade. Without it
-    # Runtm restores paused sessions after a GKE upgrade from the workspace
+    # No Role in gke-managed-pod-snapshots (to read the Pod Snapshot agents'
+    # logs after a GKE upgrade): GKE Warden refuses any write to its managed
+    # namespaces on Autopilot ("denied by managed-namespaces-limitation"), so it
+    # could only time out. Runtm restores those sessions from the workspace
     # archive instead.
-    var.snapshot_log_access ? {
-      heal_role = yamlencode({
-        apiVersion = "rbac.authorization.k8s.io/v1"
-        kind       = "Role"
-        metadata   = { name = "runtm-hub", namespace = "gke-managed-pod-snapshots" }
-        rules = [
-          { apiGroups = [""], resources = ["pods"], verbs = ["list"] },
-          { apiGroups = [""], resources = ["pods/log"], verbs = ["get"] },
-        ]
-      })
-      heal_role_binding = yamlencode({
-        apiVersion = "rbac.authorization.k8s.io/v1"
-        kind       = "RoleBinding"
-        metadata   = { name = "runtm-hub", namespace = "gke-managed-pod-snapshots" }
-        roleRef    = { apiGroup = "rbac.authorization.k8s.io", kind = "Role", name = "runtm-hub" }
-        subjects   = local.runtm_subject
-      })
-    } : {},
 
     # Previews on your own domain: a regional GKE Gateway (TLS terminated with
     # a Certificate Manager certificate) -> the router.
