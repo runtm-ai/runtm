@@ -192,6 +192,7 @@ restores paused sessions from the workspace archive instead.
 | `suffix` | `""` | Optional label in front of the org slug in every resource name (`pci`, `ops`); 1-10 lowercase chars. |
 | `runtm_google_project` | Runtm production | Leave unset. Runtm staff only, for testing a stack against Runtm staging. |
 | `runtm_ingress_cidrs` | Runtm production's egress IPs | The only sources admitted to the Kubernetes API's IP endpoint and to the preview router. `/0` is refused. Override only for Runtm staging. |
+| `control_plane_access` | `"ip"` | How Runtm reaches the Kubernetes API. `"ip"`: the IP endpoint, admitted only from `runtm_ingress_cidrs`. `"dns"`: no IP endpoint; Runtm uses the cluster's DNS endpoint, where Google checks its identity on every call (`roles/container.clusterViewer` on this cluster only). The preview router is the same in both. |
 | `subnet_cidr` | `10.77.0.0/20` | Node range. |
 | `pods_cidr` | `10.77.128.0/17` | Pod range. |
 | `services_cidr` | `10.77.16.0/22` | Service range. |

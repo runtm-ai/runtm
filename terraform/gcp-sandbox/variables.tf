@@ -82,6 +82,17 @@ variable "runtm_ingress_cidrs" {
   }
 }
 
+variable "control_plane_access" {
+  description = "How Runtm reaches the cluster's Kubernetes API. \"ip\" (default): the public IP endpoint, admitted only from runtm_ingress_cidrs. \"dns\": no IP endpoint at all; Runtm uses the cluster's DNS endpoint, where Google checks Runtm's identity on every request (container.clusters.connect, granted on this cluster only). The preview router is the same either way."
+  type        = string
+  default     = "ip"
+
+  validation {
+    condition     = contains(["ip", "dns"], var.control_plane_access)
+    error_message = "control_plane_access must be \"ip\" or \"dns\"."
+  }
+}
+
 variable "subnet_cidr" {
   description = "Primary range of the sandbox subnet (cluster nodes)."
   type        = string

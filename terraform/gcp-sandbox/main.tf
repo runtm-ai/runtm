@@ -32,6 +32,7 @@ locals {
   # 30 chars = GCP's account-id maximum). Same account the AWS module trusts.
   runtm_sa_email  = "runtm-aws-${substr(sha256(var.runtm_organization_id), 0, 20)}@${var.runtm_google_project}.iam.gserviceaccount.com"
   runtm_sa_member = "serviceAccount:${local.runtm_sa_email}"
+  dns_only        = var.control_plane_access == "dns"
 
   # Name formulas and worst-case lengths (suffix 10, slug 12, region 23
   # "northamerica-northeast1"); limits in the README table. The region is in a
@@ -220,20 +221,27 @@ resource "google_container_cluster" "sandboxes" {
     enable_private_endpoint = false
   }
 
-  master_authorized_networks_config {
-    dynamic "cidr_blocks" {
-      for_each = var.runtm_ingress_cidrs
-      content {
-        cidr_block   = cidr_blocks.value
-        display_name = "runtm"
+  # IP mode only: with the IP endpoint off there is nothing to allow-list.
+  dynamic "master_authorized_networks_config" {
+    for_each = local.dns_only ? [] : [1]
+    content {
+      dynamic "cidr_blocks" {
+        for_each = var.runtm_ingress_cidrs
+        content {
+          cidr_block   = cidr_blocks.value
+          display_name = "runtm"
+        }
       }
+      gcp_public_cidrs_access_enabled = false
     }
-    gcp_public_cidrs_access_enabled = false
   }
 
   control_plane_endpoints_config {
     dns_endpoint_config {
       allow_external_traffic = true
+    }
+    ip_endpoints_config {
+      enabled = !local.dns_only
     }
   }
 
@@ -372,6 +380,20 @@ resource "google_storage_bucket_iam_member" "runtm_objects" {
   member = local.runtm_sa_member
 }
 
+# DNS mode: the DNS endpoint admits a caller with container.clusters.connect.
+# clusterViewer is the narrowest role that has it, bound to THIS cluster only.
+resource "google_project_iam_member" "runtm_cluster_connect" {
+  count   = local.dns_only ? 1 : 0
+  project = var.project_id
+  role    = "roles/container.clusterViewer"
+  member  = local.runtm_sa_member
+
+  condition {
+    title      = "runtm-sandbox-cluster"
+    expression = "resource.name == \"${google_container_cluster.sandboxes.id}\""
+  }
+}
+
 # Push the sandbox image (twin of the Azure registry import).
 resource "google_artifact_registry_repository_iam_member" "runtm_writer" {
   project    = var.project_id
@@ -474,8 +496,11 @@ resource "google_storage_bucket_object" "cluster" {
   name         = "runtm/cluster.json"
   content_type = "application/json"
   content = jsonencode({
-    endpoint  = google_container_cluster.sandboxes.endpoint
-    ca        = google_container_cluster.sandboxes.master_auth[0].cluster_ca_certificate
+    # DNS mode: the DNS endpoint's hostname, served under a public Google CA (no ca).
+    endpoint = (local.dns_only
+      ? google_container_cluster.sandboxes.control_plane_endpoints_config[0].dns_endpoint_config[0].endpoint
+    : google_container_cluster.sandboxes.endpoint)
+    ca        = local.dns_only ? "" : google_container_cluster.sandboxes.master_auth[0].cluster_ca_certificate
     cluster   = google_container_cluster.sandboxes.name
     namespace = local.namespace
     router_ip = google_compute_address.router.address
