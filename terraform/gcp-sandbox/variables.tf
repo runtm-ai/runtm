@@ -31,7 +31,7 @@ variable "runtm_google_project" {
 }
 
 # ---------------------------------------------------------------------------
-# Placement
+# Placement / naming
 # ---------------------------------------------------------------------------
 
 variable "project_id" {
@@ -45,12 +45,23 @@ variable "project_id" {
 }
 
 variable "region" {
-  description = "GCP region for every resource (one module instance per project), e.g. us-west1."
+  description = "GCP region for every resource, e.g. us-west1. One module instance per region; several in one project are told apart by suffix (or are different organizations)."
   type        = string
 
   validation {
     condition     = can(regex("^[a-z]+-[a-z]+[0-9]$", var.region))
     error_message = "region must be a GCP region name, e.g. us-west1."
+  }
+}
+
+variable "suffix" {
+  description = "Optional human-readable label put in front of the per-organization slug in every resource name, e.g. \"pci\" or \"ops\": cluster runtm-sandbox-pci-<slug>. 1-10 lowercase letters, digits or hyphens, starting and ending with a letter or digit, the same rule the Runtm dialog and the AWS and Azure modules enforce, so one value works everywhere (10 keeps the cluster name at 37 of GKE's 40 chars). Enter the same value in the Runtm dialog so its pre-filled names match."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.suffix == "" || can(regex("^[a-z0-9]([a-z0-9-]{0,8}[a-z0-9])?$", var.suffix))
+    error_message = "suffix must be 1-10 lowercase letters, digits or hyphens, starting and ending with a letter or digit (the Runtm dialog's rule)."
   }
 }
 

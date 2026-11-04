@@ -10,10 +10,21 @@
 # cluster and through grants on the bucket and the repository.
 
 locals {
-  # The shared sha256 slug (the same the organization has on AWS and Azure).
-  # cloud-api computes the same names
-  # (backend/app/services/sandbox_connections.py: resource_slug).
-  slug = substr(sha256(var.runtm_organization_id), 0, 12)
+  # The Runtm organization is the tenant. Every name below carries a slug
+  # DERIVED from the org id (the first 12 hex chars of sha256, the slug the
+  # organization has on AWS and Azure), so several organizations, and several
+  # stacks of one organization told apart by `suffix`, share one project
+  # without a name collision. cloud-api computes the same names from the
+  # cluster resource name the customer pastes
+  # (backend/app/services/gcp_sandbox_connections.py: gcp_resource_names).
+  slug  = substr(sha256(var.runtm_organization_id), 0, 12)
+  label = var.suffix != "" ? "${var.suffix}-${local.slug}" : local.slug
+
+  # The service account id (30 chars) cannot carry the label and the region,
+  # and the bucket name is global and outlives the stack (force_destroy =
+  # false): both carry a 9-hex discriminator of (org, suffix, region, project)
+  # instead, Azure's discriminator plus the project.
+  disc = substr(sha256("${var.runtm_organization_id}|${var.suffix}|${var.region}|${var.project_id}"), 0, 9)
 
   # Identity Runtm presents: one Google service account per organization, its
   # email DERIVED from the org id with the formula cloud-api uses
@@ -22,17 +33,19 @@ locals {
   runtm_sa_email  = "runtm-aws-${substr(sha256(var.runtm_organization_id), 0, 20)}@${var.runtm_google_project}.iam.gserviceaccount.com"
   runtm_sa_member = "serviceAccount:${local.runtm_sa_email}"
 
-  # Fixed names (cloud-api derives the bucket from the slug and the project
-  # id and reads everything else from runtm/cluster.json; nothing to paste
-  # back but the project id). Bucket names are global: slug + project keeps
-  # them unique (10 + 12 + 1 + 30 = 53 <= 63).
-  bucket_name    = substr("runtm-sbx-${local.slug}-${var.project_id}", 0, 63)
-  ar_repo_id     = "runtm-sandbox"
-  network_name   = "runtm-sandbox"
-  subnet_name    = "runtm-sandbox-${var.region}"
-  cluster_name   = "runtm-sandbox"
-  node_sa_id     = "runtm-sandbox-gke-node"
-  router_ip_name = "runtm-sandbox-preview"
+  # Name formulas and worst-case lengths (suffix 10, slug 12, region 23
+  # "northamerica-northeast1"); limits in the README table. The region is in a
+  # name only where the name's scope spans regions (the network, the node
+  # service account, the bucket); regional resources and the cluster (named
+  # within its location) do not need it.
+  cluster_name   = "runtm-sandbox-${local.label}"               # 14+23 = 37 <= 40 (GKE)
+  network_name   = "runtm-sandbox-${local.label}-${var.region}" # 14+23+1+23 = 61 <= 63
+  subnet_name    = "runtm-sandbox-${local.label}"               # 37 <= 63
+  nat_name       = "runtm-sandbox-nat-${local.label}"           # 18+23 = 41 <= 63
+  router_ip_name = "runtm-sandbox-preview-${local.label}"       # 22+23 = 45 <= 63
+  ar_repo_id     = "runtm-sandbox-${local.label}"               # 37 <= 63
+  node_sa_id     = "rtm-node-${local.slug}${local.disc}"        # 9+12+9 = 30 <= 30 (binding)
+  bucket_name    = "runtm-sandbox-${local.label}-${local.disc}" # 14+23+1+9 = 47 <= 63
   namespace      = "sandboxes"
 
   # agent-sandbox controller release, pinned by URL and checksum.
@@ -43,7 +56,8 @@ locals {
   router_caddyfile = file("${path.module}/router/Caddyfile")
 
   labels = merge(var.labels, {
-    "runtm-slug" = local.slug
+    "runtm-slug"  = local.slug
+    "runtm-label" = local.label
   })
 }
 
@@ -109,7 +123,7 @@ resource "google_compute_subnetwork" "sandboxes" {
 
 resource "google_compute_router" "nat" {
   project = var.project_id
-  name    = "runtm-sandbox-nat"
+  name    = local.nat_name
   region  = var.region
   network = google_compute_network.sandboxes.id
 }
@@ -119,7 +133,7 @@ resource "google_compute_router" "nat" {
 # connections are not cut.
 resource "google_compute_router_nat" "nat" {
   project                            = var.project_id
-  name                               = "runtm-sandbox-nat"
+  name                               = local.nat_name
   router                             = google_compute_router.nat.name
   region                             = var.region
   nat_ip_allocate_option             = "AUTO_ONLY"
@@ -156,7 +170,7 @@ resource "google_compute_address" "router" {
 resource "google_service_account" "node" {
   project      = var.project_id
   account_id   = local.node_sa_id
-  display_name = "Runtm sandbox GKE nodes"
+  display_name = "Runtm sandbox GKE nodes (${local.label}, ${var.region})"
   description  = "Node identity of the Runtm sandbox cluster."
 
   depends_on = [google_project_service.this]

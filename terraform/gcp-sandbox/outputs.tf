@@ -1,5 +1,10 @@
+output "cluster" {
+  description = "Paste into Runtm (Integrations -> Google Cloud Sandboxes): the cluster's resource name, projects/<project>/locations/<region>/clusters/<name>. It names this stack's cluster among any others in the project; Runtm derives the rest of the stack's names from it."
+  value       = google_container_cluster.sandboxes.id
+}
+
 output "project_id" {
-  description = "Paste into Runtm (Integrations -> Google Cloud Sandboxes): the project sandboxes run in."
+  description = "The project sandboxes run in."
   value       = var.project_id
 }
 
@@ -17,7 +22,7 @@ output "ar_repo" {
   value       = "${google_artifact_registry_repository.images.location}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.images.repository_id}"
 }
 
-output "cluster" {
+output "cluster_name" {
   description = "GKE Autopilot cluster the sandboxes run in (namespace sandboxes)."
   value       = google_container_cluster.sandboxes.name
 }
@@ -33,12 +38,19 @@ output "runtm_service_account" {
 }
 
 output "runtm_connection" {
-  description = "Everything Runtm reads from this stack, in one object. Runtm derives the bucket from the project id and reads the rest from gs://<bucket>/runtm/cluster.json; this is for checking."
+  description = "Everything this stack names, in one object. Runtm derives all of it from the cluster resource name and reads the cluster's address from gs://<bucket>/runtm/cluster.json; this is for checking."
   value = {
-    project_id = var.project_id
-    region     = var.region
-    bucket     = google_storage_bucket.sandboxes.name
-    ar_repo    = "${google_artifact_registry_repository.images.location}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.images.repository_id}"
-    cluster    = google_container_cluster.sandboxes.name
+    cluster              = google_container_cluster.sandboxes.id
+    project_id           = var.project_id
+    region               = var.region
+    suffix               = var.suffix
+    cluster_name         = google_container_cluster.sandboxes.name
+    network              = google_compute_network.sandboxes.name
+    subnet               = google_compute_subnetwork.sandboxes.name
+    nat_router           = google_compute_router.nat.name
+    router_ip_name       = google_compute_address.router.name
+    node_service_account = google_service_account.node.email
+    bucket               = google_storage_bucket.sandboxes.name
+    ar_repo              = "${google_artifact_registry_repository.images.location}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.images.repository_id}"
   }
 }
