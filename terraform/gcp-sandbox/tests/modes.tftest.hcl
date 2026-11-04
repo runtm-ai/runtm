@@ -1,6 +1,8 @@
 # Network, control-plane and preview modes, planned against mock providers
 # (nothing is created). Run: terraform init && terraform test
 
+mock_provider "kubectl" {}
+
 mock_provider "google" {
   override_during = plan
 
@@ -244,12 +246,13 @@ run "internal_preview_with_managed_certificate_and_zone" {
   }
   assert {
     condition = (
-      strcontains(local.k8s_manifest, "gatewayClassName: gke-l7-rilb") &&
-      strcontains(local.k8s_manifest, "image: us-west1-docker.pkg.dev/kuimjyxqkrbfvalw-public/runtm-public/sandbox-preview-proxy:latest") &&
-      strcontains(local.k8s_manifest, "imagePullPolicy: Always") &&
-      strcontains(local.k8s_manifest, "{ name: RUNTM_PROXY_MODE, value: customer }") &&
-      !strcontains(local.k8s_manifest, "kind: ConfigMap\nmetadata:\n  name: sandbox-router") &&
-      !strcontains(local.k8s_manifest, "type: LoadBalancer")
+      yamldecode(kubectl_manifest.router_gateway[0].yaml_body).spec.gatewayClassName == "gke-l7-rilb" &&
+      yamldecode(kubectl_manifest.runtm["router"].yaml_body).spec.template.spec.containers[0].image == "us-west1-docker.pkg.dev/kuimjyxqkrbfvalw-public/runtm-public/sandbox-preview-proxy:latest" &&
+      yamldecode(kubectl_manifest.runtm["router"].yaml_body).spec.template.spec.containers[0].imagePullPolicy == "Always" &&
+      contains(yamldecode(kubectl_manifest.runtm["router"].yaml_body).spec.template.spec.containers[0].env, { name = "RUNTM_PROXY_MODE", value = "customer" }) &&
+      contains(yamldecode(kubectl_manifest.runtm["router"].yaml_body).spec.template.spec.containers[0].env, { name = "RUNTM_PREVIEW_DOMAIN_RE", value = "runtm\\.rain\\.xyz" }) &&
+      !contains(keys(kubectl_manifest.runtm), "router_config") &&
+      yamldecode(kubectl_manifest.router_service.yaml_body).spec.type == "ClusterIP"
     )
     error_message = "the manifest deploys the Gateway and the public router image, without the edge LoadBalancer"
   }
@@ -288,9 +291,9 @@ run "external_preview_with_own_certificate" {
   }
   assert {
     condition = (
-      strcontains(local.k8s_manifest, "networking.gke.io/cert-manager-certs: rain-wildcard") &&
-      strcontains(local.k8s_manifest, "gatewayClassName: gke-l7-regional-external-managed") &&
-      strcontains(local.k8s_manifest, "securityPolicy: rain-armor")
+      yamldecode(kubectl_manifest.router_gateway[0].yaml_body).spec.listeners[0].tls.options["networking.gke.io/cert-manager-certs"] == "rain-wildcard" &&
+      yamldecode(kubectl_manifest.router_gateway[0].yaml_body).spec.gatewayClassName == "gke-l7-regional-external-managed" &&
+      yamldecode(kubectl_manifest.runtm["router_backend_policy"].yaml_body).spec.default.securityPolicy == "rain-armor"
     )
     error_message = "the Gateway uses the given certificate, the external class and the security policy"
   }
@@ -358,7 +361,7 @@ run "existing_proxy_only_subnet_and_no_firewall" {
     error_message = "neither the proxy-only subnet nor the firewall rule is created"
   }
   assert {
-    condition     = strcontains(local.k8s_manifest, "value: \"10.10.0.0/23\"")
+    condition     = contains(yamldecode(kubectl_manifest.runtm["router"].yaml_body).spec.template.spec.containers[0].env, { name = "RUNTM_PROXY_CIDRS", value = "10.10.0.0/23" })
     error_message = "the router trusts the existing proxy-only subnet"
   }
 }
@@ -371,7 +374,7 @@ run "egress_allow_list_renders_a_network_policy" {
   }
 
   assert {
-    condition     = strcontains(local.k8s_manifest, "name: runtm-egress-allowed") && strcontains(local.k8s_manifest, "cidr: \"10.20.0.0/16\"")
+    condition     = yamldecode(kubectl_manifest.runtm["egress_allowed"].yaml_body).spec.egress[0].to == [{ ipBlock = { cidr = "10.20.0.0/16" } }]
     error_message = "the allow-list becomes an additive NetworkPolicy"
   }
 }
@@ -431,4 +434,44 @@ run "private_zone_cannot_validate_a_google_managed_certificate" {
   }
 
   expect_failures = [check.preview_certificate_validates]
+}
+
+run "in_cluster_setup_through_the_dns_endpoint" {
+  command = plan
+
+  assert {
+    condition = (
+      length(kubectl_manifest.agent_sandbox_cluster) == 9 &&
+      length(kubectl_manifest.agent_sandbox) == 2 &&
+      yamldecode(kubectl_manifest.agent_sandbox_controller.yaml_body).spec.template.metadata.annotations["runtm.com/config-sha256"] == sha256("runtm.com,podsnapshot.gke.io")
+    )
+    error_message = "agent-sandbox is applied object by object, and its controller restarts when the label allow-list changes"
+  }
+  assert {
+    condition = (
+      yamldecode(kubectl_manifest.router_service.yaml_body).spec.type == "LoadBalancer" &&
+      yamldecode(kubectl_manifest.router_service.yaml_body).spec.loadBalancerIP == "34.0.0.9" &&
+      kubectl_manifest.router_service.force_new && kubectl_manifest.router_service.wait &&
+      length(kubectl_manifest.router_gateway) == 0 &&
+      contains(keys(kubectl_manifest.runtm), "router_config")
+    )
+    error_message = "the edge router is a LoadBalancer on the reserved address, replaced on change and deleted only after its load balancer"
+  }
+  assert {
+    condition     = contains(keys(kubectl_manifest.runtm), "heal_role") && yamldecode(kubectl_manifest.runtm["role_binding"].yaml_body).subjects[0].name == local.runtm_sa_email
+    error_message = "Runtm's service account is bound, including the snapshot log access"
+  }
+}
+
+run "snapshot_log_access_can_be_turned_off" {
+  command = plan
+
+  variables {
+    snapshot_log_access = false
+  }
+
+  assert {
+    condition     = !contains(keys(kubectl_manifest.runtm), "heal_role") && !contains(keys(kubectl_manifest.runtm), "heal_role_binding")
+    error_message = "no Role in gke-managed-pod-snapshots"
+  }
 }

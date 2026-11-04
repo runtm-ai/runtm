@@ -71,10 +71,13 @@ module "runtm_sandbox" {
 ```
 
 One module instance per region. Pin `ref=` to a tag for reproducible
-applies. The machine running Terraform needs `gcloud` (authenticated as you),
-`kubectl`, `gke-gcloud-auth-plugin` and `curl` (Cloud Shell has all four): the
-in-cluster setup runs `kubectl` through the cluster's DNS endpoint with your
-credentials.
+applies. The machine running Terraform needs only Terraform and Google
+credentials (whatever the google provider uses: a service account, Workload
+Identity, `gcloud auth application-default login`). The in-cluster objects are
+applied by the [`alekc/kubectl`](https://registry.terraform.io/providers/alekc/kubectl)
+provider through the cluster's DNS endpoint with those same credentials, in
+the same apply that creates the cluster. The module configures that provider
+itself, so it cannot be used with `count` or `for_each`.
 
 ### Identity
 
@@ -97,14 +100,14 @@ bucket, push to the repository, and use the cluster through Kubernetes RBAC
 | APIs | container, compute, storage, artifactregistry, iam, cloudresourcemanager | Never disabled on destroy. |
 | VPC network + subnet | `runtm-sandbox-<label>-<region>` / `runtm-sandbox-<label>` | Custom mode, Private Google Access on. Nodes `subnet_cidr` (`10.77.0.0/20`), pods `pods_cidr` (`10.77.128.0/17`), Services `services_cidr` (`10.77.16.0/22`). Skipped when you [bring your own network](#bring-your-own-network). |
 | Cloud Router + Cloud NAT | `runtm-sandbox-nat-<label>` | Outbound internet for the private nodes and the sandboxes. `nat = "existing"` or `"none"` skips it. |
-| GKE Autopilot cluster | `runtm-sandbox-<label>` (regional) | RAPID channel, Pod Snapshots on, private nodes. The Kubernetes API's IP endpoint admits only `runtm_ingress_cidrs`; its DNS endpoint is Google IAM-authorized (the module's own setup uses it). |
+| GKE Autopilot cluster | `runtm-sandbox-<label>` (regional) | RAPID channel, Pod Snapshots on, private nodes. The Kubernetes API's IP endpoint admits only `runtm_ingress_cidrs`; its DNS endpoint is Google IAM-authorized (the module's kubectl provider uses it). |
 | Node service account | `rtm-node-<slug><disc>` | Kubernetes Engine Default Node Service Account (project) and Artifact Registry Reader (repository). |
 | Static IP | `runtm-sandbox-preview-<label>` (regional) | The preview router's load balancer. With [`preview`](#previews-on-your-own-domain), the Gateway's address `runtm-sandbox-gw-<label>` instead. |
 | Bucket | `runtm-sandbox-<label>-<disc>` | Hierarchical namespace, uniform access, public access prevented, soft delete off (Pod Snapshots requirements). `fs-snapshots/sessions/` expire after 90 days, `podsnapshots/backup/` after 30. Not deleted while it has objects. |
 | Artifact Registry repository | `runtm-sandbox-<label>` (Docker, in `region`) | Runtm copies its sandbox image here. |
 | Bucket grants to GKE | GKE node service agent: Storage Admin; GKE service agent: Storage Object User | Pod Snapshots write with short-lived per-path tokens (`federatedP4SA`) and delete expired snapshots. |
 | Grants to Runtm's service account | Storage Object Admin (bucket), Artifact Registry Writer (repository) | Each scoped to the one resource it is needed on. |
-| In the cluster | see below | Applied by `scripts/cluster-setup.sh`. |
+| In the cluster | see below | Applied by the kubectl provider (`k8s.tf`), one resource per object. |
 | `runtm/cluster.json` in the bucket | | `endpoint`, `ca`, `cluster`, `namespace`, `router_ip`: how Runtm finds the cluster. With `preview`, `preview` (domain, exposure, address) replaces `router_ip`; with `control_plane_access = "dns"`, `dns_endpoint` is added. Written last. |
 
 `<label>` is `<suffix>-<slug>` or `<slug>`; `<slug>` is the first 12 hex
@@ -173,7 +176,7 @@ In the cluster:
 
 No cluster-admin, no Secrets, nothing outside these namespaces. The last row
 lets Runtm read each node's Pod Snapshot agent version after a GKE upgrade; if
-your cluster refuses that grant the setup warns and continues, and Runtm
+your cluster refuses that grant, set `snapshot_log_access = false` and Runtm
 restores paused sessions from the workspace archive instead.
 
 ## Bring your own network
@@ -326,6 +329,7 @@ requests that carry a token wait while the router retries fetching them.
 | `pods_cidr` | `10.77.128.0/17` | Pod range (subnet the module creates). |
 | `services_cidr` | `10.77.16.0/22` | Service range (subnet the module creates). |
 | `sandbox_egress_allowed_cidrs` | `[]` | Private ranges sandboxes may reach. See [Sandbox egress](#sandbox-egress). |
+| `snapshot_log_access` | `true` | Let Runtm read the Pod Snapshot agents' logs (Role in `gke-managed-pod-snapshots`). See [What Runtm can do in the cluster](#what-runtm-can-do-in-the-cluster). |
 | `preview` | `null` | Previews on your own domain. See [Previews on your own domain](#previews-on-your-own-domain). |
 | `manage_firewall_rules` | `true` | Create the preview load balancer's firewall rule. |
 | `router_image` | per mode | Preview router image. |
@@ -356,6 +360,8 @@ it.
 
 ## Requirements
 
-Terraform ≥ 1.5, hashicorp/google ≥ 7.33, and `gcloud`, `kubectl`,
-`gke-gcloud-auth-plugin`, `curl` on the machine running Terraform (Cloud
-Shell has all of them).
+Terraform ≥ 1.7, hashicorp/google ≥ 7.33, alekc/kubectl 3.x, and Google
+credentials on the machine running Terraform. No `gcloud`, `kubectl` or auth
+plugin. The identity applying needs `roles/container.admin` (creating the
+cluster takes it anyway): it reaches the DNS endpoint and creates RBAC in the
+cluster.

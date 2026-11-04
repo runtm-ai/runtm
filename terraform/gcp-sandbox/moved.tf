@@ -26,3 +26,22 @@ moved {
   from = google_compute_address.router
   to   = google_compute_address.router[0]
 }
+
+# The in-cluster setup moved from scripts/cluster-setup.sh (local-exec) to the
+# kubectl provider (k8s.tf). Forget the old runs without their destroy-time
+# cleanup, which called the deleted script; the provider adopts the objects
+# they created (server-side apply, conflicts forced).
+
+removed {
+  from = terraform_data.cluster_setup
+  lifecycle {
+    destroy = false
+  }
+}
+
+removed {
+  from = terraform_data.router_lb_release
+  lifecycle {
+    destroy = false
+  }
+}

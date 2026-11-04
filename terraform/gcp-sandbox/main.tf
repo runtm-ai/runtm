@@ -49,10 +49,6 @@ locals {
   bucket_name    = "runtm-sandbox-${local.label}-${local.disc}" # 14+23+1+9 = 47 <= 63
   namespace      = "sandboxes"
 
-  # agent-sandbox controller release, pinned by URL and checksum.
-  agent_sandbox_url    = "https://github.com/kubernetes-sigs/agent-sandbox/releases/download/v1.0.9/sandbox-with-extensions.yaml"
-  agent_sandbox_sha256 = "4bf9ee5558e9a663f91cfa5963e96f2591bfaa1dcf79f03bfab65bc5d65cc699"
-
   labels = merge(var.labels, {
     "runtm-slug"  = local.slug
     "runtm-label" = local.label
@@ -156,8 +152,7 @@ locals {
   # The edge router's config (stock Caddy). With `preview` the router image carries its own.
   router_caddyfile = file("${path.module}/router/Caddyfile")
   # The router's address: the edge load balancer's, or the Gateway's.
-  router_address    = local.preview_enabled ? google_compute_address.preview[0].address : google_compute_address.router[0].address
-  router_address_id = local.preview_enabled ? google_compute_address.preview[0].id : google_compute_address.router[0].id
+  router_address = local.preview_enabled ? google_compute_address.preview[0].address : google_compute_address.router[0].address
 }
 
 data "google_project" "this" {
@@ -306,8 +301,8 @@ resource "google_project_iam_member" "node" {
 # Cluster: GKE Autopilot on the RAPID channel (Pod Snapshots need a recent
 # GKE), Pod Snapshots enabled at creation, private nodes. The Kubernetes API
 # answers on its IP endpoint only to Runtm's egress addresses; the DNS
-# endpoint (Google IAM-authorized) is how scripts/cluster-setup.sh reaches it
-# from Cloud Shell or your machine.
+# endpoint (Google IAM-authorized) is how this module's kubectl provider
+# reaches it (k8s.tf).
 # ---------------------------------------------------------------------------
 
 resource "google_container_cluster" "sandboxes" {
@@ -341,7 +336,7 @@ resource "google_container_cluster" "sandboxes" {
   }
 
   # control_plane_access = "ip": the IP endpoint, admitting Runtm's addresses only.
-  # "dns": no IP endpoint; Runtm, like scripts/cluster-setup.sh, uses the DNS one.
+  # "dns": no IP endpoint; Runtm, like this module (k8s.tf), uses the DNS one.
   dynamic "master_authorized_networks_config" {
     for_each = var.control_plane_access == "ip" ? [1] : []
     content {
@@ -518,7 +513,7 @@ resource "google_artifact_registry_repository_iam_member" "node_reader" {
 # assignments). Your organization's Runtm service account must exist before
 # these grants (Google refuses a binding to an unknown account): opening the
 # Runtm connect dialog creates it. In the cluster it gets the Kubernetes
-# RBAC in k8s/runtm.yaml.tftpl; in the project, only these two grants.
+# RBAC in k8s.tf; in the project, only these two grants.
 # ---------------------------------------------------------------------------
 
 # Workspace archives, snapshot metadata and runtm/cluster.json (read, write,
@@ -700,109 +695,6 @@ check "preview_certificate_validates" {
   }
 }
 
-# ---------------------------------------------------------------------------
-# In-cluster setup: agent-sandbox controller, label allow-list, namespace,
-# Pod Snapshot storage config and policy, Runtm's RBAC, preview router.
-# kubectl through the cluster's DNS endpoint with your gcloud credentials
-# (Cloud Shell has gcloud, kubectl and gke-gcloud-auth-plugin). Re-runs when
-# any input changes; every step is idempotent.
-# ---------------------------------------------------------------------------
-
-locals {
-  k8s_manifest = templatefile("${path.module}/k8s/runtm.yaml.tftpl", {
-    bucket               = google_storage_bucket.sandboxes.name
-    runtm_sa_email       = local.runtm_sa_email
-    router_ip            = local.router_address
-    ingress_cidrs        = var.runtm_ingress_cidrs
-    router_image         = local.router_image
-    router_caddyfile     = local.router_caddyfile
-    router_config_sha256 = sha256(local.router_caddyfile)
-    egress_allowed_cidrs = var.sandbox_egress_allowed_cidrs
-    # Previews on your own domain (null = Runtm's edge).
-    preview = local.preview_enabled ? {
-      domain          = local.preview_domain
-      domain_re       = replace(local.preview_domain, ".", "\\.")
-      gateway_class   = local.preview_internal ? "gke-l7-rilb" : "gke-l7-regional-external-managed"
-      address_name    = google_compute_address.preview[0].name
-      cert_name       = local.preview_cert_ref
-      proxy_cidr      = var.preview.proxy_only_subnet_cidr
-      security_policy = try(var.preview.security_policy, null)
-      app_origin      = var.runtm_app_origin
-      jwks_url        = coalesce(var.runtm_preview_jwks_url, "${var.runtm_app_origin}/.well-known/runtm-preview-jwks.json")
-    } : null
-  })
-  k8s_heal_rbac = templatefile("${path.module}/k8s/heal-rbac.yaml.tftpl", {
-    runtm_sa_email = local.runtm_sa_email
-  })
-}
-
-resource "terraform_data" "cluster_setup" {
-  triggers_replace = [
-    google_container_cluster.sandboxes.id,
-    sha256(local.k8s_manifest),
-    sha256(local.k8s_heal_rbac),
-    filesha256("${path.module}/scripts/cluster-setup.sh"),
-    local.agent_sandbox_sha256,
-    # Re-create the router after router_lb_release's cleanup deleted it.
-    terraform_data.router_lb_release.id,
-  ]
-
-  provisioner "local-exec" {
-    interpreter = ["bash", "-c"]
-    command     = "bash '${path.module}/scripts/cluster-setup.sh' apply"
-    environment = {
-      PROJECT_ID           = var.project_id
-      REGION               = var.region
-      CLUSTER              = google_container_cluster.sandboxes.name
-      ROUTER_IP            = local.router_address
-      ROUTER_MODE          = local.preview_enabled ? "gateway" : "edge"
-      AGENT_SANDBOX_URL    = local.agent_sandbox_url
-      AGENT_SANDBOX_SHA256 = local.agent_sandbox_sha256
-      MANIFEST             = local.k8s_manifest
-      HEAL_RBAC            = local.k8s_heal_rbac
-    }
-  }
-
-  depends_on = [
-    google_storage_bucket_iam_member.gke_node_agent,
-    google_storage_bucket_iam_member.gke_service_agent,
-    google_artifact_registry_repository_iam_member.node_reader,
-    google_compute_subnetwork.proxy_only,
-    google_compute_firewall.preview,
-    google_certificate_manager_certificate.preview,
-  ]
-}
-
-# On destroy, or when the cluster or reserved address is replaced: delete the
-# router Service and Gateway so GKE releases their load balancer before they
-# go (GKE does not always clean it up with the cluster). Kept apart from
-# cluster_setup, whose replacement on every config change must not take the
-# router down.
-resource "terraform_data" "router_lb_release" {
-  triggers_replace = [
-    google_container_cluster.sandboxes.id,
-    local.router_address_id,
-  ]
-
-  input = {
-    project_id = var.project_id
-    region     = var.region
-    cluster    = google_container_cluster.sandboxes.name
-    address    = local.router_address_id
-  }
-
-  provisioner "local-exec" {
-    when        = destroy
-    interpreter = ["bash", "-c"]
-    command     = "bash '${path.module}/scripts/cluster-setup.sh' destroy"
-    environment = {
-      PROJECT_ID = self.input.project_id
-      REGION     = self.input.region
-      CLUSTER    = self.input.cluster
-    }
-  }
-}
-
 # The mode-dependent keys of runtm/cluster.json: router_ip (Runtm's edge, the
 # default) or preview, plus the DNS endpoint with control_plane_access = "dns". Each is kept or dropped by a filtered `for`,
 # which (unlike a conditional between two object shapes) type-checks in every
@@ -847,5 +739,9 @@ resource "google_storage_bucket_object" "cluster" {
     local.cluster_json_options,
   ))
 
-  depends_on = [terraform_data.cluster_setup]
+  depends_on = [
+    kubectl_manifest.runtm,
+    kubectl_manifest.router_service,
+    kubectl_manifest.router_gateway,
+  ]
 }

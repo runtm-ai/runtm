@@ -205,6 +205,12 @@ variable "sandbox_egress_allowed_cidrs" {
   }
 }
 
+variable "snapshot_log_access" {
+  description = "Let Runtm read the Pod Snapshot agents' logs in the GKE-managed namespace gke-managed-pod-snapshots, to retarget a paused session's snapshot after a GKE upgrade. Set false if your cluster refuses the Role there; Runtm then restores those sessions from the workspace archive."
+  type        = bool
+  default     = true
+}
+
 # ---------------------------------------------------------------------------
 # Previews on your own domain
 #
