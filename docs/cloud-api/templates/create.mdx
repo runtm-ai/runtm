@@ -4,7 +4,7 @@ api: "POST /api/org-templates"
 description: "Create a new organization template"
 ---
 
-Creates a new organization template from a GitHub repository. Templates define pre-configured sandbox environments that auto-match to repositories based on repository patterns. Requires admin or owner role.
+Creates a new organization template from a GitHub repository, or a blank environment when `github_repo` is omitted. Templates define pre-configured sandbox environments that auto-match to repositories based on repository patterns. Requires admin or owner role.
 
 **Required scope:** `templates:write`
 
@@ -32,8 +32,8 @@ Creates a new organization template from a GitHub repository. Templates define p
   Template description.
 </ParamField>
 
-<ParamField body="github_repo" type="string" required>
-  GitHub repository in `owner/repo` form to use as the template source.
+<ParamField body="github_repo" type="string">
+  GitHub repository in `owner/repo` form to use as the template source. Omit for a blank environment.
 </ParamField>
 
 <ParamField body="github_branch" type="string" default="main">
