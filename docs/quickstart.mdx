@@ -61,7 +61,7 @@ If you prefer to see every piece, follow the manual path below. It creates the s
     <Visibility for="agents">
 
     ```text
-    cli: runtm-api template create --display-name "Payment Support" --github-repo <owner>/<repo> --skip-agent   # the CLI requires a repo; a blank environment is dashboard-only today
+    cli: runtm-api template create --display-name "Payment Support" --github-repo <owner>/<repo> --skip-agent   # omit --github-repo for a blank environment
     cli: runtm-api agents update <agent_id> --template "payment-support"
     cli-verify: runtm-api template get <template_id> | jq -r .build_status   # wait for "ready"
     ```

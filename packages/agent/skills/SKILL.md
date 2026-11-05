@@ -49,7 +49,7 @@ Read `build/overview.md` before creating or changing an agent.
 **Drive a sandbox yourself** (create a template, boot a session, run commands):
 
 ```bash
-runtm-api template create --display-name "Dev env" --github-repo owner/repo --skip-agent   # --skip-agent = clone-only build, implies --build
+runtm-api template create --display-name "Dev env" --github-repo owner/repo --skip-agent   # --skip-agent = clone-only build, implies --build; omit --github-repo for a blank environment
 runtm-api template get <template_id> | jq -r .build_status                                  # wait for "ready"
 runtm-api session create --template-id <template_id>
 runtm-api session exec <session_id> --json -- npm test                                      # {"stdout","stderr","exit_code"}

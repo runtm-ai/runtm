@@ -295,7 +295,7 @@ func newTemplateCreate(rt *Runtime) *cobra.Command {
 	)
 	cmd := &cobra.Command{
 		Use:   "create",
-		Short: "Create a template from a GitHub repo (POST /api/org-templates)",
+		Short: "Create a template, from a GitHub repo or blank (POST /api/org-templates)",
 		Long: `Creates the template record in 'pending' state. Trigger the build with
 'runtm template build <id>' after creation, or pass --build to kick it off in
 the same call. --skip-agent (which implies --build) runs a clone-only build with
@@ -306,8 +306,8 @@ is collected when a member launches a session from the template and injected as
 an environment variable. They are applied via a follow-up PATCH because the
 create endpoint does not accept them directly. The template is org-scoped.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if displayName == "" || githubRepo == "" {
-				return fmt.Errorf("--display-name and --github-repo are required")
+			if displayName == "" {
+				return fmt.Errorf("--display-name is required")
 			}
 			c, _, err := requireOrgClient(rt, "org templates")
 			if err != nil {
@@ -315,9 +315,11 @@ create endpoint does not accept them directly. The template is org-scoped.`,
 			}
 			body := map[string]any{
 				"display_name":  displayName,
-				"github_repo":   githubRepo,
 				"github_branch": branch,
 				"tier":          tier,
+			}
+			if githubRepo != "" {
+				body["github_repo"] = githubRepo
 			}
 			if name != "" {
 				body["name"] = name
@@ -368,14 +370,13 @@ create endpoint does not accept them directly. The template is org-scoped.`,
 	cmd.Flags().StringVar(&displayName, "display-name", "", "Human-readable name (required)")
 	cmd.Flags().StringVar(&name, "name", "", "Slug (auto-derived from repo if omitted)")
 	cmd.Flags().StringVar(&description, "description", "", "Free-form description")
-	cmd.Flags().StringVar(&githubRepo, "github-repo", "", "GitHub repo in owner/repo form (required)")
+	cmd.Flags().StringVar(&githubRepo, "github-repo", "", "GitHub repo in owner/repo form (omit for a blank environment)")
 	cmd.Flags().StringVar(&branch, "github-branch", "main", "Branch to clone")
 	cmd.Flags().StringVar(&tier, "tier", "basic", "Resource tier: basic, standard, max")
 	cmd.Flags().BoolVar(&build, "build", false, "Trigger the build immediately after creating")
 	cmd.Flags().BoolVar(&skipAgent, "skip-agent", false, "Clone-only build, no AI step (implies --build)")
 	cmd.Flags().StringArrayVar(&sessionArgs, "session-arg", nil, `Declare a session argument (repeatable). Shorthand: KEY=DEFAULT (optional text) or KEY (required text). For select/boolean/label/help, pass JSON: '{"key":"ENV","type":"select","options":["dev","prod"],"default":"dev"}'.`)
 	_ = cmd.MarkFlagRequired("display-name")
-	_ = cmd.MarkFlagRequired("github-repo")
 	return cmd
 }
 
