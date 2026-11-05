@@ -113,6 +113,10 @@ run "defaults_create_a_dedicated_network" {
     condition     = keys(local.cluster_json_options) == ["router_ip"]
     error_message = "cluster.json keeps its original keys"
   }
+  assert {
+    condition     = length(google_project_iam_member.runtm_cluster_connect) == 0
+    error_message = "the IP endpoint needs no project-level role"
+  }
 }
 
 run "existing_subnet_and_existing_nat" {
@@ -213,6 +217,10 @@ run "dns_only_control_plane" {
   assert {
     condition     = keys(local.cluster_json_options) == ["control_plane_access", "dns_endpoint", "router_ip"] && local.cluster_json_options.control_plane_access == "dns"
     error_message = "cluster.json carries the DNS endpoint"
+  }
+  assert {
+    condition     = length(google_project_iam_member.runtm_cluster_connect) == 1 && google_project_iam_member.runtm_cluster_connect[0].role == "roles/container.clusterViewer"
+    error_message = "the DNS endpoint's IAM gate admits Runtm's account"
   }
 }
 

@@ -89,8 +89,10 @@ short-lived access tokens. No key or secret is created anywhere. Open the
 Runtm dialog before you apply: it creates that account, and Google refuses a
 grant to an account that does not exist yet.
 
-That account gets **no project-level role**. It may use objects in the
-bucket, push to the repository, and use the cluster through Kubernetes RBAC
+That account gets **no project-level role** (one exception: with
+`control_plane_access = "dns"`, `roles/container.clusterViewer`, see below). It
+may use objects in the bucket, push to the repository, and use the cluster
+through Kubernetes RBAC
 (see [What Runtm can do in the cluster](#what-runtm-can-do-in-the-cluster)).
 
 ## What it creates
@@ -219,8 +221,11 @@ the control plane to reach nodes and, with `preview`, the one below, then set
 **Kubernetes API (`control_plane_access`).** `ip` (default): the IP endpoint,
 admitting only `runtm_ingress_cidrs`. `dns`: the IP endpoint is turned off and
 Runtm uses the DNS endpoint (`*.gke.goog`), authorized by Google IAM, so no
-public IP or allowlist remains. `dns` requires Runtm's support for DNS
-endpoints.
+public IP or allowlist remains. The DNS endpoint checks
+`container.clusters.connect` before Kubernetes RBAC, so in `dns` mode Runtm's
+account also gets `roles/container.clusterViewer` on the project (cluster
+metadata and connect, nothing inside the cluster). `dns` requires Runtm's
+support for DNS endpoints.
 
 ## Sandbox egress
 

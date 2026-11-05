@@ -509,7 +509,7 @@ resource "google_artifact_registry_repository_iam_member" "node_reader" {
 # assignments). Your organization's Runtm service account must exist before
 # these grants (Google refuses a binding to an unknown account): opening the
 # Runtm connect dialog creates it. In the cluster it gets the Kubernetes
-# RBAC in k8s.tf; in the project, only these two grants.
+# RBAC in k8s.tf; in the project, only these grants.
 # ---------------------------------------------------------------------------
 
 # Workspace archives, snapshot metadata and runtm/cluster.json (read, write,
@@ -527,6 +527,19 @@ resource "google_artifact_registry_repository_iam_member" "runtm_writer" {
   repository = google_artifact_registry_repository.images.name
   role       = "roles/artifactregistry.writer"
   member     = local.runtm_sa_member
+}
+
+# control_plane_access = "dns": the DNS endpoint checks Google IAM
+# (container.clusters.connect) before Kubernetes RBAC applies. clusterViewer is
+# the smallest predefined role carrying it: cluster metadata get/list plus
+# connect, nothing inside the cluster (k8s.tf's RBAC still bounds that). The IP
+# endpoint needs no IAM grant, so `ip` keeps none.
+resource "google_project_iam_member" "runtm_cluster_connect" {
+  count = var.control_plane_access == "dns" ? 1 : 0
+
+  project = var.project_id
+  role    = "roles/container.clusterViewer"
+  member  = local.runtm_sa_member
 }
 
 # ---------------------------------------------------------------------------
