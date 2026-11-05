@@ -122,7 +122,7 @@ runtm-api template build-logs <template_id>         # 4. JSON lines until event 
 runtm-api template get <template_id> | jq '{build_status, has_all_required}'   # 5. confirm
 ```
 
-`--display-name` is required; omit `--github-repo` for a blank environment. `--name` sets the slug (derived from the repo if omitted). `--tier` is `basic`, `standard` or `max`. Pass `--build` to trigger the build in the same call.
+`--display-name` is required; omit `--github-repo` for a blank environment. `--name` sets the slug (derived from the repo, or the display name, if omitted). `--tier` is `basic`, `standard` or `max`. Pass `--build` to trigger the build in the same call.
 
 ### Faster: clone-only build with `--skip-agent`
 

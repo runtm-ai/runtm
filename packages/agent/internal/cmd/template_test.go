@@ -132,8 +132,9 @@ func TestTemplateCreateRepoIsOptional(t *testing.T) {
 		if err := cmd.Execute(); err != nil {
 			t.Fatalf("%v: execute: %v", tc.argv, err)
 		}
-		if body["github_repo"] != tc.wantRepo {
-			t.Errorf("%v: github_repo = %v, want %v (body %v)", tc.argv, body["github_repo"], tc.wantRepo, body)
+		gotRepo, hasRepo := body["github_repo"]
+		if gotRepo != tc.wantRepo || hasRepo != (tc.wantRepo != nil) {
+			t.Errorf("%v: github_repo = %v (present %v), want %v (present %v)", tc.argv, gotRepo, hasRepo, tc.wantRepo, tc.wantRepo != nil)
 		}
 	}
 }

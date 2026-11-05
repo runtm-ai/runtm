@@ -368,7 +368,7 @@ create endpoint does not accept them directly. The template is org-scoped.`,
 		},
 	}
 	cmd.Flags().StringVar(&displayName, "display-name", "", "Human-readable name (required)")
-	cmd.Flags().StringVar(&name, "name", "", "Slug (auto-derived from repo if omitted)")
+	cmd.Flags().StringVar(&name, "name", "", "Slug (auto-derived from repo, or display name, if omitted)")
 	cmd.Flags().StringVar(&description, "description", "", "Free-form description")
 	cmd.Flags().StringVar(&githubRepo, "github-repo", "", "GitHub repo in owner/repo form (omit for a blank environment)")
 	cmd.Flags().StringVar(&branch, "github-branch", "main", "Branch to clone")
