@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Agent CLI**: `runtm-api template create` no longer requires `--github-repo`; omit it for a blank environment, as the dashboard and API already allow
 - **Agent CLI**: JSON output no longer HTML-escapes `&`, `<`, `>` — URLs print literally (e.g. the `&` query separators in a Slack `authorize_url`) instead of being unicode-escaped
 - **Agent CLI**: `runtm-api session list` now uses the hosted cloud proxy URL consistently instead of leaking the internal `localhost:8081` backend URL when listing sessions through `https://app.runtm.com/api/cloud`
 - **API**: Reworked DB connection pool config to stop recurring `SSL connection has been closed unexpectedly` errors behind Fly MPG's PgBouncer

@@ -1,6 +1,11 @@
 package cmd
 
-import "testing"
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"testing"
+)
 
 func TestParseSessionArgs_Shorthand(t *testing.T) {
 	args, err := parseSessionArgs([]string{"BRANCH=main", "TOKEN"})
@@ -104,5 +109,31 @@ func TestParseSessionArgs_HelpTextOmittedIsNil(t *testing.T) {
 	}
 	if args[0]["default"] != nil {
 		t.Errorf("default = %v, want nil", args[0]["default"])
+	}
+}
+
+func TestTemplateCreateRepoIsOptional(t *testing.T) {
+	for _, tc := range []struct {
+		argv     []string
+		wantRepo any
+	}{
+		{[]string{"create", "--display-name", "Blank"}, nil},
+		{[]string{"create", "--display-name", "Dev", "--github-repo", "acme/app"}, "acme/app"},
+	} {
+		var body map[string]any
+		rt, _ := shareRuntime(t, func(w http.ResponseWriter, r *http.Request) {
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprint(w, `{"id":"t1"}`)
+		})
+		t.Setenv("RUNTM_ORG_ID", "org_test")
+		cmd := NewTemplateCommand(rt)
+		cmd.SetArgs(tc.argv)
+		if err := cmd.Execute(); err != nil {
+			t.Fatalf("%v: execute: %v", tc.argv, err)
+		}
+		if body["github_repo"] != tc.wantRepo {
+			t.Errorf("%v: github_repo = %v, want %v (body %v)", tc.argv, body["github_repo"], tc.wantRepo, body)
+		}
 	}
 }
