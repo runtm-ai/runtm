@@ -85,6 +85,20 @@ class TestGenerateSrtConfig:
         assert "secrets/" in srt_config["filesystem"]["denyWrite"]
         assert ".env" in srt_config["filesystem"]["denyWrite"]
 
+    def test_enables_pty_support(self) -> None:
+        """Should allow pty operations so interactive TUIs can use raw mode.
+
+        Without allowPty, the macOS seatbelt profile denies the tty control
+        ioctls and Node/ink TUIs (including Claude Code) fail setRawMode
+        with EPERM, leaving terminal echo on.
+        """
+        from runtm_sandbox.config import generate_srt_config
+
+        config = SandboxConfig()
+        srt_config = generate_srt_config(config)
+
+        assert srt_config["allowPty"] is True
+
     def test_custom_network_allowlist(self) -> None:
         """Should use custom domain allowlist when specified."""
         from runtm_sandbox.config import generate_srt_config

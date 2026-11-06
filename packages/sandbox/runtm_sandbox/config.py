@@ -51,6 +51,7 @@ def generate_srt_config(config: SandboxConfig) -> dict:
     return {
         "filesystem": filesystem_config,
         "network": network_config,
+        "allowPty": True,
     }
 
 
