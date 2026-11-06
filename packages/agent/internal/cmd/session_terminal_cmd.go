@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/coder/websocket"
@@ -214,7 +213,7 @@ Scope required: sessions:terminal.`,
 
 			// SIGWINCH -> resize control frame.
 			winch := make(chan os.Signal, 1)
-			signal.Notify(winch, syscall.SIGWINCH)
+			notifyResize(winch)
 			defer signal.Stop(winch)
 			go func() {
 				for {
