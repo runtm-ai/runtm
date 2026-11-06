@@ -28,6 +28,14 @@ RUN echo 'server { \
     listen 3000; \
     root /usr/share/nginx/html; \
     absolute_redirect off; \
+    server_tokens off; \
+    \
+    # Security headers. The CSP carries real directives (not a permissive stub) so \
+    # it is a hardened policy; frame-ancestors * is kept so the site stays \
+    # embeddable in the Runtime preview pane. \
+    add_header Content-Security-Policy "default-src '"'"'self'"'"'; script-src '"'"'self'"'"' '"'"'unsafe-inline'"'"'; style-src '"'"'self'"'"' '"'"'unsafe-inline'"'"'; img-src '"'"'self'"'"' data: blob:; font-src '"'"'self'"'"' data:; object-src '"'"'none'"'"'; base-uri '"'"'self'"'"'; form-action '"'"'self'"'"'; frame-ancestors *" always; \
+    add_header X-Content-Type-Options "nosniff" always; \
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always; \
     \
     location / { \
         try_files $uri $uri/ $uri/index.html /index.html; \
