@@ -15,7 +15,7 @@ FROM oven/bun:1-alpine AS frontend-builder
 WORKDIR /app/frontend
 
 # Install dependencies first (better caching)
-COPY frontend/package*.json frontend/bun.lockb* ./
+COPY frontend/package*.json frontend/bun.lock* ./
 
 # Use Bun for ultra-fast installs
 RUN bun install --frozen-lockfile 2>/dev/null || bun install
