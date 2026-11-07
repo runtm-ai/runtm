@@ -61,6 +61,7 @@ class MyService:
         # Business logic here
         return {"result": data}
 
+
 my_service = MyService()
 ```
 
@@ -73,6 +74,7 @@ from app.services.my_service import my_service
 
 router = APIRouter()
 
+
 @router.post("/my-endpoint")
 async def my_endpoint(data: dict):
     return my_service.process(data["input"])
@@ -82,6 +84,7 @@ async def my_endpoint(data: dict):
 
 ```python
 from app.api.v1.my_endpoint import router as my_endpoint_router
+
 app.include_router(my_endpoint_router, prefix="/api/v1")
 ```
 
@@ -218,10 +221,12 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 from app.db import Base, get_db
 
+
 class Item(Base):
     __tablename__ = "items"
     id = Column(Integer, primary_key=True)
     name = Column(String)
+
 
 @router.get("/items")
 def get_items(db: Session = Depends(get_db)):

@@ -87,10 +87,11 @@ class MyFeatureService:
     def __init__(self):
         # Initialize resources
         pass
-    
+
     def process(self, input_data: str) -> dict:
         # Your business logic here
         return {"result": "processed"}
+
 
 my_feature_service = MyFeatureService()
 ```
@@ -106,6 +107,7 @@ from app.services.my_feature import my_feature_service
 
 router = APIRouter()
 
+
 @router.post("/my-endpoint")
 async def my_endpoint(data: dict):
     # Delegate to service - keep endpoint thin
@@ -119,6 +121,7 @@ In `app/main.py`:
 
 ```python
 from app.api.v1.my_endpoint import router as my_endpoint_router
+
 app.include_router(my_endpoint_router, prefix="/api/v1")
 ```
 
@@ -151,6 +154,7 @@ Use environment variables via `app/core/config.py`:
 
 ```python
 from app.core.config import settings
+
 api_key = settings.my_api_key
 ```
 
@@ -226,6 +230,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 client = TestClient(app)
+
 
 def test_my_endpoint():
     response = client.post("/api/v1/my-endpoint", json={"key": "value"})
@@ -344,10 +349,12 @@ from app.db import Base, get_db
 # Define a model
 from sqlalchemy import Column, Integer, String
 
+
 class Item(Base):
     __tablename__ = "items"
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
+
 
 # Use in endpoint
 @router.get("/items")

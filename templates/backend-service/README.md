@@ -96,6 +96,7 @@ class MyFeatureService:
         # Your business logic here
         return {"result": f"Processed: {input_data}"}
 
+
 my_feature_service = MyFeatureService()
 ```
 
@@ -111,11 +112,14 @@ from app.services.my_feature import my_feature_service
 
 router = APIRouter()
 
+
 class MyRequest(BaseModel):
     input: str
 
+
 class MyResponse(BaseModel):
     result: str
+
 
 @router.post("/my-feature", response_model=MyResponse)
 async def my_feature(request: MyRequest) -> MyResponse:
@@ -129,6 +133,7 @@ In `app/main.py`:
 
 ```python
 from app.api.v1.my_feature import router as my_feature_router
+
 app.include_router(my_feature_router, prefix="/api/v1")
 ```
 
@@ -140,6 +145,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 client = TestClient(app)
+
 
 def test_my_feature():
     response = client.post("/api/v1/my-feature", json={"input": "test"})
@@ -202,10 +208,12 @@ from sqlalchemy.orm import Session
 from app.db import Base, get_db
 from sqlalchemy import Column, Integer, String
 
+
 class Item(Base):
     __tablename__ = "items"
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
+
 
 @router.get("/items")
 def get_items(db: Session = Depends(get_db)):

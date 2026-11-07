@@ -39,7 +39,7 @@ class TestGenerateSrtConfig:
         srt_config = generate_srt_config(config)
 
         # Should have the default domains
-        domains = srt_config["network"]["allowDomains"]
+        domains = srt_config["network"]["allowedDomains"]
         assert "pypi.org" in domains
         assert "github.com" in domains
         assert "api.anthropic.com" in domains
@@ -55,7 +55,7 @@ class TestGenerateSrtConfig:
         )
         srt_config = generate_srt_config(config)
 
-        assert srt_config["network"]["allowDomains"] == []
+        assert srt_config["network"]["allowedDomains"] == []
 
     def test_custom_write_paths(self) -> None:
         """Should use custom write paths when specified."""
@@ -100,7 +100,7 @@ class TestGenerateSrtConfig:
         )
         srt_config = generate_srt_config(config)
 
-        assert srt_config["network"]["allowDomains"] == custom_domains
+        assert srt_config["network"]["allowedDomains"] == custom_domains
 
 
 class TestConfigSerialization:
@@ -142,7 +142,7 @@ class TestConfigSerialization:
 
         assert loaded["filesystem"]["allowWrite"] == [".", "build/"]
         assert loaded["filesystem"]["denyWrite"] == [".git/"]
-        assert loaded["network"]["allowDomains"] == ["example.com"]
+        assert loaded["network"]["allowedDomains"] == ["example.com"]
 
 
 class TestConfigWriteToFile:

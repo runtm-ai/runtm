@@ -157,6 +157,7 @@ class MyFeatureService:
     def process(self, data: str) -> dict:
         return {"result": f"Processed: {data}"}
 
+
 my_feature_service = MyFeatureService()
 ```
 
@@ -166,8 +167,10 @@ my_feature_service = MyFeatureService()
 # backend/app/models/my_feature.py
 from pydantic import BaseModel
 
+
 class MyRequest(BaseModel):
     input: str
+
 
 class MyResponse(BaseModel):
     result: str
@@ -179,6 +182,7 @@ class MyResponse(BaseModel):
 # backend/app/api/v1/my_feature.py
 from app.services.my_feature import my_feature_service
 from app.models.my_feature import MyRequest, MyResponse
+
 
 @router.post("/my-feature", response_model=MyResponse)
 async def my_feature(request: MyRequest) -> MyResponse:
@@ -285,10 +289,12 @@ from sqlalchemy.orm import Session
 from app.db import Base, get_db
 from sqlalchemy import Column, Integer, String
 
+
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True)
     email = Column(String, unique=True, nullable=False)
+
 
 @router.get("/users")
 def get_users(db: Session = Depends(get_db)):

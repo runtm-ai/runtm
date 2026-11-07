@@ -225,18 +225,17 @@ class TestEnsureSandboxDeps:
 
         with patch.object(shutil, "which", return_value="/some/path"):
             with patch("platform.system", return_value="Darwin"):
-                result = ensure_sandbox_deps(auto_approve=True)
+                result = ensure_sandbox_deps(auto_install=True)
 
         assert result is True
 
     def test_returns_false_when_deps_missing_and_not_approved(self) -> None:
-        """Should return False when deps missing and user doesn't approve."""
+        """Should return False when deps missing and auto_install is False."""
         from runtm_sandbox.deps import ensure_sandbox_deps
 
         with patch.object(shutil, "which", return_value=None):
             with patch("platform.system", return_value="Darwin"):
-                # Don't auto-approve, don't mock the prompt - it should return False
-                # because we can't install without approval
-                result = ensure_sandbox_deps(auto_approve=False, _skip_prompt=True)
+                # Don't auto-install, skip prompt - it should return False
+                result = ensure_sandbox_deps(auto_install=False, _skip_install=True)
 
         assert result is False

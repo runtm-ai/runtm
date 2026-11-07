@@ -72,6 +72,7 @@ frontend/
 async def create_item(data: ItemCreate) -> Item:
     return items_service.create_item(data)
 
+
 # Service layer - business logic
 class ItemsService:
     def create_item(self, data: ItemCreate) -> Item:
@@ -238,10 +239,12 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 from app.db import Base, get_db
 
+
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True)
     email = Column(String, unique=True)
+
 
 @router.get("/users")
 def get_users(db: Session = Depends(get_db)):

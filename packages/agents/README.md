@@ -40,6 +40,7 @@ if adapter.check_installed():
 import asyncio
 from pathlib import Path
 
+
 async def main():
     workspace = Path("./my-project")
 
@@ -49,6 +50,7 @@ async def main():
         agent_type="claude-code",
     ):
         print(f"[{output.type}] {output.content}")
+
 
 asyncio.run(main())
 ```

@@ -205,8 +205,9 @@ class TestLocalSandboxProviderAttach:
         provider.create("sbx_attach1", SandboxConfig())
 
         mock_run = MagicMock(return_value=MagicMock(returncode=0))
-        with patch("subprocess.run", mock_run):
-            exit_code = provider.attach("sbx_attach1")
+        with patch.object(provider, "_check_srt_available", return_value=True):
+            with patch("subprocess.run", mock_run):
+                exit_code = provider.attach("sbx_attach1")
 
         assert exit_code == 0
         mock_run.assert_called_once()
@@ -260,8 +261,9 @@ class TestLocalSandboxProviderConfigGeneration:
         """Should create sandbox-config.json during attach."""
         provider.create("sbx_config1", SandboxConfig())
 
-        with patch("subprocess.run", return_value=MagicMock(returncode=0)):
-            provider.attach("sbx_config1")
+        with patch.object(provider, "_check_srt_available", return_value=True):
+            with patch("subprocess.run", return_value=MagicMock(returncode=0)):
+                provider.attach("sbx_config1")
 
         config_file = temp_sandboxes_dir / "sbx_config1" / "sandbox-config.json"
         assert config_file.exists()
@@ -273,8 +275,9 @@ class TestLocalSandboxProviderConfigGeneration:
         config = SandboxConfig()
         provider.create("sbx_config2", config)
 
-        with patch("subprocess.run", return_value=MagicMock(returncode=0)):
-            provider.attach("sbx_config2")
+        with patch.object(provider, "_check_srt_available", return_value=True):
+            with patch("subprocess.run", return_value=MagicMock(returncode=0)):
+                provider.attach("sbx_config2")
 
         config_file = temp_sandboxes_dir / "sbx_config2" / "sandbox-config.json"
         srt_config = json.loads(config_file.read_text())
