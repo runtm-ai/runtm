@@ -27,6 +27,7 @@ Where things are:
 | The method for building any agent (six steps, in order) | `build/overview` and its six pages |
 | A complete agent to copy (payments support, fraud and risk review, merchant underwriting) | `guides/overview`, `guides/payments/*` |
 | One task (connect Stripe read-only, add a KYB provider, add an MCP server, route a Linear team, test a schedule, request an approval, delegate to another agent) | `guides/recipes/*` |
+| An app built in a session needs data every session of its template sees (a tracker, a dashboard, any small app with saved state) | `guides/recipes/share-data-across-sessions` |
 | Multi-agent: one agent handing work to subagents behind human approvals | `guides/recipes/delegate-to-another-agent`, `guides/payments/multi-agent-underwriting` |
 | Driving a session, template lifecycle, debugging a stuck run, API patterns | `cloud-api/patterns/*` |
 | Every command, flag, scope, and error | `cloud-api/agent-cli`, `cloud-api/scopes`, `cloud-api/errors`, then the endpoint pages |

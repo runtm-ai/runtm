@@ -138,3 +138,31 @@ func TestTemplateCreateRepoIsOptional(t *testing.T) {
 		}
 	}
 }
+
+func TestTemplateUpdateSharedDatabase(t *testing.T) {
+	for _, tc := range []struct {
+		flag string
+		want any
+	}{{"--shared-database", true}, {"--shared-database=false", false}} {
+		var method, path string
+		var body map[string]any
+		rt, _ := shareRuntime(t, func(w http.ResponseWriter, r *http.Request) {
+			method, path = r.Method, r.URL.Path
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprint(w, `{}`)
+		})
+		t.Setenv("RUNTM_ORG_ID", "org_test")
+		cmd := NewTemplateCommand(rt)
+		cmd.SetArgs([]string{"update", "tpl-1", tc.flag})
+		if err := cmd.Execute(); err != nil {
+			t.Fatalf("%s: execute: %v", tc.flag, err)
+		}
+		if method != http.MethodPatch || path[len(path)-len("/org-templates/tpl-1"):] != "/org-templates/tpl-1" {
+			t.Errorf("%s: %s %s, want PATCH of the template", tc.flag, method, path)
+		}
+		if len(body) != 1 || body["shared_database"] != tc.want {
+			t.Errorf("%s: body = %v, want only shared_database=%v", tc.flag, body, tc.want)
+		}
+	}
+}

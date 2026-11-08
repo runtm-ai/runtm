@@ -1,0 +1,120 @@
+---
+title: "Share an app's data across sessions"
+sidebarTitle: "Share data across sessions"
+description: "Turn on Shared database for a template and copy lake.js into your app, so every session of that template reads and writes the same data. Read when an app built in a session needs saved state that teammates and later sessions see: a tracker, a dashboard, a small internal tool."
+keywords: ["database", "shared database", "persistence", "state", "lake.js", "sql", "across sessions", "vibe coding", "app data"]
+---
+
+## Outcome
+
+An app built in a session saves its data to a database that every session of the same template shares. A teammate who opens a new session, or the same app running in another session, sees the same rows straight away. Rebuilding the template or deleting a session doesn't lose the data.
+
+Each session has its own disk, so a file or SQLite database written inside the sandbox is only visible to that session. Use this recipe when the data has to outlive one session.
+
+## Before you start
+
+- The app runs in Node.js 20 or later.
+- You can edit the template's settings.
+- The app writes a few times a second at most: a form submission, a status change, a nightly import. See [Limits](#limits).
+
+## Do it
+
+<Steps>
+  <Step title="Turn on Shared database for the template">
+    Open the template (a computer in the dashboard), click **Edit** in **Settings**, and set **Shared Database** to **Enabled**. Save. It applies to running and new sessions right away. No rebuild is needed.
+
+    <Visibility for="agents">
+
+    ```text
+    cli: runtm-api template update <template_id> --shared-database
+    cli-verify: runtm-api template get <template_id> | jq .shared_database
+    ```
+
+    </Visibility>
+  </Step>
+  <Step title="Copy lake.js into the app">
+    In a session of that template, from the app's directory:
+
+    ```sh
+    curl -fsSLo lake.js https://raw.githubusercontent.com/runtm-ai/runtm/main/packages/lake/lake.js
+    npm install @duckdb/node-api@2.0.0-r.1
+    ```
+
+    Copy the file as it is. It has no settings: it finds the template's database from the session.
+
+    Install exactly that DuckDB version. Every app sharing the template's database has to run the same one, and `lake.js` stops with the install command if it finds another.
+  </Step>
+  <Step title="Read with query, write with write">
+    `query(sql, params)` returns rows as plain objects. `write(fn)` runs your statements and saves them for every session. Inside `write`, `db.run(sql, params)` executes a statement and `db.query(sql, params)` returns rows.
+
+    ```js
+    import { query, write } from './lake.js';
+
+    await write(db => db.run(`
+      create table if not exists tasks (
+        id varchar not null,
+        title varchar,
+        done boolean,
+        created_at varchar
+      )
+    `));
+
+    await write(db => db.run(
+      'insert into tasks values (?, ?, ?, ?)',
+      [crypto.randomUUID(), 'Ship the tracker', false, new Date().toISOString()],
+    ));
+
+    await write(db => db.run('update tasks set done = true where id = ?', [taskId]));
+
+    const open = await query('select * from tasks where not done order by created_at');
+    ```
+
+    Group statements that belong together in one `write`. They are saved together or not at all. Keep only database statements inside `write`: it can run more than once when two sessions save at the same moment, so send emails or call APIs after it returns.
+  </Step>
+  <Step title="Write tables the way this database expects">
+    A few common SQL features aren't available. Use these patterns instead:
+
+    | Instead of | Write |
+    |---|---|
+    | `id integer primary key`, `serial`, sequences | `id varchar not null`, and insert `crypto.randomUUID()` |
+    | `unique` | check with a `select` inside the same `write` before inserting |
+    | `default now()` / `default current_timestamp` | set the value in the app: `new Date().toISOString()` |
+    | foreign keys | plain `varchar` columns holding the other row's id |
+
+    `not null`, literal defaults (`default false`, `default 0`), `create table if not exists`, joins, aggregates and window functions all work. If a statement uses an unsupported feature, the error says what to write instead.
+  </Step>
+</Steps>
+
+## Verify
+
+Open two sessions of the template. Run the app, or this snippet, in the first:
+
+```sh
+node -e "import('./lake.js').then(async l => { await l.write(db => db.run('create table if not exists hello (msg varchar)')); await l.write(db => db.run(\"insert into hello values ('from session one')\")); })"
+```
+
+Then in the second:
+
+```sh
+node -e "import('./lake.js').then(async l => console.log(await l.query('select * from hello')))"
+```
+
+The second session prints `from session one`.
+
+## Limits
+
+- **Built for small apps that write occasionally.** Plan on about one save per second for the whole template, across every session. Reads are not limited the same way.
+- **One database per template.** Every session of the template shares it, including teammates' sessions. Two templates never see each other's data.
+- **Node.js only.** `lake.js` is the supported client.
+- **One DuckDB version.** Every app on the template's database uses `@duckdb/node-api@2.0.0-r.1`. A newer DuckDB writes data an older one can't read, so a mismatched app would lock out the others.
+
+## Gotchas
+
+- **"Shared database is off for this session's template."** Turn it on in the template's settings (step 1). A session opened without a template, or from a different template, gets this error too.
+- **"lake.js runs inside a runtm session".** The file only works in a runtm session. To test locally, run the app in a session and open its preview.
+- **The app shows old data after another session saves.** Each `query` picks up saved changes, so read again rather than caching results in memory for long.
+- **A long-running app keeps working.** `lake.js` renews its own access while the session runs. Nothing to restart.
+
+<Card title="Templates" icon="desktop" href="/concepts/templates">
+  What a template holds and how sessions are built from it.
+</Card>
