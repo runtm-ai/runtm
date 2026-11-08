@@ -389,6 +389,7 @@ func newTemplateUpdate(rt *Runtime) *cobra.Command {
 		startupScript    string
 		ownerTeam        string
 		rebuildSchedule  string
+		sharedDatabase   bool
 	)
 	cmd := &cobra.Command{
 		Use:   "update <template_id>",
@@ -435,8 +436,11 @@ help, pass JSON per arg, e.g.
 					body["rebuild_schedule"] = rebuildSchedule
 				}
 			}
+			if cmd.Flags().Changed("shared-database") {
+				body["shared_database"] = sharedDatabase
+			}
 			if len(body) == 0 {
-				return fmt.Errorf("pass at least one field to update (--display-name, --description, --session-arg, --restart-at-startup, --startup-script, --owner-team, --rebuild-schedule)")
+				return fmt.Errorf("pass at least one field to update (--display-name, --description, --session-arg, --restart-at-startup, --startup-script, --owner-team, --rebuild-schedule, --shared-database)")
 			}
 			resp, err := c.PatchJSON("/org-templates/"+url.PathEscape(args[0]), body)
 			return runJSON(rt, resp, err)
@@ -449,6 +453,7 @@ help, pass JSON per arg, e.g.
 	cmd.Flags().StringVar(&startupScript, "startup-script", "", "Path to a startup script, relative to the workdir or absolute (empty string clears)")
 	cmd.Flags().StringVar(&ownerTeam, "owner-team", "", "Owning group (Better Auth team id); pass an empty string to make it org-wide. Admin or creator only.")
 	cmd.Flags().StringVar(&rebuildSchedule, "rebuild-schedule", "", "Auto-rebuild cron (5-field, UTC); pass an empty string to turn it off")
+	cmd.Flags().BoolVar(&sharedDatabase, "shared-database", false, "Give every session of this template the same shared database (lake.js); --shared-database=false turns it off")
 	return cmd
 }
 
