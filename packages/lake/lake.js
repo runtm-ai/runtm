@@ -1,7 +1,7 @@
 // lake.js: a small SQL database shared by every runtm session of one template.
 //
 // Copy this file into your app as-is, then:
-//   npm install @duckdb/node-api
+//   npm install @duckdb/node-api@2.0.0-r.1
 //
 //   import { query, write } from './lake.js';
 //   await write(db => db.run(`create table if not exists notes (id varchar, body varchar)`));
@@ -33,6 +33,10 @@ const CACHE_DIR = path.join(os.tmpdir(), 'lake-cache', `${process.pid}-${randomU
 const INLINE_ROW_LIMIT = 100; // inserts up to this many rows live in the catalog, not Parquet
 const MAX_WRITE_ATTEMPTS = 10;
 const TOKEN_REFRESH_MARGIN_MS = 5 * 60 * 1000;
+// Every app sharing a lake must run the same DuckDB: a catalog written by a newer
+// DuckDB can't be opened by an older one, so one mismatched app would lock out the rest.
+const DUCKDB_VERSION = 'v2.0';
+const DUCKDB_PACKAGE = '@duckdb/node-api@2.0.0-r.1';
 
 let lake = null; // { bucket, catalogObject, dataPath, token, expiresAt }
 let connectionPromise;
@@ -235,6 +239,10 @@ async function getConnection() {
     process.once('exit', () => rmSync(CACHE_DIR, { recursive: true, force: true }));
     const instance = await DuckDBInstance.create(':memory:');
     const connection = await instance.connect();
+    const [{ version }] = (await connection.runAndReadAll('select version() as version')).getRowObjectsJson();
+    if (!version.startsWith(`${DUCKDB_VERSION}.`)) {
+      throw new Error(`lake.js needs DuckDB ${DUCKDB_VERSION}.x but this app has ${version}. Run: npm install ${DUCKDB_PACKAGE}`);
+    }
     for (const sql of ['INSTALL ducklake', 'LOAD ducklake', 'INSTALL httpfs', 'LOAD httpfs']) {
       await connection.run(sql);
     }

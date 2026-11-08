@@ -5,7 +5,7 @@ A small SQL database shared by every runtm session of one template. Copy
 
 ```sh
 curl -fsSLo lake.js https://raw.githubusercontent.com/runtm-ai/runtm/main/packages/lake/lake.js
-npm install @duckdb/node-api
+npm install @duckdb/node-api@2.0.0-r.1
 ```
 
 ```js

@@ -37,10 +37,12 @@ Each session has its own disk, so a file or SQLite database written inside the s
 
     ```sh
     curl -fsSLo lake.js https://raw.githubusercontent.com/runtm-ai/runtm/main/packages/lake/lake.js
-    npm install @duckdb/node-api
+    npm install @duckdb/node-api@2.0.0-r.1
     ```
 
     Copy the file as it is. It has no settings: it finds the template's database from the session.
+
+    Install exactly that DuckDB version. Every app sharing the template's database has to run the same one, and `lake.js` stops with the install command if it finds another.
   </Step>
   <Step title="Read with query, write with write">
     `query(sql, params)` returns rows as plain objects. `write(fn)` runs your statements and saves them for every session. Inside `write`, `db.run(sql, params)` executes a statement and `db.query(sql, params)` returns rows.
@@ -104,6 +106,7 @@ The second session prints `from session one`.
 - **Built for small apps that write occasionally.** Plan on about one save per second for the whole template, across every session. Reads are not limited the same way.
 - **One database per template.** Every session of the template shares it, including teammates' sessions. Two templates never see each other's data.
 - **Node.js only.** `lake.js` is the supported client.
+- **One DuckDB version.** Every app on the template's database uses `@duckdb/node-api@2.0.0-r.1`. A newer DuckDB writes data an older one can't read, so a mismatched app would lock out the others.
 
 ## Gotchas
 
