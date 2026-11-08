@@ -195,6 +195,27 @@ jobs:
           cd templates/backend-service
           pytest tests -v
 
+  test-lake:
+    name: Test lake.js
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: packages/lake/package-lock.json
+
+      - name: Install the pinned DuckDB
+        working-directory: packages/lake
+        run: npm ci
+
+      - name: Run tests
+        working-directory: packages/lake
+        run: npm test
+
   build:
     name: Build Docker Images
     runs-on: ubuntu-latest

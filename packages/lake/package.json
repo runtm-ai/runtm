@@ -1,0 +1,12 @@
+{
+  "name": "runtm-lake",
+  "private": true,
+  "type": "module",
+  "description": "Tests for lake.js. Apps copy lake.js itself; this package is not published.",
+  "scripts": {
+    "test": "node --test test/lake.test.mjs"
+  },
+  "devDependencies": {
+    "@duckdb/node-api": "2.0.0-r.1"
+  }
+}
