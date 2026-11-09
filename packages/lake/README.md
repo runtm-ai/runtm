@@ -19,4 +19,4 @@ console.log(await query('select * from notes order by created_at'));
 It needs a runtm session whose template has **Shared database** turned on.
 Usage, table rules and limits: [Share data across sessions](https://docs.runtm.com/guides/recipes/share-data-across-sessions).
 
-Tests (not needed to use lake.js): `cd packages/lake && npm ci && npm test` runs two clients against a local fake of runtm and Cloud Storage.
+Tests (not needed to use lake.js): `cd packages/lake && npm ci && npm test` runs two clients against a local fake of runtm and Cloud Storage. This package disables dependency lifecycle scripts in `.npmrc`; its DuckDB dependency ships platform-specific prebuilt bindings and does not need install scripts.
