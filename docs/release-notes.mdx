@@ -6,6 +6,14 @@ rss: true
 
 Every entry below is live in production. The date is when it became available, in Pacific Time. Setup notes say what an admin needs to do before people can use it.
 
+<Update label="Oct 31, 2026" tags={["GitLab", "Integrations"]}>
+  ## GitLab: templates, merge requests and agent bots
+
+  Connect GitLab in **Integrations → Source Control**, next to GitHub. It works with gitlab.com and with self-hosted instances. GitLab projects then appear in **New template → From a repository**, and templates rebuild from new commits through the org's connection (Oct 30). Sessions on a GitLab repo pull and push, and **Create PR** and `runtm-pr` open a merge request, or return the one already open for the branch (Oct 30). An agent can also have its own GitLab bot. Mentions, assignments, review requests and new commits start runs. The bot replies in the issue, merge request or thread, and follow-ups continue the same session. The agent's sessions push and open merge requests as the bot (Oct 31).
+
+  **Setup:** an admin connects GitLab. For a self-hosted instance, open **Advanced: self-hosted GitLab** and use your own GitLab OAuth app. For an agent bot, click **Create on GitLab**, then install the bot on a group from the agent's GitLab tab. The bot joins the whole group as a Developer, so it can run pipelines. Its token lasts 364 days and renews itself, so instances that cap token lifetime below a year refuse to create it. If an agent has both a GitHub App and a GitLab bot, GitLab sessions use the GitHub identity.
+</Update>
+
 <Update label="Oct 27, 2026" tags={["Governance", "Compliance"]}>
   ## Compliance (beta): risk management, audit log and evidence reports
 
