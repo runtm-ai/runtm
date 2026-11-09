@@ -70,7 +70,7 @@ Toolsets: `core` (always on), `agents`, `sessions`, `context`, `guardrails`, `tr
 | `runtm_set_context` | [Set context](/cloud-api/templates/context-set) | Replace the template's context block. |
 | `runtm_build_template` | [Build](/cloud-api/templates/build) | Start a build. Attaching already rebuilds by itself; on a template with no repo, Build discards work saved from sessions. Returns at once. |
 
-<Note>Attached is not built. After attaching or changing a skill, MCP server, guardrail or context, run `runtm_build_template`.</Note>
+<Note>Attaching or changing a skill, MCP server or guardrail queues the template rebuild. Use `runtm_build_template` only for a new template or when you mean to reset it; on a template with no repo, Build discards work saved from sessions.</Note>
 
 ## Guardrails
 
