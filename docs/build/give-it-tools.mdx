@@ -336,7 +336,7 @@ Anything outside the catalog becomes a custom provider. Stripe, Postgres, Snowfl
     Open the server and add a connection. Static kinds are `api_token`, `headers` and `env`. For servers that publish OAuth metadata, use the OAuth flow and the platform discovers the endpoints. If the server's sign-in provider doesn't register apps automatically (Okta, for example), an org admin sets up an OAuth app for it first: see [Connect an Okta-protected MCP server](/mcp/okta#connect-an-okta-protected-mcp-server). Scope the connection to the org, yourself, or one agent. Credentials on a connection are injected at session start and never baked into the template snapshot. Connections are managed in the dashboard and through the `/api/agent-directives/{id}/connections` endpoints; the CLI does not create them today.
   </Step>
   <Step title="Attach it to the template">
-    Attach the server to the agent's template, to a repo, or org-wide. Then rebuild the template.
+    Attach the server to the agent's template, to a repo, or org-wide. The template rebuilds by itself.
     <Visibility for="agents">
 
     ```text
@@ -400,7 +400,7 @@ cli: runtm-api template create --display-name "<Name>" --github-repo <owner/repo
 
 ### Build
 
-Every attachment above lands in the snapshot only at build time. After attaching, build once, and rebuild whenever `attachments_changed_since_build` is true.
+Attaching or detaching a skill or MCP server rebuilds the template by itself, from its current snapshot, about 15 seconds later. Run `template build` only for a template that has never been built (`build_status` is not `ready`). On a template with no repo, Build starts over from the base image and discards everything saved into the template from a session. While the automatic rebuild runs, `attachments_changed_since_build` reads `true`; if it stays `true`, read the build logs.
 
 <Visibility for="agents">
 
@@ -422,13 +422,14 @@ If step 4 fails while steps 1 to 3 pass, the connection was filtered out. Check 
 
 ## Gotchas
 
-- **Attached after the last build.** Attaching a skill or MCP server does not change the running snapshot. `attachments_changed_since_build: true` on the template means sessions are still booting the old set. Rebuild.
+- **Attached a moment ago.** The rebuild an attachment queues takes about a minute. Until it finishes, `attachments_changed_since_build: true` and new sessions boot the old set. Wait, then check again; if it stays `true`, read the build logs instead of running `template build`.
 - **Connected but not required.** An org or personal connection reaches a template only when an attached skill lists the provider in `requires.integrations`. The unmet requirement shows up in the session manifest as a warning and never blocks boot, so the agent starts and then fails when it calls the vendor.
 - **Personal key on an org resource.** `runtm-api tools`, `mcp` and `template` commands need an org-scoped API key. `--org` cannot substitute for one. A personal key returns 403 or lists an empty set.
 - **MCP server without a connection.** The server definition is attached and appears in the harness configuration, but every call fails with an auth error because no connection was added. Add one and check it with the connection's test action.
 - **Write-capable credentials.** Nothing in the platform downgrades a credential. If you connect a full-access Stripe key, the agent has full access. Use the vendor's restricted keys and database roles, then add allowlist rules for defense in depth (see [Guardrails and approvals](/build/guardrails-and-approvals)).
 - **OAuth providers need the dashboard.** `runtm-api tools create` handles static credentials. OAuth connections are completed in the dashboard because they need a browser. Send the person a `/connect?provider=<slug>&method=<oauth_method_id>` link (see [Credentials go to Runtime, never to an agent](#credentials-go-to-runtime-never-to-an-agent)).
 - **A secret pasted to an agent is already leaked.** It is now in the transcript, the session history and possibly the model provider's logs. Rotate it, then have the person connect the new one through a `/connect` link.
-- **`template create --skip-agent` implies `--build`.** The clone-only fast path builds immediately, so anything attached afterwards needs a rebuild. Create without `--build` when you plan to attach first, then build once.
+- **`template create --skip-agent` implies `--build`.** The clone-only fast path builds immediately. Anything attached afterwards rebuilds the template by itself.
 - **Attach merges; `--replace` overwrites.** `skills attach` and `mcp attach` add to the existing set. `skills import` can attach in the same call (`--attach-template`, `--attach-repo`, `--attach-all`); `skills create` cannot, so create-then-attach is two steps.
+- **Build discards work saved from sessions.** On a template with no repo, Build starts over from the base image and discards everything saved into the template from a session. Build only a new template, or one you mean to reset.
 - **Templates are not only for coding agents.** A support agent's template may clone no repo at all; it exists to carry skills, MCP servers, credentials and guardrails.

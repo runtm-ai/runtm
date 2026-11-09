@@ -111,13 +111,12 @@ Org limits are separate from guardrail content. Under **Guardrails → Limits** 
     </Visibility>
   </Step>
 
-  <Step title="Rebuild the template">
-    Allowlist rules and hooks are materialized into the snapshot. Adding or attaching one after the last build leaves the template stale until you build again. Network rules are resolved at session creation and do not need a rebuild.
+  <Step title="Wait for the automatic rebuild">
+    Allowlist rules and hooks are materialized into the snapshot. Adding or attaching one rebuilds the template by itself, from its current snapshot. Network rules are resolved at session creation and do not need a rebuild. Do not run `template build` to pick up a rule. On a template with no repo, Build starts over from the base image and discards everything saved into the template from a session.
 
     <Visibility for="agents">
 
     ```text
-    cli: runtm-api template build <template_id>
     cli-verify: runtm-api template get <template_id> | jq .attachments_changed_since_build
     ```
 

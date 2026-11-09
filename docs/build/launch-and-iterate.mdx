@@ -26,7 +26,7 @@ Do this step before adding guardrails. A deny rule written before the first run 
 attach → verify → build once → run once → read the run → read the grade → read the scorecard → tighten one thing → repeat
 ```
 
-Every capability the agent has hangs off its template. Skills, MCP servers, tools and guardrails you attach are not in the snapshot until the template builds. Three mistakes fail silently: a roster agent with no template, a skill created but never attached, and an attachment made after the last build.
+Every capability the agent has hangs off its template. Attaching or detaching a skill, MCP server, tool or guardrail rebuilds the template by itself, from its current snapshot, about 15 seconds later. A template that has never been built picks them up in its first build. Three mistakes fail silently: a roster agent with no template, a skill created but never attached, and a template that was never built.
 
 ## Do it
 
@@ -34,7 +34,7 @@ Every capability the agent has hangs off its template. Skills, MCP servers, tool
   <Step title="Verify the template actually carries the skills">
     On **Templates**, open the agent's template and check the **Context** tab lists the skills and MCP servers you expect, and the **Guardrails** tab lists the rules. A violet dot on the tab means the template has its own entries.
 
-    From the CLI, read `skills[].name` and `attachments_changed_since_build`. An empty `skills` array means attach. `true` means rebuild.
+    From the CLI, read `skills[].name` and `attachments_changed_since_build`. An empty `skills` array means attach. `true` means the automatic rebuild has not finished: wait for `build_status` to read `ready`, and read the build logs if it stays `true`. Do not run `template build` to clear it.
 
     <Visibility for="agents">
 
@@ -47,8 +47,8 @@ Every capability the agent has hangs off its template. Skills, MCP servers, tool
     </Visibility>
   </Step>
 
-  <Step title="Build once, after everything is attached">
-    Click **Build** on the template's **Build** tab. The pane says "Build in progress - this may take 5-15 minutes. You can navigate away safely." Attaching more after this point makes the template stale again.
+  <Step title="Build once, if the template has never been built">
+    A new template needs one build. Click **Build** on the template's **Build** tab. The pane says "Build in progress - this may take 5-15 minutes. You can navigate away safely." After that, attaching, detaching or editing a skill rebuilds the template for you. Do not press **Build** again to pick up an attachment. On a template with no repo, Build starts over from the base image and discards everything saved into the template from a session.
 
     <Visibility for="agents">
 
@@ -133,7 +133,6 @@ Every capability the agent has hangs off its template. Skills, MCP servers, tool
     ```text
     cli: runtm-api agents update <agent_id> --evaluator-criteria "$(cat rubric.json)"
     cli: runtm-api skills update <skill_id> --content "$(cat skill.json)"
-    cli: runtm-api template build <template_id>
     ```
 
     </Visibility>
@@ -175,7 +174,7 @@ cli-verify: runtm-api agents scorecard --days 7
 - **Rubric edits do not rewrite history.** Grades already recorded keep their category key and verdict until that session is graded again. After changing a key or a criterion, re-run the seeded cases so the scorecard reflects the current rubric.
 - **Budget exceeded does not stop anything.** `exceeded: true` is a flag on the scorecard and an audit event. Launches continue. Use org limits under **Guardrails → Limits** for a hard cap.
 - **Schedule enabled, never run.** An enabled schedule with `last_run_at` null and a `next_run_at` in the past was never validated. Disable it, `run-now`, read the session, then enable.
-- **Iteration without rebuild.** Editing a skill's content triggers a rebuild of the templates it is attached to. Attaching a new skill or MCP server does not; run `template build` yourself.
+- **Building by hand after a change.** Editing a skill, and attaching or detaching a skill, MCP server or guardrail, rebuilds every template it is on, from the current snapshot. Do not follow it with `template build`. On a template with no repo, Build starts over from the base image and discards everything saved into the template from a session.
 - **Guardrails added too early.** An `ask` default or a broad deny rule on an agent that has never run turns every unknown into a stall, and you cannot tell a capability gap from a rule. Prove the cases first, then constrain.
 - **Prove one capability in a bare session before wiring a trigger.** `session create --template-id <t>`, then `session exec <id> --json -- ls ~/.claude/skills`, then destroy. Cheaper than re-reading config.
 - **"It was supposed to run and nothing happened", in order:** `enabled` false or `next_run_at` null means no scheduler job (null is normal while disabled); `last_run_at` unchanged means the tick never fired (enabled or UTC conversion); `last_run_at` updated means the failure is inside the run, so `run-now` and read `session history <last_session_id>`.

@@ -134,9 +134,11 @@ Builds run as a background job. Progress streams via SSE so you can show real-ti
 - `GET /api/org-templates/{id}/build/logs` streams live build output
 - `GET /api/org-templates/{id}/build/logs-history` returns the last completed build's logs
 
-Rebuild any time you change instructions, skills, or the underlying repos. Existing sessions keep using their original snapshot until they are destroyed.
+Attaching, detaching or editing a [skill](/concepts/skills), MCP server or guardrail rebuilds the template by itself, starting from its current snapshot, so work saved into the template is kept. Build by hand for a new template or after changing its repos. Existing sessions keep using their original snapshot until they are destroyed.
 
-Runtime can also fast-rebuild when only [skills](/concepts/skills) or instructions changed, skipping the expensive dependency-install step.
+<Warning>
+On a template with no repo, Build starts over from the base image and discards everything saved into the template from a session. Build by hand only when you mean to reset it.
+</Warning>
 
 ## Snapshots from sessions
 

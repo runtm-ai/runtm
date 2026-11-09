@@ -24,7 +24,7 @@ The agent has a written method it follows every run, knows which instructions wi
 
 <CardGroup cols={3}>
   <Card title="Skills and runbooks" icon="book" href="/build/how-it-works/skills">
-    Write the procedure as a `SKILL.md` bundle, require the tools it needs, attach it to the template, rebuild.
+    Write the procedure as a `SKILL.md` bundle, require the tools it needs, attach it to the template. The template rebuilds by itself.
   </Card>
   <Card title="Instructions" icon="layer-group" href="/build/how-it-works/instructions">
     The nine layers written into every session, which one wins, and what belongs in each.
@@ -59,12 +59,12 @@ The agent has a written method it follows every run, knows which instructions wi
 
     </Visibility>
   </Step>
-  <Step title="Rebuild the template once">
-    Attachments made after the last build are not in the snapshot until you rebuild.
+  <Step title="Build the template once, if it is new">
+    A template that has never been built needs one build. After that, every attachment rebuilds it by itself, from its current snapshot. On a template with no repo, Build starts over from the base image and discards everything saved into the template from a session.
     <Visibility for="agents">
 
     ```text
-    cli: runtm-api template build <template_id>
+    cli: runtm-api template build <template_id>   # only when build_status is not ready
     cli-verify: runtm-api template get <template_id> | jq '{skills: [.skills[].name], stale: .attachments_changed_since_build}'
     ```
 
@@ -87,7 +87,7 @@ The agent has a written method it follows every run, knows which instructions wi
 
 ## Gotchas
 
-- **A skill attached after the last build is not in the sandbox.** `template get` shows `attachments_changed_since_build: true`; rebuild.
+- **A skill attached a moment ago is not in the sandbox yet.** `template get` shows `attachments_changed_since_build: true` until the automatic rebuild finishes. Wait; do not run `template build`.
 - **Instructions do not enforce.** The system prompt says "never refund"; only a deny rule makes it impossible. That rule belongs in step 6, once you know what the agent actually runs.
 - **Guardrails before the first run.** An `ask` default on an unproven agent stalls on every unknown command, and you cannot tell a capability gap from a rule. Prove first.
 - **A trigger on the live queue during step 5.** Use a test channel, an allowlisted sender on the email inbox, or a disabled schedule with `run-now`.
