@@ -225,15 +225,15 @@ runtm-api agents update "$AGENT" --evaluator-criteria "$(cat rubric.json)"
 runtm-api agents create --type email --name support-inbox --agent-id "$AGENT"
 ```
 
-`template create --skip-agent` implies `--build`: the clone-only fast path builds immediately, so anything attached afterwards needs a rebuild. Batch attachments and build once; rebuilding after every attach churns the snapshot.
+`template create --skip-agent` implies `--build`: the clone-only fast path builds immediately, so anything attached afterwards triggers an automatic rebuild from the current snapshot. Do not follow an attach with `template build`: on a template with no repo it starts over from the base image and discards work saved from sessions.
 
 These fail with no error, only an agent that cannot do its job:
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Agent runs but ignores its skills | Skills created, never attached | `skills attach <id> --template <t>`, then rebuild |
-| `template get` lists the skills, sessions do not have them | Attached after the last build | `attachments_changed_since_build: true`, run `template build` |
-| Built template has an empty `skills` list | Built before attaching (often via `--skip-agent`) | Attach, then rebuild |
+| Agent runs but ignores its skills | Skills created, never attached | `skills attach <id> --template <t>`; the template rebuilds by itself |
+| `template get` lists the skills, sessions do not have them | Attached after the last build | `attachments_changed_since_build: true`: the automatic rebuild has not finished. Wait, and read `template build-logs-history` if it stays `true`. Do not run `template build` |
+| Built template has an empty `skills` list | Built before attaching (often via `--skip-agent`) | Attach; the automatic rebuild picks it up |
 | Agent has no special behaviour at all | Roster agent has no template | `agents update <id> --template <name>` |
 | Scorecard is all zeros | No evaluation categories on the agent | `agents update <id> --evaluator-criteria '{...}'` |
 | Trigger fires with none of the agent's identity | Trigger not bound to the roster agent | Bind through `config.agent_id`: `--agent-id` on email at create, `--config '{"agent_id":"<roster_id>"}'` on the others |

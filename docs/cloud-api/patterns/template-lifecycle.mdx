@@ -57,7 +57,7 @@ runtm-api template get <template_id> | jq '{
 | What you see | What it means | Fix |
 |---|---|---|
 | `skills: []` | Nothing is attached, however many skills exist in the org | `runtm-api skills attach <skill_id> --template <template_id>` |
-| `stale: true` | Attachments changed after the snapshot was built; sessions still boot the old set | `runtm-api template build <template_id>` |
+| `stale: true` | Attachments changed after the snapshot was built; sessions still boot the old set | Wait for the automatic rebuild; if it stays `true`, read `template build-logs-history`. Do not run `template build` |
 | `attached_via: "template"` | Attached directly to this template | `runtm-api skills detach <skill_id> --template <template_id>` |
 | `attached_via: "repo"` | Reaches the template through one of its repos | `runtm-api skills detach <skill_id> --repo <owner/name>` |
 | `attached_via: "all"` | Org-wide, loads into every session | `runtm-api skills detach <skill_id> --all` |
@@ -99,11 +99,10 @@ The full flow, with the two follow-ups that fail silently when skipped:
 ```bash
 SKILL_ID=$(runtm-api skills create --name deploy-checks --md ./SKILL.md | jq -r .directive.id)
 runtm-api skills attach "$SKILL_ID" --template <template_id>
-runtm-api template get <template_id> | jq '{skills: [.skills[].name], stale: .attachments_changed_since_build}'
-runtm-api template build <template_id>
+runtm-api template get <template_id> | jq '{skills: [.skills[].name], stale: .attachments_changed_since_build}'   # stale clears after the automatic rebuild
 ```
 
-**Attach everything, then build once.** Every rebuild costs minutes and churns the snapshot for anyone booting sessions meanwhile. Attach all skills and MCP servers, check `template get` once, then issue one `template build`. Attaching or detaching needs `context:write` on the key.
+**Attaching rebuilds by itself.** Each attach or detach queues a rebuild from the template's current snapshot after about 15 seconds, and bursts are debounced, so attach everything together. Do not issue `template build` afterwards: on a template with no repo it starts over from the base image and discards work saved from sessions. Attaching or detaching needs `context:write` on the key.
 
 ## Recipe: create a new template
 
@@ -140,7 +139,7 @@ runtm-api template get <template_id> | jq -r .build_status    # wait for "ready"
 runtm-api session create --template-id <template_id>
 ```
 
-Because `--skip-agent` builds immediately, anything you attach afterwards leaves the template stale. When you know the skills in advance, create without `--skip-agent`, attach, then build once. `--skip-agent` on the standalone `template build` skips the AI step on a rebuild the same way.
+Because `--skip-agent` builds immediately, anything you attach afterwards triggers an automatic rebuild from the current snapshot. Do not follow it with `template build`. `--skip-agent` on the standalone `template build` skips the AI step on a rebuild the same way.
 
 ## Recipe: declare session arguments
 
@@ -238,16 +237,16 @@ runtm-api session destroy <session_id>                                     # opt
 
 `save-snapshot` waits up to `--timeout` seconds (default 180) for the snapshot to complete. This is the same recovery an admin performs from the dashboard.
 
-## Recipe: monitor builds and rebuild after changes
+## Recipe: monitor builds
 
 ```bash
 runtm-api template build-logs <template_id>                              # live stream while building
 runtm-api template build-logs-history <template_id> | jq '.logs[0].content'   # persisted log after completion
-
-runtm-api template build <template_id>                                   # re-trigger after the repo or attachments changed
 ```
 
-Editing a skill's content triggers a rebuild of the templates it is attached to. Attaching a new skill or MCP server does not; run `template build` yourself. A fast rebuild without a full reinstall runs automatically when only instructions or skill files changed.
+Re-trigger a build by hand only after the repo changed, for a new template with no prior snapshot, or as an intentional reset. On a template with no repo, Build starts over from the base image and discards work saved from sessions.
+
+Editing a skill's content triggers a rebuild of the templates it is attached to. Attaching or detaching a skill or MCP server does too; do not run `template build` yourself. A fast rebuild without a full reinstall runs automatically when only instructions or skill files changed.
 
 ## Recipe: template secrets
 
@@ -343,8 +342,8 @@ Flags build a `ProviderSchema`: `--name` (required), `--logo`, `--icon`, `--tagl
 ## Gotchas
 
 - **Created is not attached, attached is not built.** Two silent failures; `template get` exposes both as `skills: []` and `attachments_changed_since_build: true`.
-- **`--skip-agent` builds immediately.** Attach first when you can, or expect one more `template build`.
+- **`--skip-agent` builds immediately.** Attach first when you can; anything attached afterwards rebuilds by itself.
 - **`--session-arg` on `update` replaces the set.** Pass every argument you want to keep.
 - **Personal key.** Every `template`, `skills`, `mcp` and `tools` command needs an org-scoped key; `--org` does not substitute.
-- **Template context needs no rebuild; attachments do.** Instructions apply to the next session. Skills and MCP servers apply after the next build.
+- **Template context needs no rebuild; attachments rebuild by themselves.** Instructions apply to the next session. Skills and MCP servers apply after the automatic rebuild that attaching queues.
 - **`--all` supersedes scoped attachments.** Switching a skill to `--all` replaces its template and repo attachments.

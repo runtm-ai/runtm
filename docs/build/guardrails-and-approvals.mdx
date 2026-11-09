@@ -190,7 +190,7 @@ cli-verify: runtm-api session approvals list <session_id>
 ## Gotchas
 
 - **Allowlist rules see only Bash.** File edits, web fetches and MCP tool calls are not evaluated by allowlist rules. Use a hook with a matcher such as `Edit|Write` for those.
-- **Added is not built.** An allowlist rule or hook added or attached after the last build is not in the snapshot. `template get` reports `attachments_changed_since_build: true`. Build again.
+- **Added is not built.** An allowlist rule or hook added or attached after the last build is not in the snapshot. `template get` reports `attachments_changed_since_build: true`. Wait for the automatic rebuild, and read the build logs if it stays `true`. Do not run `template build`.
 - **One network rule flips the default.** With zero rules the sandbox has open egress. With one rule it has deny-all plus that rule. Forgetting `app.runtm.com` breaks the runtm CLI inside the sandbox, and forgetting your package registry breaks skill tooling.
 - **Network rules have no ports.** A host is reachable on every port or not at all.
 - **Approvals are runbook steps, not settings.** The **Approvals** tab under Guardrails describes the concept but does not configure anything. If the skill never calls `runtm-approval`, nothing waits.

@@ -42,13 +42,12 @@ The agent's harness lists the MCP server's tools at session start, the token is 
 
     </Visibility>
   </Step>
-  <Step title="Rebuild">
-    The server definition lands in the snapshot at build time. The connection is resolved at each session start, so rotating the token later needs no rebuild.
+  <Step title="Wait for the automatic rebuild">
+    Attaching queues a rebuild from the current snapshot, and the server definition lands in it. The connection is resolved at each session start, so rotating the token later needs no rebuild.
 
     <Visibility for="agents">
 
     ```text
-    cli: runtm-api template build <template_id>
     cli-verify: runtm-api template get <template_id> | jq '{build_status, stale: .attachments_changed_since_build, mcp: [.mcp_servers[].name]}'
     ```
 

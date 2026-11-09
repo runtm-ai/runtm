@@ -64,7 +64,7 @@ The agent has a written method it follows every run, knows which instructions wi
     <Visibility for="agents">
 
     ```text
-    cli: runtm-api template build <template_id>   # only when build_status is not ready
+    cli: runtm-api template build <template_id>   # only for a new template with no prior snapshot and no build in progress
     cli-verify: runtm-api template get <template_id> | jq '{skills: [.skills[].name], stale: .attachments_changed_since_build}'
     ```
 

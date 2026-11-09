@@ -400,12 +400,12 @@ cli: runtm-api template create --display-name "<Name>" --github-repo <owner/repo
 
 ### Build
 
-Attaching or detaching a skill or MCP server rebuilds the template by itself, from its current snapshot, about 15 seconds later. Run `template build` only for a template that has never been built (`build_status` is not `ready`). On a template with no repo, Build starts over from the base image and discards everything saved into the template from a session. While the automatic rebuild runs, `attachments_changed_since_build` reads `true`; if it stays `true`, read the build logs.
+Attaching or detaching a skill or MCP server rebuilds the template by itself, from its current snapshot, about 15 seconds later. Run `template build` only for a template that has never been built (no prior snapshot, and no build in progress; `build_status` other than `ready` does not mean that, because an automatic rebuild sets `building` and a partial one sets `partial`). On a template with no repo, Build starts over from the base image and discards everything saved into the template from a session. While the automatic rebuild runs, `attachments_changed_since_build` reads `true`; if it stays `true`, read the build logs.
 
 <Visibility for="agents">
 
 ```text
-cli: runtm-api template build <template_id>
+cli: runtm-api template build <template_id>   # only for a new template with no prior snapshot and no build in progress
 cli-verify: runtm-api template get <template_id> | jq '{build_status, attachments_changed_since_build, skills: [.skills[].name], mcp: [.mcp_servers[].name]}'
 ```
 

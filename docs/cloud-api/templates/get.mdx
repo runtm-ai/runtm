@@ -110,7 +110,7 @@ Two fields answer the questions that are easy to get silently wrong:
 </ResponseField>
 
 <ResponseField name="attachments_changed_since_build" type="boolean">
-  `true` when the attached skills / MCP servers changed after the snapshot was built, so sessions still boot with the previously baked set. Rebuild with `POST /api/org-templates/{template_id}/build`.
+  `true` when the attached skills / MCP servers changed after the snapshot was built, so sessions still boot with the previously baked set. The attach queues an automatic rebuild; wait for it and read the build logs if this stays `true`. Do not call Build: on a template with no repo it discards work saved from sessions.
 </ResponseField>
 
 <ResponseField name="directive_manifest_hash" type="string | null">

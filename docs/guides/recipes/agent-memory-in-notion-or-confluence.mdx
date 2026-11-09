@@ -125,21 +125,20 @@ This is the recommended way to give an agent memory. Sessions are disposable and
 
     </Visibility>
   </Step>
-  <Step title="Attach it to the agent's template and rebuild">
-    Attach the skill to the agent's default template, then build. Like any skill, it is not in sessions until the template builds.
+  <Step title="Attach it to the agent's template">
+    Attach the skill to the agent's default template. The template rebuilds by itself from its current snapshot. Like any skill, it is not in sessions until that rebuild finishes.
 
     <Visibility for="agents">
 
     ```text
     cli: runtm-api skills attach <skill_id> --template <template_id>
-    cli: runtm-api template build <template_id>
     cli-verify: runtm-api template get <template_id> | jq '{build_status, stale: .attachments_changed_since_build, skills: [.skills[].name]}'
     ```
 
     </Visibility>
   </Step>
   <Step title="Edit the playbook, not the template">
-    From now on, change how the agent works by editing the playbook page. The next run reads the new version. Template context and skills still need a rebuild or a new session to change. The playbook page does not.
+    From now on, change how the agent works by editing the playbook page. The next run reads the new version. Skills need the automatic rebuild after an edit, and template context needs a new session. The playbook page does not.
   </Step>
 </Steps>
 
