@@ -216,6 +216,34 @@ jobs:
         working-directory: packages/lake
         run: npm test
 
+  test-aws-sandbox:
+    name: Test AWS sandbox stack
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Test the CloudFormation template's access policy
+        run: |
+          pip install pyyaml pytest
+          pytest terraform/aws-sandbox/tests -v
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.16.6"
+
+      # Plans against overridden identities; no AWS credentials needed.
+      - name: Test the Terraform module's access policy
+        working-directory: terraform/aws-sandbox
+        run: |
+          terraform init -backend=false -input=false
+          terraform test
+
   build:
     name: Build Docker Images
     runs-on: ubuntu-latest

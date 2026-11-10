@@ -123,8 +123,12 @@ template's needs.
 
 ## Upgrading
 
-Terraform: a module pinned to `main` picks changes up on the next
-`terraform apply`; one pinned to a tag needs the tag bumped.
+Terraform: for a module pinned to `main`, run `terraform init -upgrade` to
+refresh the downloaded module, then review `terraform plan` and run
+`terraform apply`. A plain `terraform apply` keeps the copy already in
+`.terraform/modules`. For a module pinned to a tag, bump the tag first, then
+run `terraform init` before planning and applying. `init -upgrade` also
+updates providers within their configured version constraints.
 
 CloudFormation: update the stack in place with the latest template and your
 existing parameters. Runtm's Test connection shows this command, pre-filled,
