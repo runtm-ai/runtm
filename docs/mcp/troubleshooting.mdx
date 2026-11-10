@@ -16,7 +16,7 @@ Start with **`runtm_whoami`**. It shows who you're signed in as, the organizatio
 | "Unknown toolset" or "Unknown mode" | A typo in `?toolsets=` or `?mode=` | Use `core`, `agents`, `sessions`, `context`, `guardrails`, `triggers`, `files`, `lifecycle`, `all` or `default`, and mode `default` or `tools`. |
 | "Retry in N seconds" | Rate limit or a temporary lockout after failed sign-ins | Wait the time shown, then retry. |
 | `runtm_exec_command` returns exit code `124` | The command hit `timeout_seconds` (45 s at most) | Run long work in the background and read its log. |
-| The agent's new skill or MCP server doesn't show up | It was attached but not built | Run `runtm_build_template`, then start a new session. |
+| The agent's new skill or MCP server doesn't show up | The automatic rebuild an attach queues has not finished | Wait, check `runtm_get_template` for `attachments_changed_since_build`, and start a new session once it is `false`. If it stays `true`, read the build logs. Do not run `runtm_build_template`: on a template with no repo it discards work saved from sessions. |
 | A tool returns a link instead of doing the step | The step needs a credential or a browser install | Open the link and finish it in the dashboard. Never paste the secret into chat. |
 | Actions land in the wrong org | The app is connected to another workspace, or the API key is personal | Reconnect and pick the right workspace, or use an org API key. |
 | `GET /mcp` returns `405` | The server is stateless and has no event stream | Use a client with streamable HTTP; it sends `POST`. |

@@ -1,6 +1,6 @@
 ---
 title: "Template lifecycle from the CLI"
-description: "Discover, create, build, verify, fix, snapshot and rebuild org templates with runtm-api, including session arguments, owning groups, auto-rebuild, template secrets, context and guardrails resolution, and the attach-then-build rule for skills and MCP servers. Read when a coding agent must set up or repair the environment an agent runs on."
+description: "Discover, create, build, verify, fix, snapshot and rebuild org templates with runtm-api, including session arguments, owning groups, auto-rebuild, template secrets, context and guardrails resolution, and the automatic rebuild that attaching a skill or MCP server queues. Read when a coding agent must set up or repair the environment an agent runs on."
 ---
 
 An org template is the snapshot every session boots from, and it is also the capability carrier for a roster agent: the agent's `default_template` decides which skills, MCP servers, credentials and guardrails its sessions load. This page is the operational counterpart to [Give it tools](/build/give-it-tools): the exact `runtm-api template` commands, what to read in their output, and the order that avoids silent failures.
@@ -72,7 +72,7 @@ runtm-api skills list --template <template_id>      # skills-first
 
 The same three exist for MCP servers: `template get | jq .mcp_servers`, `template mcp <template_id>`, `mcp list --template <template_id>`. Scoped listings include org-wide items attached with `--all`, because those load too.
 
-## Recipe: attach skills and MCP servers, then build once
+## Recipe: attach skills and MCP servers
 
 Creating a skill or MCP server attaches it nowhere. Attach it to a template and every session from that template loads it. `skills` and `mcp` share the same verbs.
 

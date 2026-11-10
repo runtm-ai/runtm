@@ -12,7 +12,7 @@ Returns the full detail of an organization template including its configuration,
 Two fields answer the questions that are easy to get silently wrong:
 
 - **`skills` / `mcp_servers`** — what sessions from this template actually load. An empty `skills` array means nothing is attached, however many skills exist in the org.
-- **`attachments_changed_since_build`** — `true` when those attachments changed after the snapshot was built, so the running image is behind the configuration. Trigger [a build](/cloud-api/templates/build) to catch it up.
+- **`attachments_changed_since_build`** — `true` when those attachments changed after the snapshot was built, so the running image is behind the configuration. An attach queues an automatic rebuild: wait for it, and read the build logs if this stays `true`. Do not trigger [a build](/cloud-api/templates/build); on a template with no repo it discards work saved from sessions.
 </Note>
 
 ## Path Parameters

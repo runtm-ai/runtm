@@ -248,6 +248,7 @@ Follow [Define how it works](/build/how-it-works/overview).
     </Visibility>
   </Step>
   <Step title="Build all three templates once">
+    These templates are new and have never been built, so this first build is manual. Later attaches and edits rebuild them by themselves.
     <Visibility for="agents">
 
     ```text
@@ -294,12 +295,11 @@ Follow [Add guardrails and approvals](/build/guardrails-and-approvals). For a mu
 
 <Steps>
   <Step title="Add the gate hook to the Underwriting template">
-    The `hil-gates` hook from the [recipe](/guides/recipes/delegate-to-another-agent), with two rows: `--target risk` opens `research_start` for the Compliance team, `--target engineering` opens `merchant_block` for the Engineering team. Any raw `runtm-api session create|launch|prompt` or direct call to the sessions API is gated as `agent_handoff` for org admins, so the orchestrator cannot route around the script. `PreToolUse`, matcher `Bash`, timeout 600.
+    The `hil-gates` hook from the [recipe](/guides/recipes/delegate-to-another-agent), with two rows: `--target risk` opens `research_start` for the Compliance team, `--target engineering` opens `merchant_block` for the Engineering team. Any raw `runtm-api session create|launch|prompt` or direct call to the sessions API is gated as `agent_handoff` for org admins, so the orchestrator cannot route around the script. `PreToolUse`, matcher `Bash`, timeout 600. Attaching the hook rebuilds the template by itself; wait for it and do not run `template build`.
     <Visibility for="agents">
 
     ```text
     cli: runtm-api template guardrails create <underwriting_template_id> --type hook --name hil-gates --content "$(python3 -c 'import json;print(json.dumps({"event":"PreToolUse","type":"command","matcher":"Bash","timeout":600,"script":open("hil-gates.sh").read()}))')"
-    cli: runtm-api template build <underwriting_template_id>
     cli-verify: runtm-api template guardrails resolve <underwriting_template_id>
     ```
 

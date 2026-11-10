@@ -235,7 +235,7 @@ Follow [Define how it works](/build/how-it-works/overview): skill first, then in
     </Visibility>
   </Step>
   <Step title="Build the template">
-    On the template's **Build** tab click **Build**. Wait for `ready`. The skill, the Stripe and Postgres connections it requires, and the agent-scoped Zendesk connection are now what every session gets.
+    On the template's **Build** tab click **Build**. Wait for `ready`. Build here only because the template is new and has never been built. The skill, the Stripe and Postgres connections it requires, and the agent-scoped Zendesk connection are now what every session gets.
     <Visibility for="agents">
 
     ```text
@@ -301,7 +301,7 @@ Follow [Prove it works and iterate](/build/launch-and-iterate). No guardrail exi
     </Visibility>
   </Step>
   <Step title="Read the scorecard and tighten one thing">
-    Open **Activity > Agents**. You want `graded_runs` 5, `successful_runs` 4, and per-category counts under `tasks`. If a decline case failed because the draft named the wrong code, fix the runbook step, not the rubric. If it failed because the criteria demanded something the ticket could not supply, fix the criteria. Rebuild after a skill edit, then re-run the failed case.
+    Open **Activity > Agents**. You want `graded_runs` 5, `successful_runs` 4, and per-category counts under `tasks`. If a decline case failed because the draft named the wrong code, fix the runbook step, not the rubric. If it failed because the criteria demanded something the ticket could not supply, fix the criteria. A skill edit rebuilds the template by itself; wait for it, then re-run the failed case.
 
     Write down the commands the passing runs used. That list is the input to step 6.
     <Visibility for="agents">
@@ -309,7 +309,6 @@ Follow [Prove it works and iterate](/build/launch-and-iterate). No guardrail exi
     ```text
     cli-verify: runtm-api agents scorecard --days 7
     cli: runtm-api skills update <skill_id> --md ./SKILL.md
-    cli: runtm-api template build <template_id>
     ```
 
     </Visibility>
@@ -345,12 +344,11 @@ Follow [Add guardrails and approvals](/build/guardrails-and-approvals). Now that
 
     </Visibility>
   </Step>
-  <Step title="Set the default policy to ask, rebuild">
-    Under **Settings > Guardrails > Allowlists** set the org's default policy to **Ask**, so a command no rule anticipated pauses for a decision instead of running. Rebuild the Payment Support template, then re-run case 1 and confirm it still passes.
+  <Step title="Set the default policy to ask">
+    Under **Settings > Guardrails > Allowlists** set the org's default policy to **Ask**, so a command no rule anticipated pauses for a decision instead of running. Changing the default policy rebuilds the template by itself. Wait for it, then re-run case 1 and confirm it still passes.
     <Visibility for="agents">
 
     ```text
-    cli: runtm-api template build <template_id>
     cli-verify: runtm-api template guardrails resolve <template_id>
     ```
 

@@ -289,13 +289,12 @@ flowchart LR
     </Visibility>
   </Step>
 
-  <Step title="Rebuild the parent template, then prove one hop">
-    Attach the skill and the hook, build once, then trigger the parent with a test case and resolve the approval on the Sessions board (or with the CLI). The parent's run shows a "Delegated work to subagent" card with an **Open subagent session** link; the child appears in Team mode as a run of the child agent.
+  <Step title="Wait for the rebuild, then prove one hop">
+    Attach the skill and the hook. The parent template rebuilds by itself; wait for `attachments_changed_since_build` to read `false` and do not run `template build`. Then trigger the parent with a test case and resolve the approval on the Sessions board (or with the CLI). The parent's run shows a "Delegated work to subagent" card with an **Open subagent session** link; the child appears in Team mode as a run of the child agent.
 
     <Visibility for="agents">
 
     ```text
-    cli: runtm-api template build <parent_template_id>
     cli: runtm-api session approvals list <parent_session_id>
     cli: runtm-api session approvals resolve <parent_session_id> <approval_id> --approve --note "Test hop"
     cli-verify: runtm-api session search --team-mode --source agent-delegation
