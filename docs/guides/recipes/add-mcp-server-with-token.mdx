@@ -1,6 +1,6 @@
 ---
 title: "Add an MCP server with an API-token connection"
-description: "Define a stdio MCP server as a directive, supply its API token through a separate connection so the secret never enters the template snapshot, attach it to a template and rebuild. Read when a vendor ships an MCP server and you want the agent limited to its typed tools."
+description: "Define a stdio MCP server as a directive, supply its API token through a separate connection so the secret never enters the template snapshot, attach it to a template, which rebuilds by itself. Read when a vendor ships an MCP server and you want the agent limited to its typed tools."
 ---
 
 ## Outcome
@@ -42,13 +42,12 @@ The agent's harness lists the MCP server's tools at session start, the token is 
 
     </Visibility>
   </Step>
-  <Step title="Rebuild">
-    The server definition lands in the snapshot at build time. The connection is resolved at each session start, so rotating the token later needs no rebuild.
+  <Step title="Wait for the automatic rebuild">
+    Attaching queues a rebuild from the current snapshot, and the server definition lands in it. The connection is resolved at each session start, so rotating the token later needs no rebuild.
 
     <Visibility for="agents">
 
     ```text
-    cli: runtm-api template build <template_id>
     cli-verify: runtm-api template get <template_id> | jq '{build_status, stale: .attachments_changed_since_build, mcp: [.mcp_servers[].name]}'
     ```
 
@@ -72,7 +71,7 @@ cli-verify: runtm-api session prompt <session_id> "List the tools exposed by the
 ## Gotchas
 
 - **Secret in the directive.** An `--env STRIPE_SECRET_KEY=...` on the server definition bakes the key into every snapshot and shows it to anyone who can read the directive. Use a connection.
-- **Attached, not built.** The server is attached but `attachments_changed_since_build` is true. Sessions still boot the old snapshot until you build.
+- **Attached, rebuild not finished.** The server is attached but `attachments_changed_since_build` is true. Sessions still boot the old snapshot until the automatic rebuild finishes. Wait, and read the build logs if it stays true. Do not run `template build`.
 - **Scope mismatch.** A personal connection is used only for runs whose effective user is you. An agent run by someone else falls to the agent connection or the org-wide one, and if neither exists the server starts unauthenticated.
 - **Provider or MCP server, not both.** If the same template also has a Stripe tool provider, the agent has two ways to reach Stripe. Pick the one the runbook uses.
 

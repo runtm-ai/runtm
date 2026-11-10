@@ -6,6 +6,12 @@ description: "Trigger a template snapshot build"
 
 Triggers a new template build for the organization template. The build runs asynchronously. Use the [Build Logs](/cloud-api/templates/build-logs) endpoint to stream progress. Requires admin or owner role.
 
+You don't need this after attaching or editing a skill, MCP server or guardrail: those rebuild the template by itself, from its current snapshot.
+
+<Warning>
+On a template with no repo, Build starts over from the base image and discards everything saved into the template from a session. Call this for a new template, or when you mean to reset one.
+</Warning>
+
 **Required scope:** `templates:build`
 
 ## Path Parameters

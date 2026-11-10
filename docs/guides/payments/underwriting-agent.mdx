@@ -321,7 +321,7 @@ Read [Define how it works](/build/how-it-works/overview). The runbook is a skill
     </Visibility>
   </Step>
   <Step title="Attach the skill and build the template">
-    Attach `underwriting-memo` to the `Underwriting` template and build once. Anything attached after this build is not in the snapshot until the next one.
+    Attach `underwriting-memo` to the `Underwriting` template and build once. Build here only because the template is new and has never been built. Anything attached after this build rebuilds the template by itself.
 
     <Visibility for="agents">
 
@@ -513,13 +513,12 @@ Read [Add guardrails and approvals](/build/guardrails-and-approvals). Only now, 
 
     </Visibility>
   </Step>
-  <Step title="Rebuild and re-run a case">
-    Allowlist rules are materialized into the snapshot; network rules apply at session creation. Rebuild, then re-run the clean approval and the missing-document cases. If one now stalls, the last rule you added is the cause.
+  <Step title="Wait for the rebuild and re-run a case">
+    Allowlist rules are materialized into the snapshot; network rules apply at session creation. Adding a rule rebuilds the template by itself; wait for it (`attachments_changed_since_build` back to `false`), do not run `template build`, then re-run the clean approval and the missing-document cases. If one now stalls, the last rule you added is the cause.
 
     <Visibility for="agents">
 
     ```text
-    cli: runtm-api template build <template_id>
     cli-verify: runtm-api template guardrails resolve <template_id>
     ```
 
@@ -557,7 +556,7 @@ Read [Add guardrails and approvals](/build/guardrails-and-approvals). Only now, 
 - **Middesk is not built in.** It is a custom provider you define; the JSON above is the whole definition. Persona and Alloy are set up the same way with their own field names and base URLs.
 - **The agent-scoped Middesk key applies only to this agent's runs.** A session someone opens from the `Underwriting` template by hand does not receive it, and falls to a personal or org-wide Middesk connection if one exists, otherwise `middesk` shows as an unmet requirement.
 - **Postgres and Notion arrive through the skill.** If `requires.integrations` on `underwriting-memo` does not list `postgres` and `notion`, those org-wide connections are silently left out of the session.
-- **Attached is not built.** After attaching the skill or a rule, `template get` shows `attachments_changed_since_build: true` until you build again.
+- **Attached, rebuild not finished.** After attaching the skill or a rule, `template get` shows `attachments_changed_since_build: true` until the automatic rebuild finishes. Wait, and read the build logs if it stays `true`. Do not run `template build`.
 - **Schedules run in UTC.** `0 13 * * 1` is Monday 13:00 UTC all year; local time shifts with daylight saving.
 - **A periodic run with no post target is silent.** Set the Slack channel on the schedule or the summary is only visible under **Sessions**.
 - **Deny beats allow.** A deny pattern such as `curl*-X POST*api.middesk.com*` also matches the create-business call, and no allow rule can rescue it. If the runbook creates the business, narrow the deny to `api.middesk.com/v1/businesses/*` so the create path never matches a deny rule.

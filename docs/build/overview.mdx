@@ -34,7 +34,7 @@ Each agent has evaluation categories. A category says when a run belongs to it, 
 
 ## 3. What can it reach?
 
-Capabilities attach to the template, not the agent. Tool providers hand the sandbox credentials and a CLI for a service (Zendesk, Datadog, BigQuery, or a custom one for Stripe or a KYB vendor). MCP servers add tool-calling surfaces. Secrets are injected as environment variables. Use read-only credentials here; that is what makes step 5 safe. The agent inherits all of it through its default template, so building the template first and attaching everything before the build is the rule that avoids silent failures.
+Capabilities attach to the template, not the agent. Tool providers hand the sandbox credentials and a CLI for a service (Zendesk, Datadog, BigQuery, or a custom one for Stripe or a KYB vendor). MCP servers add tool-calling surfaces. Secrets are injected as environment variables. Use read-only credentials here; that is what makes step 5 safe. The agent inherits all of it through its default template, so build once when the template is new, then let later attachments rebuild the current snapshot automatically.
 
 ## 4. How does it work?
 

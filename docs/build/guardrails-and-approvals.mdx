@@ -111,13 +111,12 @@ Org limits are separate from guardrail content. Under **Guardrails → Limits** 
     </Visibility>
   </Step>
 
-  <Step title="Rebuild the template">
-    Allowlist rules and hooks are materialized into the snapshot. Adding or attaching one after the last build leaves the template stale until you build again. Network rules are resolved at session creation and do not need a rebuild.
+  <Step title="Wait for the automatic rebuild">
+    Allowlist rules and hooks are materialized into the snapshot. Adding or attaching one rebuilds the template by itself, from its current snapshot. Network rules are resolved at session creation and do not need a rebuild. Do not run `template build` to pick up a rule. On a template with no repo, Build starts over from the base image and discards everything saved into the template from a session.
 
     <Visibility for="agents">
 
     ```text
-    cli: runtm-api template build <template_id>
     cli-verify: runtm-api template get <template_id> | jq .attachments_changed_since_build
     ```
 
@@ -191,7 +190,7 @@ cli-verify: runtm-api session approvals list <session_id>
 ## Gotchas
 
 - **Allowlist rules see only Bash.** File edits, web fetches and MCP tool calls are not evaluated by allowlist rules. Use a hook with a matcher such as `Edit|Write` for those.
-- **Added is not built.** An allowlist rule or hook added or attached after the last build is not in the snapshot. `template get` reports `attachments_changed_since_build: true`. Build again.
+- **Added is not built.** An allowlist rule or hook added or attached after the last build is not in the snapshot. `template get` reports `attachments_changed_since_build: true`. Wait for the automatic rebuild, and read the build logs if it stays `true`. Do not run `template build`.
 - **One network rule flips the default.** With zero rules the sandbox has open egress. With one rule it has deny-all plus that rule. Forgetting `app.runtm.com` breaks the runtm CLI inside the sandbox, and forgetting your package registry breaks skill tooling.
 - **Network rules have no ports.** A host is reachable on every port or not at all.
 - **Approvals are runbook steps, not settings.** The **Approvals** tab under Guardrails describes the concept but does not configure anything. If the skill never calls `runtm-approval`, nothing waits.

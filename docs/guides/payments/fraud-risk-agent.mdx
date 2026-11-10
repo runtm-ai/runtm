@@ -258,7 +258,7 @@ Read [Define how it works](/build/how-it-works/overview). The runbook is a skill
     </Visibility>
   </Step>
   <Step title="Build the template once">
-    On **Templates**, open **Risk Review** and click **Build** on the **Build** tab. Wait for `ready`.
+    On **Templates**, open **Risk Review** and click **Build** on the **Build** tab. Wait for `ready`. Build here only because the template is new and has never been built. Later changes rebuild by themselves.
 
     <Visibility for="agents">
 
@@ -349,7 +349,7 @@ Read [Prove it works and iterate](/build/launch-and-iterate). No guardrail exist
      "reason": "The packet lists the attempts but never states the 30 day baseline, so the spike is not compared to anything."}
     ```
 
-    That is a runbook gap, not a rubric gap. Add the baseline query to step 3 of the skill, rebuild, re-run case C.
+    That is a runbook gap, not a rubric gap. Add the baseline query to step 3 of the skill, wait for the automatic rebuild, re-run case C.
   </Step>
   <Step title="Read the scorecard">
     Open **Activity > Agents** and filter to Risk Agent over the last 7 days. You want five graded runs, a per-category breakdown under tasks, and a hit rate you can explain case by case.
@@ -446,13 +446,12 @@ Read [Add guardrails and approvals](/build/guardrails-and-approvals). This agent
 
     </Visibility>
   </Step>
-  <Step title="Rebuild, then re-run one case per category">
-    Allowlist rules are materialized into the snapshot, so rebuild the template. Network rules apply at session creation without a rebuild. Then **Run now** cases A, C and D again. If a case that passed in step 5 now stalls on an `ask` or fails, the last rule you added is the cause: remove it, re-run, and write it narrower.
+  <Step title="Wait for the rebuild, then re-run one case per category">
+    Allowlist rules are materialized into the snapshot, so adding one rebuilds the template by itself: wait for it, and do not run `template build`. Network rules apply at session creation without a rebuild. Then **Run now** cases A, C and D again. If a case that passed in step 5 now stalls on an `ask` or fails, the last rule you added is the cause: remove it, re-run, and write it narrower.
 
     <Visibility for="agents">
 
     ```text
-    cli: runtm-api template build <template_id>
     cli-verify: runtm-api template guardrails resolve <template_id>
     cli: runtm-api scheduled-agents run-now <scheduled_agent_id>
     ```
@@ -493,7 +492,7 @@ Read [Add guardrails and approvals](/build/guardrails-and-approvals). This agent
 ## Gotchas
 
 - **Run-as Harness instead of Agent.** A schedule created in **Harness** mode runs with no agent identity: the agent-scoped Stripe key never applies, the run is not graded, and the scorecard stays at zero. Check the schedule row says "Runs as Risk Agent".
-- **Skill attached, template not rebuilt.** `template get` shows `attachments_changed_since_build: true` until you build. The first sweep then runs without the skill and posts an improvised packet.
+- **Skill attached, rebuild not finished.** `template get` shows `attachments_changed_since_build: true` until the automatic rebuild finishes. Wait, and read the build logs if it stays `true`. The first sweep then runs without the skill and posts an improvised packet.
 - **BigQuery works in the terminal but not in the run.** The org-wide connection reaches the session only because the skill requires `bigquery`. Remove it from `requires.integrations` and the connection is silently filtered out.
 - **A network rule set without `app.runtm.com`.** The sandbox loses the runtm CLI, so `runtm-approval` fails and every `block` case errors instead of waiting.
 - **Enabled before proven.** An enabled schedule with `last_run_at` null and `next_run_at` in the past never ran. Disable, **Run now**, read the session, enable.

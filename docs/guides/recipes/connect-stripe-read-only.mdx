@@ -54,13 +54,12 @@ Sessions launched from the agent's template have `STRIPE_SECRET_KEY` set to a ke
 
     </Visibility>
   </Step>
-  <Step title="Rebuild the template">
-    Editing the skill triggers a rebuild of the templates it is attached to. If you attached a new skill instead, build once yourself.
+  <Step title="Wait for the automatic rebuild">
+    Editing or attaching the skill rebuilds the templates it is attached to, from their current snapshot. Do not run `template build`.
 
     <Visibility for="agents">
 
     ```text
-    cli: runtm-api template build <template_id>
     cli-verify: runtm-api template get <template_id> | jq '{build_status, stale: .attachments_changed_since_build}'
     ```
 

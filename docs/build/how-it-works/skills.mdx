@@ -1,6 +1,6 @@
 ---
 title: "Skills and runbooks"
-description: "Write the runbook an agent follows as a skill (SKILL.md plus reference files), require the tools it needs, attach it to a template and rebuild. Read before `runtm-api skills create`, `skills import` or `skills attach`."
+description: "Write the runbook an agent follows as a skill (SKILL.md plus reference files), require the tools it needs, and attach it to a template, which rebuilds by itself. Read before `runtm-api skills create`, `skills import` or `skills attach`."
 ---
 
 ## Outcome
@@ -96,12 +96,11 @@ Skills attach to one or more templates, to a repository, or to every repo in the
 
     </Visibility>
   </Step>
-  <Step title="Rebuild the template">
-    Attachments reach sessions only through a build.
+  <Step title="Wait for the automatic rebuild">
+    Attaching queues a rebuild from the template's current snapshot, about 15 seconds later. Sessions created after it finishes have the skill. Run `template build` only for a template that has never been built. On a template with no repo, Build starts over from the base image and discards everything saved into the template from a session.
     <Visibility for="agents">
 
     ```text
-    cli: runtm-api template build <template_id>
     cli-verify: runtm-api template get <template_id> | jq '{build_status, attachments_changed_since_build, skills: [.skills[].name]}'
     ```
 
@@ -223,8 +222,8 @@ With `requires.integrations: ["stripe", "postgres", "zendesk"]`, the sandbox get
 
 ## Gotchas
 
-- **Created but never attached.** The most common failure. `template get` shows `skills: []`. Attach and rebuild.
-- **Attached after the build.** `attachments_changed_since_build: true`. Rebuild.
+- **Created but never attached.** The most common failure. `template get` shows `skills: []`. Attach it.
+- **Attached a moment ago.** `attachments_changed_since_build: true` until the automatic rebuild finishes. Wait, and read the build logs if it stays `true`. Do not run `template build`: on a template with no repo, Build starts over from the base image and discards everything saved into the template from a session.
 - **Vague description.** The harness never picks the skill because the description does not match how people phrase requests. Rewrite it with concrete trigger phrases.
 - **Missing frontmatter.** A markdown file without the `---` block imports but never triggers as a skill.
 - **Unmet requirement.** `requires.integrations` names a provider that is not connected. The session boots and the manifest lists the unmet requirement; the runbook fails at the first vendor call. Connect the provider.
