@@ -374,6 +374,9 @@ data "aws_iam_policy_document" "access" {
     ]
   }
 
+  # The two roles above plus any role you create under the /runtm-sandbox/
+  # IAM path: a template's execution role, picked in Runtm's template
+  # settings. Runtm can only pass these roles to Lambda; it cannot assume them.
   statement {
     sid     = "PassMicrovmRoles"
     effect  = "Allow"
@@ -381,7 +384,17 @@ data "aws_iam_policy_document" "access" {
     resources = [
       aws_iam_role.build.arn,
       aws_iam_role.execution.arn,
+      "arn:aws:iam::${local.account_id}:role/runtm-sandbox/*",
     ]
+  }
+
+  # Lets Runtm read this role's runtm:stack-revision tag, so its Test
+  # connection can tell you when this module needs an update.
+  statement {
+    sid       = "ReadOwnStackRevision"
+    effect    = "Allow"
+    actions   = ["iam:ListRoleTags"]
+    resources = ["arn:aws:iam::${local.account_id}:role/RuntmSandboxAccessRole-*"]
   }
 
   statement {
@@ -414,7 +427,9 @@ resource "aws_iam_role" "access" {
   assume_role_policy = data.aws_iam_policy_document.access_trust.json
   # 12h: AssumeRoleWithWebIdentity is not role chaining, so the 1h cap does not apply.
   max_session_duration = 43200
-  tags                 = local.tags
+  # Bump with every change to this module that Runtm relies on (same value as
+  # the CloudFormation template's runtm:stack-revision).
+  tags = merge(local.tags, { "runtm:stack-revision" = "2" })
 }
 
 resource "aws_iam_role_policy" "access" {

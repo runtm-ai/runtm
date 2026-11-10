@@ -80,6 +80,65 @@ aws cloudformation create-stack --stack-name runtm-sandbox --capabilities CAPABI
                ParameterKey=TenantSlug,ParameterValue=<slug shown in the dialog>
 ```
 
+## Template execution roles (AWS access from inside a sandbox)
+
+By default a sandbox runs as `RuntmMicrovmExecutionRole-*`, which can only
+write CloudWatch logs. To let one Runtm template reach AWS (for example to
+read AWS Secrets Manager), create a role for it under the `/runtm-sandbox/`
+IAM path and pick it in the template's settings in Runtm:
+
+```hcl
+resource "aws_iam_role" "billing_agent" {
+  name = "billing-agent"
+  path = "/runtm-sandbox/" # Runtm may only pass roles under this path
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "lambda.amazonaws.com" }
+      Action    = ["sts:AssumeRole", "sts:TagSession"]
+      Condition = { StringEquals = { "aws:SourceAccount" = data.aws_caller_identity.current.account_id } }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "billing_agent" {
+  role = aws_iam_role.billing_agent.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["secretsmanager:GetSecretValue"]
+      Resource = ["arn:aws:secretsmanager:*:*:secret:billing/*"]
+    }]
+  })
+}
+```
+
+What Runtm can do with it: `iam:PassRole` to Lambda MicroVMs, nothing else.
+The role trusts only `lambda.amazonaws.com`, so Runtm's control plane cannot
+assume it or hold its credentials. Anyone who can start or open a session from
+that template can use the role inside the sandbox, so scope it to that
+template's needs.
+
+## Upgrading
+
+Terraform: a module pinned to `main` picks changes up on the next
+`terraform apply`; one pinned to a tag needs the tag bumped.
+
+CloudFormation: update the stack in place with the latest template and your
+existing parameters. Runtm's Test connection shows this command, pre-filled,
+when your stack is behind:
+
+```sh
+aws cloudformation update-stack --stack-name <stack name> --capabilities CAPABILITY_NAMED_IAM \
+  --template-url https://runtm-public-templates.s3.us-east-1.amazonaws.com/aws-sandbox/v2/runtm-sandbox.yaml \
+  --parameters ParameterKey=GoogleEmail,UsePreviousValue=true ...
+```
+
+Both stamp the access role with a `runtm:stack-revision` tag (currently `2`)
+that Runtm reads to tell whether the stack is current.
+
 ## Inputs
 
 | Name | Default | Description |

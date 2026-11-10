@@ -5,7 +5,7 @@ Description: >-
   (AssumeRoleWithWebIdentity, no IAM OIDC provider needed), the MicroVM build
   and execution roles, and an artifact bucket. Nothing here grants Runtm
   access to anything outside Lambda MicroVMs and the artifact bucket.
-  Template version: v2 (see .plan/aws-byo-org-identity-options.md).
+  Template version: v2, revision 2 (see .plan/aws-byo-org-identity-options.md).
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -301,14 +301,24 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:lambda:${AWS::Region}:aws:network-connector:*"
                   - !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:network-connector:*"
-              # Scoped to exactly these two roles; no PassedToService condition —
-              # the MicroVMs service passes them under its own principal.
+              # Scoped to these two roles plus any role you create under the
+              # /runtm-sandbox/ IAM path (a template's execution role, picked in
+              # Runtm's template settings). No PassedToService condition — the
+              # MicroVMs service passes them under its own principal. Runtm can
+              # only pass these roles to Lambda; it cannot assume them.
               - Sid: PassMicrovmRoles
                 Effect: Allow
                 Action: ["iam:PassRole"]
                 Resource:
                   - !GetAtt MicrovmBuildRole.Arn
                   - !GetAtt MicrovmExecutionRole.Arn
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/runtm-sandbox/*"
+              # Lets Runtm read this role's runtm:stack-revision tag, so its
+              # Test connection can tell you when this stack needs an update.
+              - Sid: ReadOwnStackRevision
+                Effect: Allow
+                Action: ["iam:ListRoleTags"]
+                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/RuntmSandboxAccessRole-*"
               - Sid: Artifacts
                 Effect: Allow
                 Action: ["s3:PutObject", "s3:GetObject", "s3:DeleteObject", "s3:AbortMultipartUpload"]
@@ -326,6 +336,8 @@ Resources:
       Tags:
         - { Key: runtm:organization, Value: !Ref OrganizationId }
         - { Key: runtm:label, Value: !If [HasSuffix, !Sub "${Suffix}-${TenantSlug}", !Ref TenantSlug] }
+        # Bump with every change to this stack that Runtm relies on.
+        - { Key: runtm:stack-revision, Value: "2" }
 
 Outputs:
   RoleArn:
