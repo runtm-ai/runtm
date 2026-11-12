@@ -106,7 +106,12 @@ class _Stack:
 
 @pytest.fixture(scope="module")
 def stack() -> _Stack:
-    return _Stack(yaml.load(TEMPLATE.read_text(), Loader=_Loader), PARAMETERS)
+    loader = _Loader(TEMPLATE.read_text())
+    try:
+        template = loader.get_single_data()
+    finally:
+        loader.dispose()
+    return _Stack(template, PARAMETERS)
 
 
 @pytest.fixture(scope="module")
