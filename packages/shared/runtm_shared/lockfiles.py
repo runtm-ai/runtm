@@ -80,8 +80,12 @@ def check_node_lockfile(path: Path) -> LockfileStatus:
 
     Priority: bun > npm (we pick one, not multiple)
     """
-    # Check for bun first (preferred)
-    bun_lock = path / "bun.lockb"
+    # Check for bun first (preferred). Bun 1.2+ writes a text bun.lock by
+    # default; older versions write the binary bun.lockb.
+    bun_lock = next(
+        (path / name for name in ("bun.lock", "bun.lockb") if (path / name).exists()),
+        None,
+    )
     package_json = path / "package.json"
 
     if not package_json.exists():
@@ -96,9 +100,9 @@ def check_node_lockfile(path: Path) -> LockfileStatus:
         )
 
     # Detect which lockfile exists
-    if bun_lock.exists():
+    if bun_lock is not None:
         manager: PackageManager = "bun"
-        lockfile_path = "bun.lockb"
+        lockfile_path = bun_lock.name
         install_cmd = "bun install"
         frozen_cmd = "bun install --frozen-lockfile"
         exists = True
