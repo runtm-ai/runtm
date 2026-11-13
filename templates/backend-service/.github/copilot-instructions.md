@@ -21,7 +21,9 @@ This is an Runtm-deployed FastAPI tool. Follow these rules:
 ```python
 # app/api/v1/my_endpoint.py
 from fastapi import APIRouter
+
 router = APIRouter()
+
 
 @router.post("/my-endpoint")
 async def my_endpoint(data: dict):
@@ -31,6 +33,7 @@ async def my_endpoint(data: dict):
 Register in `app/main.py`:
 ```python
 from app.api.v1.my_endpoint import router as my_endpoint_router
+
 app.include_router(my_endpoint_router, prefix="/api/v1")
 ```
 

@@ -133,8 +133,8 @@ SessionState.STOPPED
 SessionState.DESTROYED
 
 # Session modes
-SessionMode.AUTOPILOT   # Agent controlled via prompts
-SessionMode.INTERACTIVE # User controls agent manually
+SessionMode.AUTOPILOT  # Agent controlled via prompts
+SessionMode.INTERACTIVE  # User controls agent manually
 ```
 
 ### Discovery Metadata

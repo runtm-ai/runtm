@@ -117,6 +117,7 @@ class MyFeatureService:
         # Business logic here
         return {"result": data}
 
+
 my_feature_service = MyFeatureService()
 ```
 
@@ -128,8 +129,10 @@ Define models in `backend/app/models/`:
 # backend/app/models/my_feature.py
 from pydantic import BaseModel
 
+
 class MyRequest(BaseModel):
     input: str
+
 
 class MyResponse(BaseModel):
     result: str
@@ -146,6 +149,7 @@ from app.models.my_feature import MyRequest, MyResponse
 from app.services.my_feature import my_feature_service
 
 router = APIRouter()
+
 
 @router.post("/my-feature", response_model=MyResponse)
 async def my_feature(request: MyRequest) -> MyResponse:
@@ -211,6 +215,7 @@ Use environment variables via `backend/app/core/config.py`:
 
 ```python
 from app.core.config import settings
+
 api_key = settings.my_api_key
 ```
 
@@ -477,11 +482,13 @@ from app.db import Base, get_db
 # Define a model
 from sqlalchemy import Column, Integer, String
 
+
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True)
     email = Column(String, unique=True, nullable=False)
     name = Column(String)
+
 
 # Use in endpoint
 @router.get("/users")
