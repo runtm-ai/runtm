@@ -121,6 +121,21 @@ assume it or hold its credentials. Anyone who can start or open a session from
 that template can use the role inside the sandbox, so scope it to that
 template's needs.
 
+## Shared databases
+
+A template with **Shared database** turned on keeps its data in this
+module's artifact bucket, under `databases/<template id>/`: a DuckLake catalog
+(`catalog.ducklake.gz`) next to Parquet files. Nothing to set up. For each
+session, Runtm assumes the access role with a session policy limited to that
+template's prefix and hands the one-hour credentials to `lake.js` in the
+sandbox, so a session can't read or list another template's data or anything
+else in the bucket. The data never leaves your account.
+
+Current objects under `databases/` never expire. Every write replaces the
+catalog, so the bucket's versioning keeps each superseded catalog as a restore
+point for 30 days (rule `retain-shared-databases`, stack revision 3). Stacks on
+an earlier revision work as is; update to get that cleanup.
+
 ## Upgrading
 
 Terraform: for a module pinned to `main`, run `terraform init -upgrade` to
@@ -140,7 +155,7 @@ aws cloudformation update-stack --stack-name <stack name> --capabilities CAPABIL
   --parameters ParameterKey=GoogleEmail,UsePreviousValue=true ...
 ```
 
-Both stamp the access role with a `runtm:stack-revision` tag (currently `2`)
+Both stamp the access role with a `runtm:stack-revision` tag (currently `3`)
 that Runtm reads to tell whether the stack is current.
 
 ## Inputs

@@ -4,6 +4,9 @@
 # creates, in YOUR account: the access role Runtm assumes, the MicroVM build
 # and execution roles, an artifact bucket, and optionally an egress VPC.
 # Nothing here grants Runtm access outside Lambda MicroVMs and that bucket.
+# Template shared databases also live in that bucket (databases/): Runtm hands
+# sandboxes credentials for this role narrowed by a session policy to one
+# template's prefix, so they never see the rest of the bucket.
 
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
@@ -44,8 +47,9 @@ locals {
 }
 
 # ---------------------------------------------------------------------------
-# Artifact bucket: image build contexts (images/) + paused-session snapshots
-# (sessions/). Encrypted, private, lifecycle-expired.
+# Artifact bucket: image build contexts (images/), paused-session snapshots
+# (sessions/), template goldens (templates/) and template shared databases
+# (databases/). Encrypted, private, lifecycle-expired where it is safe to.
 # ---------------------------------------------------------------------------
 
 resource "aws_s3_bucket" "artifacts" {
@@ -135,6 +139,21 @@ resource "aws_s3_bucket_lifecycle_configuration" "artifacts" {
     noncurrent_version_expiration {
       newer_noncurrent_versions = var.template_versions_to_keep
       noncurrent_days           = var.template_version_retention_days
+    }
+  }
+
+  # databases/ — template shared databases (lake.js; one prefix per template,
+  # cloud-api's shared_database.py). Current objects never expire: they ARE the
+  # data. Every write replaces the catalog object, so superseded versions are
+  # restore points for 30 days, then purged.
+  rule {
+    id     = "retain-shared-databases"
+    status = "Enabled"
+    filter {
+      prefix = "databases/"
+    }
+    noncurrent_version_expiration {
+      noncurrent_days = 30
     }
   }
 
@@ -429,7 +448,8 @@ resource "aws_iam_role" "access" {
   max_session_duration = 43200
   # Bump with every change to this module that Runtm relies on (same value as
   # the CloudFormation template's runtm:stack-revision).
-  tags = merge(local.tags, { "runtm:stack-revision" = "2" })
+  # 3: databases/ lifecycle rule (template shared databases).
+  tags = merge(local.tags, { "runtm:stack-revision" = "3" })
 }
 
 resource "aws_iam_role_policy" "access" {

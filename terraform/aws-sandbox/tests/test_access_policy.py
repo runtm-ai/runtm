@@ -161,7 +161,25 @@ def test_runtm_may_read_only_its_own_role_tags(stack, access_statements):
 
 def test_the_access_role_carries_the_stack_revision(stack):
     tags = stack.resource("RuntmSandboxAccessRole")["Properties"]["Tags"]
-    assert {t["Key"]: t["Value"] for t in tags}["runtm:stack-revision"] == "2"
+    assert {t["Key"]: t["Value"] for t in tags}["runtm:stack-revision"] == "3"
+
+
+def test_access_role_keeps_what_shared_databases_are_scoped_down_from(access_statements):
+    """Runtm narrows this role to databases/<template id>/ with a session policy, so
+    the role itself must still read, write and list the artifact bucket."""
+    objects = access_statements["Artifacts"]
+    assert {"s3:GetObject", "s3:PutObject", "s3:DeleteObject"} <= set(_as_list(objects["Action"]))
+    assert _as_list(objects["Resource"]) == ["<ArtifactBucket.Arn>/*"]
+    listing = access_statements["ArtifactBucketMeta"]
+    assert "s3:ListBucket" in _as_list(listing["Action"])
+
+
+def test_shared_databases_never_expire_and_old_catalogs_do(stack):
+    rules = stack.resource("ArtifactBucket")["Properties"]["LifecycleConfiguration"]["Rules"]
+    (rule,) = [r for r in rules if r.get("Prefix") == "databases/"]
+    assert rule["Status"] == "Enabled"
+    assert "ExpirationInDays" not in rule and "ExpirationDate" not in rule
+    assert rule["NoncurrentVersionExpiration"] == {"NoncurrentDays": 30}
 
 
 def test_terraform_and_cloudformation_stamp_the_same_revision():

@@ -16,7 +16,9 @@ await write(db => db.run('insert into notes values (?, ?, ?)', [crypto.randomUUI
 console.log(await query('select * from notes order by created_at'));
 ```
 
-It needs a runtm session whose template has **Shared database** turned on.
+It needs a runtm session whose template has **Shared database** turned on. The data
+lives in Runtm's Cloud Storage, or, for templates that run on AWS, in your own
+account's Runtm artifact bucket (S3).
 Usage, table rules and limits: [Share data across sessions](https://docs.runtm.com/guides/recipes/share-data-across-sessions).
 
-Tests (not needed to use lake.js): `cd packages/lake && npm ci && npm test` runs two clients against a local fake of runtm and Cloud Storage. This package disables dependency lifecycle scripts in `.npmrc`; its DuckDB dependency ships platform-specific prebuilt bindings and does not need install scripts.
+Tests (not needed to use lake.js): `cd packages/lake && npm ci && npm test` runs two clients against a local fake of runtm, Cloud Storage and S3. This package disables dependency lifecycle scripts in `.npmrc`; its DuckDB dependency ships platform-specific prebuilt bindings and does not need install scripts.
