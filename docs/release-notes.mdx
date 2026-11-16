@@ -6,6 +6,24 @@ rss: true
 
 Every entry below is live in production. The date is when it became available, in Pacific Time. Setup notes say what an admin needs to do before people can use it.
 
+<Update label="Nov 7, 2026" tags={["Agents", "Evals"]}>
+  ## Evals you can check: graded check by check, on your own key
+
+  Each evaluation category now lists its **Passes if** checks, and every graded run is scored check by check, with the grader's reasoning written before its verdict. The agent's **Evals** tab shows each category as a table of its checks with how many graded runs met each one, how far to trust the grades, and the pass rate before and after the agent's last change. People who can edit the agent can mark a grade right or wrong. Org admins choose the grader model, which runs are graded and whether the grader reads what the run did, in **Settings → Evals**.
+
+  **Setup:** grading runs on your organization's Claude key, through Anthropic or Amazon Bedrock. With no key, runs show **Not graded** and Settings shows where to add one. [Learn more](/build/measure-success)
+</Update>
+
+<Update label="Nov 4, 2026" tags={["Integrations", "Security"]}>
+  ## Use Runtime from Claude, ChatGPT and Cursor
+
+  The Runtime MCP server lets an AI client create, run and check your agents from chat. Add `https://mcp.runtm.com/mcp` to Claude, ChatGPT, Cursor, VS Code, Codex or Claude Code, then sign in with your Runtime login or your company's single sign-on, pick the workspace and allow access. The app acts with your role in that workspace and no more. A step that needs a key, token or password returns a dashboard link for you to finish, so credentials stay out of the chat. MCP gateways and CI can send a Runtime API key instead, and `?mode=tools` lists one tool per API operation for gateways that apply policy by tool name.
+
+  Org admins can also connect an internal MCP server that sits behind Okta: set up an OAuth app for it once, and everyone signs in with their own Okta account.
+
+  **Setup:** none in Runtime to connect a client. In ChatGPT, turn on **Developer mode** first. On Claude Team and Enterprise plans, an owner may need to add the connector. For an Okta-protected MCP server, an admin opens it in **Settings → Context → Tools & MCP** and clicks **Set up OAuth app**. [Learn more](/mcp/overview)
+</Update>
+
 <Update label="Oct 27, 2026" tags={["Governance", "Compliance"]}>
   ## Compliance (beta): risk management, audit log and evidence reports
 
