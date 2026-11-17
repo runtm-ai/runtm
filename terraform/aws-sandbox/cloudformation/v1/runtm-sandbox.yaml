@@ -94,6 +94,12 @@ Resources:
             NoncurrentVersionExpiration:
               NoncurrentDays: !Ref TemplateVersionRetentionDays
               NewerNoncurrentVersions: !Ref TemplateVersionsToKeep
+          # databases/ = template shared databases (lake.js). Current objects are
+          # the data and never expire; superseded catalog versions go after 30 days.
+          - Id: retain-shared-databases
+            Status: Enabled
+            Prefix: databases/
+            NoncurrentVersionExpiration: { NoncurrentDays: 30 }
           - Id: abort-incomplete-uploads
             Status: Enabled
             AbortIncompleteMultipartUpload: { DaysAfterInitiation: 2 }

@@ -106,11 +106,14 @@ The second session prints `from session one`.
 - **Built for small apps that write occasionally.** Plan on about one save per second for the whole template, across every session. Reads are not limited the same way.
 - **One database per template.** Every session of the template shares it, including teammates' sessions. Two templates never see each other's data.
 - **Node.js only.** `lake.js` is the supported client.
+- **Where the data lives.** In Runtm's Cloud Storage, one location per template. For a template that runs on AWS, it lives in your own AWS account instead: the Runtm artifact bucket your AWS connection created, under `databases/<template id>/`. Nothing extra to install. See the [AWS module README](https://github.com/runtm-ai/runtm/tree/main/terraform/aws-sandbox#shared-databases).
 - **One DuckDB version.** Every app on the template's database uses `@duckdb/node-api@2.0.0-r.1`. A newer DuckDB writes data an older one can't read, so a mismatched app would lock out the others.
 
 ## Gotchas
 
 - **"Shared database is off for this session's template."** Turn it on in the template's settings (step 1). A session opened without a template, or from a different template, gets this error too.
+- **"Connect AWS under Integrations first."** The template runs on AWS, and its database lives in your AWS account. Connect AWS (Integrations, AWS MicroVMs) and run **Test connection**.
+- **"lake.js doesn't know this shared database location", or `object null is not iterable`.** The app has a `lake.js` from before AWS support. Download it again (step 2).
 - **"lake.js runs inside a runtm session".** The file only works in a runtm session. To test locally, run the app in a session and open its preview.
 - **The app shows old data after another session saves.** Each `query` picks up saved changes, so read again rather than caching results in memory for long.
 - **A long-running app keeps working.** `lake.js` renews its own access while the session runs. Nothing to restart.

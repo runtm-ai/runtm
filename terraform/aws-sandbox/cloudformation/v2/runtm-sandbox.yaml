@@ -5,7 +5,7 @@ Description: >-
   (AssumeRoleWithWebIdentity, no IAM OIDC provider needed), the MicroVM build
   and execution roles, and an artifact bucket. Nothing here grants Runtm
   access to anything outside Lambda MicroVMs and the artifact bucket.
-  Template version: v2, revision 2 (see .plan/aws-byo-org-identity-options.md).
+  Template version: v2, revision 3 (see .plan/aws-byo-org-identity-options.md).
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -131,6 +131,12 @@ Resources:
             NoncurrentVersionExpiration:
               NoncurrentDays: !Ref TemplateVersionRetentionDays
               NewerNoncurrentVersions: !Ref TemplateVersionsToKeep
+          # databases/ = template shared databases (lake.js). Current objects are
+          # the data and never expire; superseded catalog versions go after 30 days.
+          - Id: retain-shared-databases
+            Status: Enabled
+            Prefix: databases/
+            NoncurrentVersionExpiration: { NoncurrentDays: 30 }
           - Id: abort-incomplete-uploads
             Status: Enabled
             AbortIncompleteMultipartUpload: { DaysAfterInitiation: 2 }
@@ -337,7 +343,7 @@ Resources:
         - { Key: runtm:organization, Value: !Ref OrganizationId }
         - { Key: runtm:label, Value: !If [HasSuffix, !Sub "${Suffix}-${TenantSlug}", !Ref TenantSlug] }
         # Bump with every change to this stack that Runtm relies on.
-        - { Key: runtm:stack-revision, Value: "2" }
+        - { Key: runtm:stack-revision, Value: "3" }
 
 Outputs:
   RoleArn:

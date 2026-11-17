@@ -11,17 +11,19 @@
 // Requires a runtm session whose template has Shared database turned on. Guide:
 // https://docs.runtm.com/guides/recipes/share-data-across-sessions
 //
-// How it works: DuckLake on Cloud Storage. The catalog is one object next to the
-// Parquet data. Readers cache the catalog and re-download it when its generation
-// changes. Writers download it, apply changes and upload with ifGenerationMatch, so
-// concurrent writers can't overwrite each other; the loser retries on the new catalog.
-// The location and a short-lived token come from runtm and are renewed before expiry.
+// How it works: DuckLake on object storage: Cloud Storage, or S3 in your own AWS
+// account for templates that run on AWS. The catalog is one object next to the
+// Parquet data. Readers cache the catalog and re-download it when its version
+// (GCS generation, S3 ETag) changes. Writers download it, apply changes and upload
+// it only if it is still that version, so concurrent writers can't overwrite each
+// other; the loser retries on the new catalog. The location and short-lived
+// credentials come from runtm and are renewed before expiry.
 import { execFileSync } from 'node:child_process';
 import { rmSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { createHash, createHmac, randomUUID } from 'node:crypto';
 import { promisify } from 'node:util';
 import { gzip, gunzip } from 'node:zlib';
 import { DuckDBInstance } from '@duckdb/node-api';
@@ -38,9 +40,11 @@ const TOKEN_REFRESH_MARGIN_MS = 5 * 60 * 1000;
 const DUCKDB_VERSION = 'v2.0';
 const DUCKDB_PACKAGE = '@duckdb/node-api@2.0.0-r.1';
 
-let lake = null; // { bucket, catalogObject, dataPath, token, expiresAt }
+// { store: 'gcs' | 's3', bucket, catalogObject, dataPath, expiresAt,
+//   token (gcs) | region + credentials (s3) }
+let lake = null;
 let connectionPromise;
-let secretToken; // token currently loaded into the DuckDB secret
+let secretToken; // credentials currently loaded into the DuckDB secret
 let current = null; // read-only catalog attached as "lake": { generation, file }
 let queue = Promise.resolve();
 
@@ -94,7 +98,7 @@ async function writeLocked(fn) {
 
     let newGeneration;
     try {
-      newGeneration = await uploadCatalog(file, generation ?? 0);
+      newGeneration = await uploadCatalog(file, generation);
     } catch (err) {
       await fs.rm(file, { force: true });
       throw err;
@@ -167,13 +171,21 @@ async function ensureLake() {
   }
   if (!res.ok) throw new Error(`runtm shared database token failed: ${res.status} ${await res.text()}`);
 
-  const { url, access_token: token, expires_at: expiresAt } = await res.json();
-  const [, bucket, prefix] = url.match(/^gs:\/\/([^/]+)\/(.*)$/);
+  const { url, access_token: token, aws, expires_at: expiresAt } = await res.json();
+  const [, scheme, bucket, prefix] = url.match(/^(gs|s3):\/\/([^/]+)\/(.*)$/) ?? [];
+  if (!scheme) throw new Error(`lake.js doesn't know this shared database location: ${url}. Download the latest lake.js.`);
   lake = {
+    store: scheme === 's3' ? 's3' : 'gcs',
     bucket,
     catalogObject: `${prefix}${CATALOG_NAME}`,
-    dataPath: `gs://${bucket}/${prefix}data/`,
+    dataPath: `${scheme}://${bucket}/${prefix}data/`,
     token,
+    region: aws?.region,
+    credentials: aws && {
+      accessKeyId: aws.access_key_id,
+      secretAccessKey: aws.secret_access_key,
+      sessionToken: aws.session_token,
+    },
     expiresAt: Date.parse(expiresAt),
   };
   return lake;
@@ -187,36 +199,55 @@ function loginShellToken() {
   }
 }
 
-// Catalog object via the GCS JSON API.
+// Catalog object: its current version, that exact version's bytes, and a conditional
+// upload. Versions are opaque strings (GCS generation or S3 ETag); null = no catalog yet.
+
+async function remoteGeneration() {
+  return (await ensureLake()).store === 's3' ? s3CatalogEtag() : gcsGeneration();
+}
+
+// Downloads exactly this version; false if it was replaced in the meantime.
+async function downloadCatalog(version, destination) {
+  const res = (await ensureLake()).store === 's3'
+    ? await s3Fetch({ key: lake.catalogObject, headers: { 'if-match': version } }, [404, 412])
+    : await gcsFetch(l => `${objectUrl(l)}?alt=media&generation=${version}`, {}, [404]);
+  if (!res.ok) return false;
+  await fs.writeFile(destination, await promisify(gunzip)(Buffer.from(await res.arrayBuffer())));
+  return true;
+}
+
+// Uploads only if the catalog is still at version (null: only if there is none yet).
+// Returns the new version, or null if another writer got there first.
+async function uploadCatalog(file, version) {
+  const body = await promisify(gzip)(await fs.readFile(file));
+  if ((await ensureLake()).store === 's3') {
+    const res = await s3Fetch({
+      method: 'PUT',
+      key: lake.catalogObject,
+      headers: { 'content-type': 'application/gzip', ...(version === null ? { 'if-none-match': '*' } : { 'if-match': version }) },
+      body,
+    }, [409, 412]); // 409: a concurrent conditional write to the same key won
+    return res.ok ? res.headers.get('etag') : null;
+  }
+  const res = await gcsFetch(
+    ({ bucket, catalogObject }) => `https://storage.googleapis.com/upload/storage/v1/b/${bucket}/o`
+      + `?uploadType=media&name=${encodeURIComponent(catalogObject)}&ifGenerationMatch=${version ?? 0}`,
+    { method: 'POST', headers: { 'Content-Type': 'application/gzip' }, body },
+    [412],
+  );
+  if (res.status === 412) return null;
+  return (await res.json()).generation;
+}
+
+// Cloud Storage, via the JSON API.
 
 function objectUrl({ bucket, catalogObject }) {
   return `https://storage.googleapis.com/storage/v1/b/${bucket}/o/${encodeURIComponent(catalogObject)}`;
 }
 
-async function remoteGeneration() {
+async function gcsGeneration() {
   const res = await gcsFetch(l => `${objectUrl(l)}?fields=generation`, {}, [404]);
   if (res.status === 404) return null;
-  return (await res.json()).generation;
-}
-
-// Downloads exactly this generation; false if it was replaced in the meantime.
-async function downloadCatalog(generation, destination) {
-  const res = await gcsFetch(l => `${objectUrl(l)}?alt=media&generation=${generation}`, {}, [404]);
-  if (res.status === 404) return false;
-  await fs.writeFile(destination, await promisify(gunzip)(Buffer.from(await res.arrayBuffer())));
-  return true;
-}
-
-// Returns the new generation, or null if the catalog changed since ifGenerationMatch.
-async function uploadCatalog(file, ifGenerationMatch) {
-  const body = await promisify(gzip)(await fs.readFile(file));
-  const res = await gcsFetch(
-    ({ bucket, catalogObject }) => `https://storage.googleapis.com/upload/storage/v1/b/${bucket}/o`
-      + `?uploadType=media&name=${encodeURIComponent(catalogObject)}&ifGenerationMatch=${ifGenerationMatch}`,
-    { method: 'POST', headers: { 'Content-Type': 'application/gzip' }, body },
-    [412],
-  );
-  if (res.status === 412) return null;
   return (await res.json()).generation;
 }
 
@@ -231,7 +262,81 @@ async function gcsFetch(urlFor, init, allowedStatuses) {
   throw new Error(`GCS ${init.method ?? 'GET'} ${url.split('?')[0]} failed: ${res.status} ${await res.text()}`);
 }
 
-// DuckDB connection, with the GCS secret kept in sync with the current token.
+// S3, signed with Signature Version 4.
+
+// The catalog's ETag from a listing of exactly its name. A HEAD on a missing object
+// needs s3:ListBucket on the whole bucket to answer 404 rather than 403, and runtm's
+// credentials may only list this template's prefix.
+async function s3CatalogEtag() {
+  const res = await s3Fetch({ query: { 'list-type': '2', prefix: lake.catalogObject, 'max-keys': '1' } }, []);
+  const xml = await res.text();
+  for (const [, entry] of xml.matchAll(/<Contents>([\s\S]*?)<\/Contents>/g)) {
+    if (xmlText(entry, 'Key') === lake.catalogObject) return xmlText(entry, 'ETag');
+  }
+  return null;
+}
+
+function xmlText(xml, tag) {
+  const raw = xml.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`))?.[1] ?? '';
+  return raw.replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+}
+
+// Virtual-hosted style, except for bucket names with dots (they break TLS there).
+function s3Location({ bucket, region }) {
+  const pathStyle = bucket.includes('.');
+  return {
+    host: pathStyle ? `s3.${region}.amazonaws.com` : `${bucket}.s3.${region}.amazonaws.com`,
+    root: pathStyle ? `/${bucket}/` : '/',
+    pathStyle,
+  };
+}
+
+async function s3Fetch({ method = 'GET', key = '', query = {}, headers = {}, body }, allowedStatuses) {
+  const l = await ensureLake();
+  const { host, root } = s3Location(l);
+  const pathname = root + key.split('/').map(awsEncode).join('/');
+  const search = Object.keys(query).sort().map(k => `${awsEncode(k)}=${awsEncode(query[k])}`).join('&');
+  const url = `https://${host}${pathname}${search ? `?${search}` : ''}`;
+  const signed = signV4({ method, host, pathname, search, headers, body, region: l.region, credentials: l.credentials });
+  const res = await fetch(url, { method, headers: signed, body });
+  if (res.ok || allowedStatuses.includes(res.status)) return res;
+  throw new Error(`S3 ${method} ${url.split('?')[0]} failed: ${res.status} ${await res.text()}`);
+}
+
+// Headers for one request, Authorization included. Every header is signed.
+function signV4({ method, host, pathname, search, headers, body, region, credentials, now = new Date() }) {
+  const amzDate = now.toISOString().replace(/[-:]|\.\d{3}/g, '');
+  const day = amzDate.slice(0, 8);
+  const payloadHash = createHash('sha256').update(body ?? '').digest('hex');
+  const all = {
+    ...Object.fromEntries(Object.entries(headers).map(([k, v]) => [k.toLowerCase(), String(v).trim()])),
+    host,
+    'x-amz-content-sha256': payloadHash,
+    'x-amz-date': amzDate,
+    ...(credentials.sessionToken ? { 'x-amz-security-token': credentials.sessionToken } : {}),
+  };
+  const names = Object.keys(all).sort();
+  const canonicalRequest = [
+    method, pathname, search, names.map(n => `${n}:${all[n]}\n`).join(''), names.join(';'), payloadHash,
+  ].join('\n');
+  const scope = `${day}/${region}/s3/aws4_request`;
+  const stringToSign = ['AWS4-HMAC-SHA256', amzDate, scope, createHash('sha256').update(canonicalRequest).digest('hex')].join('\n');
+  const signingKey = [day, region, 's3', 'aws4_request']
+    .reduce((key, part) => createHmac('sha256', key).update(part).digest(), `AWS4${credentials.secretAccessKey}`);
+  const signature = createHmac('sha256', signingKey).update(stringToSign).digest('hex');
+  delete all.host; // fetch sets it from the URL
+  return {
+    ...all,
+    authorization: `AWS4-HMAC-SHA256 Credential=${credentials.accessKeyId}/${scope}, SignedHeaders=${names.join(';')}, Signature=${signature}`,
+  };
+}
+
+// RFC 3986 percent-encoding, as SigV4 expects (encodeURIComponent leaves !'()* alone).
+function awsEncode(value) {
+  return encodeURIComponent(value).replace(/[!'()*]/g, c => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+}
+
+// DuckDB connection, with the storage secret kept in sync with the current credentials.
 
 async function getConnection() {
   connectionPromise ??= (async () => {
@@ -253,12 +358,21 @@ async function getConnection() {
   });
 
   const connection = await connectionPromise;
-  const { token } = await ensureLake();
-  if (token !== secretToken) {
-    await connection.run(`CREATE OR REPLACE SECRET gcs_secret (TYPE gcs, BEARER_TOKEN ${sqlString(token)})`);
-    secretToken = token;
+  const l = await ensureLake();
+  const current = l.store === 's3' ? l.credentials.sessionToken : l.token;
+  if (current !== secretToken) {
+    await connection.run(l.store === 's3' ? s3SecretSql(l) : `CREATE OR REPLACE SECRET gcs_secret (TYPE gcs, BEARER_TOKEN ${sqlString(l.token)})`);
+    secretToken = current;
   }
   return connection;
+}
+
+// Scoped to the lake, so the app's own S3 access (a secret, AWS_* variables) is untouched.
+function s3SecretSql(l) {
+  const { accessKeyId, secretAccessKey, sessionToken } = l.credentials;
+  return `CREATE OR REPLACE SECRET lake_s3 (TYPE s3, KEY_ID ${sqlString(accessKeyId)}, SECRET ${sqlString(secretAccessKey)}, `
+    + `SESSION_TOKEN ${sqlString(sessionToken)}, REGION ${sqlString(l.region)}, `
+    + `URL_STYLE ${sqlString(s3Location(l).pathStyle ? 'path' : 'vhost')}, SCOPE ${sqlString(l.dataPath)})`;
 }
 
 function dbHandle(connection) {

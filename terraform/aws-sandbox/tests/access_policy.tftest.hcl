@@ -111,7 +111,37 @@ run "access_policy" {
   }
 
   assert {
-    condition     = aws_iam_role.access.tags["runtm:stack-revision"] == "2"
-    error_message = "The access role must carry runtm:stack-revision = 2 (same as the CloudFormation template)."
+    condition     = aws_iam_role.access.tags["runtm:stack-revision"] == "3"
+    error_message = "The access role must carry runtm:stack-revision = 3 (same as the CloudFormation template)."
+  }
+
+  # Runtm narrows this role to databases/<template id>/ with a session policy for
+  # shared databases, so the role itself must keep these.
+  assert {
+    condition = length(setsubtract(
+      ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+      one([for s in data.aws_iam_policy_document.access.statement : s if s.sid == "Artifacts"]).actions,
+    )) == 0
+    error_message = "Artifacts must let the access role read, write and delete objects (shared databases are scoped down from it)."
+  }
+
+  assert {
+    condition = contains(
+      one([for s in data.aws_iam_policy_document.access.statement : s if s.sid == "ArtifactBucketMeta"]).actions,
+      "s3:ListBucket",
+    )
+    error_message = "ArtifactBucketMeta must keep s3:ListBucket (shared databases list their prefix)."
+  }
+
+  assert {
+    condition = alltrue([
+      for r in aws_s3_bucket_lifecycle_configuration.artifacts.rule :
+      length(r.expiration) == 0 && one(r.noncurrent_version_expiration).noncurrent_days == 30
+      if one(r.filter).prefix == "databases/"
+      ]) && length([
+      for r in aws_s3_bucket_lifecycle_configuration.artifacts.rule : r
+      if one(r.filter).prefix == "databases/"
+    ]) == 1
+    error_message = "databases/ must have exactly one rule: current objects never expire, old versions go after 30 days."
   }
 }
