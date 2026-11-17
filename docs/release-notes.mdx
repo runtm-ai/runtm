@@ -11,6 +11,8 @@ Every entry below is live in production. The date is when it became available, i
 
   Each evaluation category now lists its **Passes if** checks, and every graded run is scored check by check, with the grader's reasoning written before its verdict. The agent's **Evals** tab shows each category as a table of its checks with how many graded runs met each one, how far to trust the grades, and the pass rate before and after the agent's last change. People who can edit the agent can mark a grade right or wrong. Org admins choose the grader model, which runs are graded and whether the grader reads what the run did, in **Settings → Evals**.
 
+  ![An agent's Evals in Runtime: each category as a table of Passes if checks with how many runs met each, and recent grades to mark right or wrong](/images/release-notes/evals-check-table.png)
+
   **Setup:** grading runs on your organization's Claude key, through Anthropic or Amazon Bedrock. With no key, runs show **Not graded** and Settings shows where to add one. [Learn more](/build/measure-success)
 </Update>
 
@@ -39,7 +41,9 @@ Every entry below is live in production. The date is when it became available, i
 <Update label="Nov 4, 2026" tags={["Integrations", "Security"]}>
   ## Use Runtime from Claude, ChatGPT and Cursor
 
-  The Runtime MCP server lets an AI client create, run and check your agents from chat. Add `https://mcp.runtm.com/mcp` to Claude, ChatGPT, Cursor, VS Code, Codex or Claude Code, then sign in with your Runtime login or your company's single sign-on, pick the workspace and allow access. The app acts with your role in that workspace and no more. A step that needs a key, token or password returns a dashboard link for you to finish, so credentials stay out of the chat. MCP gateways and CI can send a Runtime API key instead, and `?mode=tools` lists one tool per API operation for gateways that apply policy by tool name.
+  The Runtime MCP server lets an AI client create, run and check your agents from chat. Add `https://mcp.runtm.com/mcp` to Claude, ChatGPT, Cursor, VS Code, Codex or Claude Code, then sign in with your Runtime login or your company's single sign-on, pick the workspace and choose all access or a custom list. The app acts with your role in that workspace and no more. A step that needs a key, token or password returns a dashboard link for you to finish, so credentials stay out of the chat. MCP gateways and CI can send a Runtime API key instead, and `?mode=tools` lists one tool per API operation for gateways that apply policy by tool name.
+
+  ![Connecting Claude to Runtime: choosing the workspace and the access Claude gets](/images/release-notes/mcp-connect-claude.png)
 
   Org admins can also connect an internal MCP server that sits behind Okta: set up an OAuth app for it once, and everyone signs in with their own Okta account.
 
