@@ -103,6 +103,7 @@ through Kubernetes RBAC
 | VPC network + subnet | `runtm-sandbox-<label>-<region>` / `runtm-sandbox-<label>` | Custom mode, Private Google Access on. Nodes `subnet_cidr` (`10.77.0.0/20`), pods `pods_cidr` (`10.77.128.0/17`), Services `services_cidr` (`10.77.16.0/22`). Skipped when you [bring your own network](#bring-your-own-network). |
 | Cloud Router + Cloud NAT | `runtm-sandbox-nat-<label>` | Outbound internet for the private nodes and the sandboxes. `nat = "existing"` or `"none"` skips it. |
 | GKE Autopilot cluster | `runtm-sandbox-<label>` (regional) | RAPID channel, Pod Snapshots on, private nodes. The Kubernetes API's IP endpoint admits only `runtm_ingress_cidrs`; its DNS endpoint is Google IAM-authorized (the module's kubectl provider uses it). |
+| Node pools `system`, `sandbox` | | Only with [`cluster_mode = "standard"`](#standard-mode). |
 | Node service account | `rtm-node-<slug><disc>` | Kubernetes Engine Default Node Service Account (project) and Artifact Registry Reader (repository). |
 | Static IP | `runtm-sandbox-preview-<label>` (regional) | The preview router's load balancer. With [`preview`](#previews-on-your-own-domain), the Gateway's address `runtm-sandbox-gw-<label>` instead. |
 | Bucket | `runtm-sandbox-<label>-<disc>` | Hierarchical namespace, uniform access, public access prevented, soft delete off (Pod Snapshots requirements). `fs-snapshots/sessions/` expire after 90 days, `podsnapshots/backup/` after 30. Not deleted while it has objects. |
@@ -227,6 +228,27 @@ account also gets `roles/container.clusterViewer` on the project (cluster
 metadata and connect, nothing inside the cluster). `dns` requires Runtm's
 support for DNS endpoints.
 
+## Standard mode
+
+The default is GKE Autopilot: Google sizes a node for each sandbox. Set
+`cluster_mode = "standard"` for a Standard cluster with two node pools
+instead, when Autopilot does not fit:
+
+- your organization enforces `constraints/compute.disableSerialPortLogging`
+  (every node here sets `serial-port-logging-enable=false`);
+- sandboxes need more than Autopilot's 10 GiB of disk per Pod;
+- you want warm nodes (`sandbox_min_nodes`), Spot VMs or a fixed machine type.
+
+| Pool | Shape | Notes |
+|---|---|---|
+| `system` | `standard.system_machine_type` (`e2-standard-2`), 1 to `system_max_nodes` (2) per zone | agent-sandbox controller, preview router, GKE add-ons. |
+| `sandbox` | `standard.sandbox_machine_type` (`n2-highmem-16`), `sandbox_min_nodes` (0) to `sandbox_max_nodes` (10) per zone, `sandbox_disk_gb` (200) | GKE Sandbox (gVisor) on; Spot with `sandbox_spot`. |
+
+`standard.boot_disk_kms_key` encrypts both pools' boot disks with your key.
+Both modes enforce the sandboxes' NetworkPolicies (Standard runs Dataplane
+V2). Switching modes replaces the cluster: pause running sessions first; their
+archives stay in the bucket.
+
 ## Sandbox egress
 
 Sandboxes reach only public addresses: the NetworkPolicy agent-sandbox manages
@@ -339,6 +361,10 @@ requests that carry a token wait while the router retries fetching them.
 | `runtm_app_origin` | Runtm production | Where the preview router sends visitors to sign in. Override only for Runtm staging. |
 | `runtm_preview_jwks_url` | `<runtm_app_origin>/.well-known/runtm-preview-jwks.json` | Runtm's preview-token keys. |
 | `session_artifact_retention_days` | `90` | Lifetime of paused-session workspace archives. |
+| `cluster_mode` | `autopilot` | `autopilot` or `standard`. See [Standard mode](#standard-mode). |
+| `standard` | `{}` | Node pool shapes when `cluster_mode = "standard"`. |
+| `database_encryption_key` | `null` | Cloud KMS key for application-layer encryption of Kubernetes Secrets. The GKE service agent needs Cloud KMS CryptoKey Encrypter/Decrypter on it. |
+| `maintenance_window` | `null` | `{ start_time, end_time, recurrence }` (UTC, RFC 5545). GKE upgrades only inside it; a node upgrade drains that node's sandboxes. |
 | `labels` | `{}` | Extra labels. |
 
 ## Outputs
