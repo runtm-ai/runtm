@@ -353,3 +353,49 @@ variable "labels" {
   type        = map(string)
   default     = {}
 }
+
+# ---------------------------------------------------------------------------
+# Cluster mode
+# ---------------------------------------------------------------------------
+
+variable "cluster_mode" {
+  description = "autopilot (default): GKE Autopilot sizes nodes per sandbox. standard: a Standard cluster with a system pool and a gVisor sandbox pool shaped by `standard` (needed where Autopilot cannot create nodes, e.g. constraints/compute.disableSerialPortLogging enforced, or for a fixed machine shape, Spot, warm nodes, or sandboxes needing more than Autopilot's 10 GiB of disk per Pod). Changing it replaces the cluster."
+  type        = string
+  default     = "autopilot"
+
+  validation {
+    condition     = contains(["autopilot", "standard"], var.cluster_mode)
+    error_message = "cluster_mode must be autopilot or standard."
+  }
+}
+
+variable "standard" {
+  description = "Node pools when cluster_mode = standard (ignored otherwise). Regional cluster: node counts are PER ZONE."
+  type = object({
+    system_machine_type  = optional(string, "e2-standard-2")
+    system_max_nodes     = optional(number, 2)
+    sandbox_machine_type = optional(string, "n2-highmem-16")
+    sandbox_spot         = optional(bool, false)
+    sandbox_disk_gb      = optional(number, 200)
+    sandbox_min_nodes    = optional(number, 0)
+    sandbox_max_nodes    = optional(number, 10)
+    boot_disk_kms_key    = optional(string)
+  })
+  default = {}
+}
+
+variable "database_encryption_key" {
+  description = "Cloud KMS key (projects/.../cryptoKeys/...) that encrypts the cluster's Kubernetes Secrets at the application layer (etcd). Null: Google-managed encryption only. The GKE service agent (service-<project number>@container-engine-robot.iam.gserviceaccount.com) needs roles/cloudkms.cryptoKeyEncrypterDecrypter on it."
+  type        = string
+  default     = null
+}
+
+variable "maintenance_window" {
+  description = "Recurring window GKE may upgrade the cluster and its nodes in (RFC 5545 recurrence, UTC times), e.g. { start_time = \"2026-01-03T08:00:00Z\", end_time = \"2026-01-03T14:00:00Z\", recurrence = \"FREQ=WEEKLY;BYDAY=SA,SU\" }. A node upgrade drains its sandboxes, so pick your quietest hours. Null: GKE picks."
+  type = object({
+    start_time = string
+    end_time   = string
+    recurrence = string
+  })
+  default = null
+}

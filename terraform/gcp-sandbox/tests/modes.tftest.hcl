@@ -499,3 +499,83 @@ run "agent_sandbox_manifest_checksum_mismatch_is_refused" {
 
   expect_failures = [data.http.agent_sandbox]
 }
+
+run "autopilot_default_has_no_pools" {
+  command = plan
+
+  assert {
+    condition     = google_container_cluster.sandboxes.enable_autopilot == true && length(google_container_node_pool.sandbox) == 0 && length(google_container_node_pool.system) == 0
+    error_message = "autopilot stays the default with no module pools"
+  }
+}
+
+run "standard_mode_pools_satisfy_serial_port_policy" {
+  command = plan
+
+  variables {
+    cluster_mode = "standard"
+    standard = {
+      sandbox_machine_type = "n2-highmem-16"
+      sandbox_spot         = true
+    }
+  }
+
+  assert {
+    condition     = google_container_cluster.sandboxes.enable_autopilot == null && google_container_cluster.sandboxes.initial_node_count == null && length(google_container_cluster.sandboxes.node_config) == 0
+    error_message = "standard mode is not Autopilot and has no default pool"
+  }
+  assert {
+    condition     = google_container_cluster.sandboxes.datapath_provider == "ADVANCED_DATAPATH"
+    error_message = "standard mode enforces NetworkPolicy (Dataplane V2)"
+  }
+  assert {
+    condition = alltrue([
+      for p in [google_container_node_pool.system[0], google_container_node_pool.sandbox[0]] :
+      p.node_config[0].metadata["serial-port-logging-enable"] == "false"
+    ])
+    error_message = "every pool sets serial-port-logging-enable=false"
+  }
+  assert {
+    condition     = google_container_node_pool.sandbox[0].node_config[0].sandbox_config[0].type == "GVISOR" && google_container_node_pool.sandbox[0].node_config[0].spot
+    error_message = "the sandbox pool is gVisor and Spot"
+  }
+  assert {
+    condition     = length(google_container_cluster.sandboxes.cluster_autoscaling) == 0
+    error_message = "standard mode runs no node auto-provisioning"
+  }
+}
+
+run "etcd_key_and_maintenance_window_are_off_by_default" {
+  command = plan
+
+  assert {
+    condition     = length(google_container_cluster.sandboxes.database_encryption) == 0 || google_container_cluster.sandboxes.database_encryption[0].state != "ENCRYPTED"
+    error_message = "no application-layer encryption unless a key is given"
+  }
+  assert {
+    condition     = length(google_container_cluster.sandboxes.maintenance_policy) == 0
+    error_message = "no maintenance window unless one is given"
+  }
+}
+
+run "etcd_key_and_maintenance_window_when_set" {
+  command = plan
+
+  variables {
+    database_encryption_key = "projects/kms-prj/locations/us-west1/keyRings/r/cryptoKeys/etcd"
+    maintenance_window = {
+      start_time = "2026-01-03T08:00:00Z"
+      end_time   = "2026-01-03T14:00:00Z"
+      recurrence = "FREQ=WEEKLY;BYDAY=SA,SU"
+    }
+  }
+
+  assert {
+    condition     = google_container_cluster.sandboxes.database_encryption[0].state == "ENCRYPTED" && google_container_cluster.sandboxes.database_encryption[0].key_name == "projects/kms-prj/locations/us-west1/keyRings/r/cryptoKeys/etcd"
+    error_message = "Secrets are encrypted with the given key"
+  }
+  assert {
+    condition     = google_container_cluster.sandboxes.maintenance_policy[0].recurring_window[0].recurrence == "FREQ=WEEKLY;BYDAY=SA,SU"
+    error_message = "upgrades are confined to the given window"
+  }
+}
