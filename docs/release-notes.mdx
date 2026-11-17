@@ -14,6 +14,28 @@ Every entry below is live in production. The date is when it became available, i
   **Setup:** grading runs on your organization's Claude key, through Anthropic or Amazon Bedrock. With no key, runs show **Not graded** and Settings shows where to add one. [Learn more](/build/measure-success)
 </Update>
 
+<Update label="Nov 6, 2026" tags={["Agents", "User Experience"]}>
+  ## Agents first: characters, a Runs page and agent analytics
+
+  Every agent now has a pixel character: a person or a shape, in its own color. Open **Customize** on the agent's profile, or in **New Agent**, to pick its hair, face, headwear, outfit, eyes and gear. Slack, GitHub and Teams show the same character, and it changes while the agent works. Runtime's own agent is now called **Root**.
+
+  **Sessions** is now **Runs**, with a list, a board and cards in one view. The agent panel has **Profile**, **Schedules** and **Runs** tabs, and you can write a schedule in one sentence. Schedules can repeat every 30 minutes or every few hours, in any time zone. **Activity → Agents** shows which agents run most, how their runs grade, where runs start, labor value and each agent's budget.
+
+  ![The Agents page in Runtime, with a pixel character for each agent](/images/release-notes/agents-pixel-characters.png)
+
+  **Setup:** none. It's on for everyone.
+</Update>
+
+<Update label="Nov 6, 2026" tags={["Agents", "Computers"]}>
+  ## Every agent gets its own computer
+
+  Templates are now called **Computers** in the web app, and they live in **Settings → Computers**. Each new agent gets its own computer, blank or from a GitHub or GitLab repository. It builds in the background while the agent already runs. The agent's **Computer** tab adds repositories, resizes, rebuilds or switches computers. Since November 8, a computer's **Shared database** switch lets every session of that computer read and write the same data.
+
+  ![Settings → Computers in Runtime, with a computer's repositories, size, coding agents and shared database](/images/release-notes/settings-computers.png)
+
+  **Setup:** none. Old template links still work, and the API, CLI and MCP tools still say template. [Learn more](/guides/recipes/share-data-across-sessions)
+</Update>
+
 <Update label="Nov 4, 2026" tags={["Integrations", "Security"]}>
   ## Use Runtime from Claude, ChatGPT and Cursor
 
