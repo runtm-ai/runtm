@@ -306,7 +306,25 @@ resource "google_container_cluster" "sandboxes" {
   name     = local.cluster_name
   location = var.region
 
-  enable_autopilot = true
+  # cluster_mode: Autopilot (default) or Standard with the two pools in
+  # standard.tf. Changing it REPLACES the cluster.
+  enable_autopilot = local.autopilot ? true : null
+
+  # Standard: no default pool (initial_node_count and node_config omitted;
+  # GKE 1.36.4-gke.1469000+, RAPID is past it), only the pools in standard.tf,
+  # so no node ever boots without serial-port-logging-enable=false.
+  networking_mode = local.autopilot ? null : "VPC_NATIVE"
+  # NetworkPolicy enforcement (agent-sandbox's per-sandbox policy isolates
+  # sandboxes): Autopilot always runs Dataplane V2; Standard must ask for it.
+  datapath_provider = local.autopilot ? null : "ADVANCED_DATAPATH"
+
+  # Autopilot turns Workload Identity on itself; Standard must.
+  dynamic "workload_identity_config" {
+    for_each = local.autopilot ? [] : [1]
+    content {
+      workload_pool = "${var.project_id}.svc.id.goog"
+    }
+  }
 
   network    = local.network_id
   subnetwork = local.subnetwork_id
@@ -367,14 +385,39 @@ resource "google_container_cluster" "sandboxes" {
     }
   }
 
-  cluster_autoscaling {
-    auto_provisioning_defaults {
-      service_account = google_service_account.node.email
-      oauth_scopes    = ["https://www.googleapis.com/auth/cloud-platform"]
+  # Autopilot: the node identity of every auto-provisioned node. Standard runs
+  # no node auto-provisioning (its nodes cannot carry the serial-port metadata);
+  # the pools in standard.tf name the account themselves.
+  dynamic "cluster_autoscaling" {
+    for_each = local.autopilot ? [1] : []
+    content {
+      auto_provisioning_defaults {
+        service_account = google_service_account.node.email
+        oauth_scopes    = ["https://www.googleapis.com/auth/cloud-platform"]
+      }
     }
   }
 
   resource_labels = local.labels
+
+  dynamic "database_encryption" {
+    for_each = var.database_encryption_key == null ? [] : [1]
+    content {
+      state    = "ENCRYPTED"
+      key_name = var.database_encryption_key
+    }
+  }
+
+  dynamic "maintenance_policy" {
+    for_each = var.maintenance_window == null ? [] : [1]
+    content {
+      recurring_window {
+        start_time = var.maintenance_window.start_time
+        end_time   = var.maintenance_window.end_time
+        recurrence = var.maintenance_window.recurrence
+      }
+    }
+  }
 
   # `terraform destroy` removes the cluster (paused sessions stay in the
   # bucket, which is never deleted while it has objects).
