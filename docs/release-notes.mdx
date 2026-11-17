@@ -6,6 +6,50 @@ rss: true
 
 Every entry below is live in production. The date is when it became available, in Pacific Time. Setup notes say what an admin needs to do before people can use it.
 
+<Update label="Nov 7, 2026" tags={["Agents", "Evals"]}>
+  ## Evals you can check: graded check by check, on your own key
+
+  Each evaluation category now lists its **Passes if** checks, and every graded run is scored check by check, with the grader's reasoning written before its verdict. The agent's **Evals** tab shows each category as a table of its checks with how many graded runs met each one, how far to trust the grades, and the pass rate before and after the agent's last change. People who can edit the agent can mark a grade right or wrong. Org admins choose the grader model, which runs are graded and whether the grader reads what the run did, in **Settings → Evals**.
+
+  ![An agent's Evals in Runtime: each category as a table of Passes if checks with how many runs met each, and recent grades to mark right or wrong](/images/release-notes/evals-check-table.png)
+
+  **Setup:** grading runs on your organization's Claude key, through Anthropic or Amazon Bedrock. With no key, runs show **Not graded** and Settings shows where to add one. [Learn more](/build/measure-success)
+</Update>
+
+<Update label="Nov 6, 2026" tags={["Agents", "User Experience"]}>
+  ## Agents first: characters, a Runs page and agent analytics
+
+  Every agent now has a pixel character: a person or a shape, in its own color. Open **Customize** on the agent's profile, or in **New Agent**, to pick its hair, face, headwear, outfit, eyes and gear. Slack, GitHub and Teams show the same character, and it changes while the agent works. Runtime's own agent is now called **Root**.
+
+  **Sessions** is now **Runs**, with a list, a board and cards in one view. The agent panel has **Profile**, **Schedules** and **Runs** tabs, and you can write a schedule in one sentence. Schedules can repeat every 30 minutes or every few hours, in any time zone. **Activity → Agents** shows which agents run most, how their runs grade, where runs start, labor value and each agent's budget.
+
+  ![The Agents page in Runtime, with a pixel character for each agent](/images/release-notes/agents-pixel-characters.png)
+
+  **Setup:** none. It's on for everyone.
+</Update>
+
+<Update label="Nov 6, 2026" tags={["Agents", "Computers"]}>
+  ## Every agent gets its own computer
+
+  Templates are now called **Computers** in the web app, and they live in **Settings → Computers**. Each new agent gets its own computer, blank or from a GitHub or GitLab repository. It builds in the background while the agent already runs. The agent's **Computer** tab adds repositories, resizes, rebuilds or switches computers. Since November 8, a computer's **Shared database** switch lets every session of that computer read and write the same data.
+
+  ![Settings → Computers in Runtime, with a computer's repositories, size, coding agents and shared database](/images/release-notes/settings-computers.png)
+
+  **Setup:** none. Old template links still work, and the API, CLI and MCP tools still say template. [Learn more](/guides/recipes/share-data-across-sessions)
+</Update>
+
+<Update label="Nov 4, 2026" tags={["Integrations", "Security"]}>
+  ## Use Runtime from Claude, ChatGPT and Cursor
+
+  The Runtime MCP server lets an AI client create, run and check your agents from chat. Add `https://mcp.runtm.com/mcp` to Claude, ChatGPT, Cursor, VS Code, Codex or Claude Code, then sign in with your Runtime login or your company's single sign-on, pick the workspace and choose all access or a custom list. The app acts with your role in that workspace and no more. A step that needs a key, token or password returns a dashboard link for you to finish, so credentials stay out of the chat. MCP gateways and CI can send a Runtime API key instead, and `?mode=tools` lists one tool per API operation for gateways that apply policy by tool name.
+
+  ![Connecting Claude to Runtime: choosing the workspace and the access Claude gets](/images/release-notes/mcp-connect-claude.png)
+
+  Org admins can also connect an internal MCP server that sits behind Okta: set up an OAuth app for it once, and everyone signs in with their own Okta account.
+
+  **Setup:** none in Runtime to connect a client. In ChatGPT, turn on **Developer mode** first. On Claude Team and Enterprise plans, an owner may need to add the connector. For an Okta-protected MCP server, an admin opens it in **Settings → Context → Tools & MCP** and clicks **Set up OAuth app**. [Learn more](/mcp/overview)
+</Update>
+
 <Update label="Oct 27, 2026" tags={["Governance", "Compliance"]}>
   ## Compliance (beta): risk management, audit log and evidence reports
 
