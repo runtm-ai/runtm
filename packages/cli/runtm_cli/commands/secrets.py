@@ -18,6 +18,9 @@ from rich.table import Table
 from runtm_shared.manifest import Manifest
 
 console = Console()
+# Separate stderr console so status/error messages never pollute stdout that
+# scripts capture (e.g. `runtm secrets get FOO`).
+err_console = Console(stderr=True)
 
 # Files to check for secrets (in priority order)
 ENV_FILES = [".env.local", ".env"]
@@ -210,16 +213,19 @@ def secrets_get_command(
     """
     env_vars = load_local_env(path)
 
+    # Print the raw value with the builtin print(), NOT console.print():
+    # Rich interprets "[...]" as markup and soft-wraps at the console width
+    # (80 cols when stdout is piped), which silently corrupts secret values
+    # that contain brackets or exceed the width. This command is meant for
+    # scripting, so the value must be emitted verbatim.
     if key in env_vars:
-        # Print just the value (for scripting)
-        console.print(env_vars[key])
+        print(env_vars[key])
+    elif key in os.environ:
+        print(os.environ[key])
     else:
-        # Also check system environment
-        if key in os.environ:
-            console.print(os.environ[key])
-        else:
-            console.print(f"[red]✗[/red] {key} not found", style="red")
-            raise typer.Exit(1)
+        # Send the error to stderr so it never pollutes captured stdout.
+        err_console.print(f"[red]✗[/red] {key} not found")
+        raise typer.Exit(1)
 
 
 def secrets_list_command(

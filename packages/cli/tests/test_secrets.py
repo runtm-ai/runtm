@@ -378,6 +378,44 @@ class TestSecretsGetCommand:
             with pytest.raises(typer.Exit):
                 secrets_get_command("NONEXISTENT_KEY", path)
 
+    def test_value_with_brackets_is_not_corrupted(self, capsys) -> None:
+        """Values containing [..] must be emitted verbatim (no Rich markup)."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir)
+            value = "ab[cd]ef-[bold]not-markup[/bold]"
+            (path / ".env.local").write_text(f"BRACKETY={value}\n")
+
+            secrets_get_command("BRACKETY", path)
+
+            captured = capsys.readouterr()
+            assert captured.out == value + "\n"
+
+    def test_long_value_is_not_wrapped(self, capsys) -> None:
+        """Long values must not have newlines injected (would break scripts)."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir)
+            value = "x" * 200  # well beyond the 80-col default console width
+            (path / ".env.local").write_text(f"LONG={value}\n")
+
+            secrets_get_command("LONG", path)
+
+            captured = capsys.readouterr()
+            assert captured.out == value + "\n"
+
+    def test_not_found_error_goes_to_stderr(self, capsys) -> None:
+        """The 'not found' message must not pollute stdout used for capture."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir)
+
+            import typer
+
+            with pytest.raises(typer.Exit):
+                secrets_get_command("NONEXISTENT_KEY", path)
+
+            captured = capsys.readouterr()
+            assert captured.out == ""
+            assert "not found" in captured.err
+
 
 class TestSecretsUnsetCommand:
     """Tests for secrets_unset_command function."""
