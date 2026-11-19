@@ -3,6 +3,7 @@
 from runtm_cli.commands.approve import approve_command
 from runtm_cli.commands.deploy import deploy_command
 from runtm_cli.commands.destroy import destroy_command
+from runtm_cli.commands.doctor import doctor_command
 from runtm_cli.commands.domain import (
     domain_add_command,
     domain_remove_command,
@@ -34,6 +35,7 @@ __all__ = [
     "approve_command",
     "deploy_command",
     "destroy_command",
+    "doctor_command",
     "domain_add_command",
     "domain_remove_command",
     "domain_status_command",
