@@ -7,7 +7,7 @@ FROM oven/bun:1-alpine AS builder
 WORKDIR /app
 
 # Install dependencies first (better caching)
-COPY package*.json bun.lockb* ./
+COPY package*.json bun.lock* ./
 
 # Use Bun for ultra-fast installs (falls back if no lockfile)
 RUN bun install --frozen-lockfile 2>/dev/null || bun install
